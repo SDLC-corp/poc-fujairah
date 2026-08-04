@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "name": "geofences",
+  "note": "Operator-drawn incident geofences inside the declared anchorages. Unlike anchorages.json these are NOT from the notice — they are the ad-hoc boundaries a VTS operator draws when something happens, and are expected to be edited or cleared.",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "GF-SPILL",
+      "properties": {
+        "id": "GF-SPILL",
+        "name": "Oil spill containment",
+        "kind": "exclusion",
+        "cause": "Hydrocarbon spill",
+        "area": "BS",
+        "rule": "No entry — booms deployed, recovery craft working",
+        "active": true,
+        "owner": "Harbour master",
+        "createdAt": "2026-08-03T05:40:00Z"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [56.4995, 25.1775],
+            [56.5225, 25.1762],
+            [56.5265, 25.1878],
+            [56.5115, 25.1935],
+            [56.4972, 25.1868],
+            [56.4995, 25.1775]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+:root {
+  /* Navy on white */
+  --navy-900: #071a33;
+  --navy-800: #0a2540;
+  --navy-700: #123255;
+  --navy-600: #1a4478;
+  --navy-500: #1b56b5;
+
+  --bg: #eef2f8;
+  --surface: #ffffff;
+  --surface-2: #f6f9fd;
+  --border: #d7e0ec;
+  --border-strong: #bccbdf;
+  --text: #0a2540;
+  --muted: #5f7391;
+  --accent: var(--navy-500);
+  --accent-soft: #e8f0fd;
+
+  --ok: #10794a;
+  --warn: #b26a00;
+  --alert: #c0392b;
+  --alert-soft: #fdecea;
+
+  --shadow-sm: 0 1px 2px rgba(10, 37, 64, 0.06);
+  --shadow-md: 0 8px 24px rgba(10, 37, 64, 0.12);
+
+  font: 14px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

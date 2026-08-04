@@ -1,0 +1,830 @@
+{
+  "type": "FeatureCollection",
+  "name": "anchorages",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "FAA-A",
+      "properties": {
+        "id": "FAA-A",
+        "name": "Anchorage Area A",
+        "code": "A",
+        "category": "anchorage",
+        "purpose": "Vessels awaiting orders or as directed by the Harbour Master",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.465,
+              25.303333
+            ],
+            [
+              56.583333,
+              25.303333
+            ],
+            [
+              56.583333,
+              25.281667
+            ],
+            [
+              56.465,
+              25.281667
+            ],
+            [
+              56.465,
+              25.303333
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-BN",
+      "properties": {
+        "id": "FAA-BN",
+        "name": "Anchorage Area BN",
+        "code": "BN",
+        "category": "anchorage",
+        "purpose": "Bunkers, lube oil, de-sloping and other marine services",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.483333,
+              25.258333
+            ],
+            [
+              56.5575,
+              25.258333
+            ],
+            [
+              56.5575,
+              25.22
+            ],
+            [
+              56.483333,
+              25.22
+            ],
+            [
+              56.483333,
+              25.258333
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-BS",
+      "properties": {
+        "id": "FAA-BS",
+        "name": "Anchorage Area BS",
+        "code": "BS",
+        "category": "anchorage",
+        "purpose": "Bunkers, lube oil, de-sloping and other marine services",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.483333,
+              25.21
+            ],
+            [
+              56.5575,
+              25.21
+            ],
+            [
+              56.5575,
+              25.161667
+            ],
+            [
+              56.483333,
+              25.161667
+            ],
+            [
+              56.483333,
+              25.21
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-C",
+      "properties": {
+        "id": "FAA-C",
+        "name": "Anchorage Area C",
+        "code": "C",
+        "category": "anchorage",
+        "purpose": "Marine services other than bunkers, lube oil or de-sloping",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.45,
+              25.281667
+            ],
+            [
+              56.483333,
+              25.281667
+            ],
+            [
+              56.483333,
+              25.231667
+            ],
+            [
+              56.45,
+              25.231667
+            ],
+            [
+              56.45,
+              25.281667
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-D",
+      "properties": {
+        "id": "FAA-D",
+        "name": "Anchorage Area D",
+        "code": "D",
+        "category": "anchorage",
+        "purpose": "Explosives, liquefied gas carriers and hazardous chemical tankers (IBC ch. 17)",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.5,
+              25.281667
+            ],
+            [
+              56.583333,
+              25.281667
+            ],
+            [
+              56.583333,
+              25.258333
+            ],
+            [
+              56.5,
+              25.258333
+            ],
+            [
+              56.5,
+              25.281667
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-G",
+      "properties": {
+        "id": "FAA-G",
+        "name": "Anchorage Area G",
+        "code": "G",
+        "category": "anchorage",
+        "purpose": "Liquefied gas carriers conducting ship-to-ship operations",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.483333,
+              25.281667
+            ],
+            [
+              56.5,
+              25.281667
+            ],
+            [
+              56.5,
+              25.258333
+            ],
+            [
+              56.483333,
+              25.258333
+            ],
+            [
+              56.483333,
+              25.281667
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-N",
+      "properties": {
+        "id": "FAA-N",
+        "name": "Anchorage Area N",
+        "code": "N",
+        "category": "anchorage",
+        "purpose": "Navy vessels holding valid diplomatic clearance",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.45,
+              25.303333
+            ],
+            [
+              56.465,
+              25.303333
+            ],
+            [
+              56.465,
+              25.281667
+            ],
+            [
+              56.45,
+              25.281667
+            ],
+            [
+              56.45,
+              25.303333
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-S",
+      "properties": {
+        "id": "FAA-S",
+        "name": "Anchorage Area S",
+        "code": "S",
+        "category": "anchorage",
+        "purpose": "Oil tankers performing ship-to-ship operations",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.505,
+              25.161667
+            ],
+            [
+              56.583333,
+              25.161667
+            ],
+            [
+              56.583333,
+              25.136667
+            ],
+            [
+              56.505,
+              25.136667
+            ],
+            [
+              56.505,
+              25.161667
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-T",
+      "properties": {
+        "id": "FAA-T",
+        "name": "Anchorage Area T",
+        "code": "T",
+        "category": "anchorage",
+        "purpose": "Tankers calling SPM terminals; bunkers, lube oil and de-sloping permitted",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.45,
+              25.231667
+            ],
+            [
+              56.476667,
+              25.231667
+            ],
+            [
+              56.476667,
+              25.21
+            ],
+            [
+              56.45,
+              25.21
+            ],
+            [
+              56.45,
+              25.231667
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-VN",
+      "properties": {
+        "id": "FAA-VN",
+        "name": "Anchorage Area VN",
+        "code": "VN",
+        "category": "anchorage",
+        "purpose": "Vessels over 300 m LOA; bunkers, lube oil, de-sloping and marine services",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.5575,
+              25.258333
+            ],
+            [
+              56.583333,
+              25.258333
+            ],
+            [
+              56.583333,
+              25.22
+            ],
+            [
+              56.5575,
+              25.22
+            ],
+            [
+              56.5575,
+              25.258333
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-VS",
+      "properties": {
+        "id": "FAA-VS",
+        "name": "Anchorage Area VS",
+        "code": "VS",
+        "category": "anchorage",
+        "purpose": "Vessels over 300 m LOA; bunkers, lube oil, de-sloping and marine services",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.5575,
+              25.21
+            ],
+            [
+              56.583333,
+              25.21
+            ],
+            [
+              56.583333,
+              25.161667
+            ],
+            [
+              56.5575,
+              25.161667
+            ],
+            [
+              56.5575,
+              25.21
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-W",
+      "properties": {
+        "id": "FAA-W",
+        "name": "Anchorage Area W",
+        "code": "W",
+        "category": "anchorage",
+        "purpose": "Inbound vessels awaiting berth, other than those calling SPM terminals",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.45,
+              25.21
+            ],
+            [
+              56.483333,
+              25.21
+            ],
+            [
+              56.483333,
+              25.161667
+            ],
+            [
+              56.505,
+              25.161667
+            ],
+            [
+              56.505,
+              25.136667
+            ],
+            [
+              56.45,
+              25.136667
+            ],
+            [
+              56.45,
+              25.21
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-PASSAGE",
+      "properties": {
+        "id": "FAA-PASSAGE",
+        "name": "Passage Way",
+        "code": "PW",
+        "category": "passage",
+        "purpose": "Transit corridor — anchoring prohibited",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.476667,
+              25.231667
+            ],
+            [
+              56.483333,
+              25.231667
+            ],
+            [
+              56.483333,
+              25.22
+            ],
+            [
+              56.583333,
+              25.22
+            ],
+            [
+              56.583333,
+              25.21
+            ],
+            [
+              56.476667,
+              25.21
+            ],
+            [
+              56.476667,
+              25.231667
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-RESTRICTED",
+      "properties": {
+        "id": "FAA-RESTRICTED",
+        "name": "Restricted Area",
+        "code": "RA",
+        "category": "restricted",
+        "purpose": "Submarine pipelines, oil terminals and SPMs — no steaming, anchoring or fishing",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              56.381667,
+              25.325
+            ],
+            [
+              56.45,
+              25.325
+            ],
+            [
+              56.45,
+              25.21
+            ],
+            [
+              56.408,
+              25.18
+            ],
+            [
+              56.3901,
+              25.177967
+            ],
+            [
+              56.376333,
+              25.188333
+            ],
+            [
+              56.381667,
+              25.325
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-T-1",
+      "properties": {
+        "id": "FAA-T-1",
+        "name": "Anchor Berth 1",
+        "code": "T",
+        "category": "anchor-berth",
+        "purpose": "Designated anchor berth in Area T",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.456667,
+          25.226333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-T-2",
+      "properties": {
+        "id": "FAA-T-2",
+        "name": "Anchor Berth 2",
+        "code": "T",
+        "category": "anchor-berth",
+        "purpose": "Designated anchor berth in Area T",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.47,
+          25.226333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-T-3",
+      "properties": {
+        "id": "FAA-T-3",
+        "name": "Anchor Berth 3",
+        "code": "T",
+        "category": "anchor-berth",
+        "purpose": "Designated anchor berth in Area T",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.47,
+          25.215333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "FAA-T-4",
+      "properties": {
+        "id": "FAA-T-4",
+        "name": "Anchor Berth 4",
+        "code": "T",
+        "category": "anchor-berth",
+        "purpose": "Designated anchor berth in Area T",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.456667,
+          25.215333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-1",
+      "properties": {
+        "id": "SPM-1",
+        "name": "SPM Channel Buoy 1",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.G.4s · Racon (M)",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.5565,
+          25.323333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-2",
+      "properties": {
+        "id": "SPM-2",
+        "name": "SPM Channel Buoy 2",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.R.4s",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.5565,
+          25.306667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-3",
+      "properties": {
+        "id": "SPM-3",
+        "name": "SPM Channel Buoy 3",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.G.4s",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.518333,
+          25.323333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-4",
+      "properties": {
+        "id": "SPM-4",
+        "name": "SPM Channel Buoy 4",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.R.4s",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.518333,
+          25.306667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-5",
+      "properties": {
+        "id": "SPM-5",
+        "name": "SPM Channel Buoy 5",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.G.4s",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.479667,
+          25.323333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-6",
+      "properties": {
+        "id": "SPM-6",
+        "name": "SPM Channel Buoy 6",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.R.4s",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.479667,
+          25.306667
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-7",
+      "properties": {
+        "id": "SPM-7",
+        "name": "SPM Channel Buoy 7",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.G.4s",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.442667,
+          25.323333
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SPM-8",
+      "properties": {
+        "id": "SPM-8",
+        "name": "SPM Channel Buoy 8",
+        "code": "SPM",
+        "category": "buoy",
+        "purpose": "SPM channel mark · Fl.R.4s",
+        "authority": "Fujairah Port Authority",
+        "source": "Port of Fujairah Notice to Mariners No. 346, effective 01 Feb 2024"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          56.45,
+          25.3
+        ]
+      }
+    }
+  ]
+}
