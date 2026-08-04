@@ -4,6 +4,7 @@ import type {
   AnchorageCollection,
   GeofenceCollection,
   VesselCollection,
+  VesselFeature,
 } from '../../types/gis'
 
 interface PortData {
@@ -49,6 +50,12 @@ const portDataSlice = createSlice({
   name: 'portData',
   initialState,
   reducers: {
+    /** Adds a vessel the operator entered by hand to the waiting queue. */
+    addVessel(state, action: PayloadAction<VesselFeature>) {
+      if (!state.vessels) return
+      state.vessels.features.push(action.payload)
+    },
+
     /** Drops a vessel onto its assigned spot once it has finished moving. */
     anchorVessel(
       state,
@@ -92,5 +99,5 @@ const portDataSlice = createSlice({
   },
 })
 
-export const { anchorVessel } = portDataSlice.actions
+export const { addVessel, anchorVessel } = portDataSlice.actions
 export default portDataSlice.reducer

@@ -7,6 +7,7 @@ import { startTransit } from '../../features/transit/transitSlice'
 import { formatDateTime, formatDistance } from '../../utils/format'
 import { buildRoute } from '../../map/route'
 import { VESSEL_LABELS } from '../../map/vesselTypes'
+import AddVesselForm from '../AddVesselForm'
 import RawJson from '../RawJson'
 
 /** Closer and roomier scores higher; both are read straight off the geometry. */
@@ -22,10 +23,13 @@ export default function AssignmentScreen() {
   const passage = useAppSelector(selectPassageWay)
   const [confirming, setConfirming] = useState<AssignmentCandidate | null>(null)
   const [picked, setPicked] = useState<Record<string, SpotOption>>({})
+  const [manual, setManual] = useState<Record<string, SpotOption>>({})
   const [assigned, setAssigned] = useState<Record<string, SpotOption>>({})
 
-  const choiceFor = (c: AssignmentCandidate) =>
-    assigned[c.vessel.properties.id] ?? picked[c.vessel.properties.id] ?? c.recommended
+  const choiceFor = (c: AssignmentCandidate) => {
+    const id = c.vessel.properties.id
+    return assigned[id] ?? manual[id] ?? picked[id] ?? c.recommended
+  }
 
   const payload = {
     requestedAt: '2026-08-03T09:15:00Z',
@@ -50,12 +54,16 @@ export default function AssignmentScreen() {
         fullAreas: c.fullAreas,
         assignedSpot: assigned[c.vessel.properties.id]?.spotId ?? null,
         selectedSpot: choice?.spotId ?? null,
+        decidedBy: manual[c.vessel.properties.id] || picked[c.vessel.properties.id] ? 'operator' : 'engine',
+        designatedAreas: c.designatedAreas,
       }
     }),
   }
 
   return (
     <>
+      <AddVesselForm />
+
       <section className="panel">
         <h2>
           Awaiting assignment<span className="badge badge-ok">{queue.length}</span>
@@ -70,7 +78,9 @@ export default function AssignmentScreen() {
         const p = c.vessel.properties
         const choice = choiceFor(c)
         const isAssigned = Boolean(assigned[p.id])
+        const isManual = Boolean(picked[p.id]) || Boolean(manual[p.id])
         const confidence = choice ? confidenceOf(choice) : 0
+        const offDesignation = Boolean(choice && !c.designatedAreas.includes(choice.areaCode))
 
         return (
           <section className="panel" key={p.id}>
@@ -93,7 +103,9 @@ export default function AssignmentScreen() {
             {choice ? (
               <div className="recommend">
                 <div className="recommend-head">
-                  <span className="muted">{isAssigned ? 'Assigned' : 'Recommended'}</span>
+                  <span className={`source-tag ${isManual ? 'source-manual' : 'source-ai'}`}>
+                    {isAssigned ? 'Assigned' : isManual ? 'Manual' : 'AI suggestion'}
+                  </span>
                   <strong>Area {choice.areaCode}</strong>
                   <span
                     className={`conf conf-${
@@ -108,18 +120,55 @@ export default function AssignmentScreen() {
                   {choice.spotId}
                   {c.fullAreas.length > 0 && ` · full: ${c.fullAreas.join(', ')}`}
                 </p>
+                {offDesignation && (
+                  <p className="override-warning">
+                    Area {choice.areaCode} is not designated for a{' '}
+                    {VESSEL_LABELS[p.type].toLowerCase()} — operator override.
+                  </p>
+                )}
+                <label className="manual-pick">
+                  <span>Manual override</span>
+                  <select
+                    value={choice.areaCode}
+                    onChange={(e) => {
+                      const option = c.areaOptions.find((o) => o.areaCode === e.target.value)
+                      if (!option) return
+                      setManual((prev) => ({ ...prev, [p.id]: option }))
+                      setPicked((prev) => {
+                        const next = { ...prev }
+                        delete next[p.id]
+                        return next
+                      })
+                    }}
+                    disabled={isAssigned}
+                  >
+                    {c.areaOptions.map((option) => (
+                      <option key={option.spotId} value={option.areaCode}>
+                        Area {option.areaCode}
+                        {c.designatedAreas.includes(option.areaCode) ? '' : ' — not designated'} ·{' '}
+                        {formatDistance(option.distanceM)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
                 {c.alternatives.length > 0 && (
                   <div className="filter-row">
                     <button
                       type="button"
                       className={`filter-chip${choice === c.recommended ? ' active' : ''}`}
-                      onClick={() =>
+                      onClick={() => {
                         setPicked((prev) => {
                           const next = { ...prev }
                           delete next[p.id]
                           return next
                         })
-                      }
+                        setManual((prev) => {
+                          const next = { ...prev }
+                          delete next[p.id]
+                          return next
+                        })
+                      }}
                     >
                       {c.recommended?.areaCode}
                     </button>
@@ -128,7 +177,14 @@ export default function AssignmentScreen() {
                         key={alt.spotId}
                         type="button"
                         className={`filter-chip${choice.spotId === alt.spotId ? ' active' : ''}`}
-                        onClick={() => setPicked((prev) => ({ ...prev, [p.id]: alt }))}
+                        onClick={() => {
+                          setPicked((prev) => ({ ...prev, [p.id]: alt }))
+                          setManual((prev) => {
+                            const next = { ...prev }
+                            delete next[p.id]
+                            return next
+                          })
+                        }}
                       >
                         {alt.areaCode}
                       </button>

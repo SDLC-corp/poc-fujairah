@@ -81,7 +81,13 @@ npm run verify   # run the Turf analyses over the static data in Node
   (LNG carriers to G/D, anything over 300 m to VN/VS, service craft to C…), drops any spot whose
   radius is smaller than the vessel's own swing radius, and ranks what is left by distance. The
   match percentage is computed from proximity and spare radius — nothing about the queue is
-  hard-coded. Confirming an assignment **walks the vessel to its spot** on the map: the camera
+  hard-coded. The suggestion is labelled **AI suggestion**, and an operator can override it from a
+  **Manual override** picker offering the nearest big-enough spot in *every* area — including ones
+  the notice does not designate for that vessel, which are marked as such and carry a warning on
+  the card. The payload records `decidedBy: "engine" | "operator"`. A vessel that is not in the AIS
+  feed can be **entered by hand** (name, type, LOA, flag, ETA); beam and draft are derived from the
+  length, it is placed in the waiting area east of the anchorage, and it joins the same queue and is
+  matched the same way. Confirming an assignment **walks the vessel to its spot** on the map: the camera
   frames the passage, and the hull runs the **routed track** — out of the waiting position, into the
   Passage Way the notice sets aside for transit, along the corridor, then off to the spot — with the
   plan drawn faintly ahead of it and the trail solid behind. On arrival

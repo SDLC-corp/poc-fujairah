@@ -323,6 +323,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
@@ -1436,6 +1437,14 @@ input[type='range'] {
   text-decoration: underline;
 }
 
+/* the action in a panel heading sits opposite the title */
+.panel h2 .link-cell {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
 /* tables + key/value */
 
 .data-table {
@@ -1543,6 +1552,53 @@ input[type='range'] {
 .recommend p {
   font-size: 11.5px;
   line-height: 1.45;
+}
+
+.source-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.source-ai {
+  background: var(--accent-soft);
+  color: var(--navy-600);
+}
+
+.source-manual {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.manual-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.manual-pick select {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.override-warning {
+  margin-top: 6px !important;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--warn);
 }
 
 .conf {

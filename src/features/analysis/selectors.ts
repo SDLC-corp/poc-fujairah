@@ -486,6 +486,14 @@ export interface AssignmentCandidate {
   alternatives: SpotOption[]
   /** Areas that suit the vessel but have nothing free. */
   fullAreas: string[]
+  /**
+   * Best free spot in EVERY anchorage that can physically take this vessel —
+   * what a manual override can choose from, including areas the notice does not
+   * designate for it.
+   */
+  areaOptions: SpotOption[]
+  /** Areas the notice designates for this vessel, in preference order. */
+  designatedAreas: string[]
 }
 
 export const selectAwaitingVessels = createSelector([selectVessels], (vessels): VesselFeature[] =>
@@ -540,12 +548,33 @@ export const selectAssignmentQueue = createSelector(
         if (alternatives.length === 2) break
       }
 
+      // For a manual override, offer the nearest big-enough spot in each area,
+      // whether or not the notice designates that area for this vessel.
+      const bestPerArea = new Map<string, SpotOption>()
+      for (const spot of freeSpots.features) {
+        if (spot.properties.radiusM < requiredRadiusM) continue
+        const centre = pointOnFeature(spot)
+        const option: SpotOption = {
+          spotId: spot.properties.id,
+          areaCode: spot.properties.area,
+          coordinates: centre.geometry.coordinates as [number, number],
+          distanceM: distance(vessel, centre, { units: 'kilometers' }) * 1000,
+          slackM: Math.round(spot.properties.radiusM - requiredRadiusM),
+        }
+        const held = bestPerArea.get(option.areaCode)
+        if (!held || option.distanceM < held.distanceM) bestPerArea.set(option.areaCode, option)
+      }
+
       return {
         vessel,
         requiredRadiusM: Math.round(requiredRadiusM),
         recommended: options[0] ?? null,
         alternatives,
         fullAreas: preferred.filter((code) => (availableByArea.get(code) ?? 0) === 0),
+        areaOptions: [...bestPerArea.values()].sort((a, b) =>
+          a.areaCode.localeCompare(b.areaCode),
+        ),
+        designatedAreas: preferred,
       }
     })
   },
