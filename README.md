@@ -28,6 +28,21 @@ the two screens about where vessels physically are — split beside their panels
 the whole anchorage; the **Port** extent preset jumps to the quay. A **Legend** on the map keys
 every area code and vessel colour.
 
+## Charts
+
+Two charts on the dashboard, chosen by what the data has to do rather than by looks:
+
+- **Occupancy through the day** — a trend over time for a single series, so an *area*: a smooth
+  swell from a zero baseline (an area encodes magnitude, so the axis cannot be truncated). Measured
+  hours are a solid line over a wash; the forecast is dashed and hatched, so the two halves differ
+  by shape and not by fill alone. The level it draws is live utilisation, shared with the Occupancy
+  screen through `buildOccupancySeries` so the two can never disagree.
+- **Fleet by class** — a donut, which reads part-to-whole only at a glance: the 14 AIS types are
+  therefore rolled into four buckets, each direct-labelled with its count and share. Its palette
+  (`#1d4ed8, #06b6d4, #a855f7, #c2410c`) was run through the design system's validator and passes
+  the lightness, chroma, CVD-separation, normal-vision and contrast checks — the map's FAA chart
+  colours fail as a categorical encoding, which is why they are not reused here.
+
 ## 3D
 
 - **Vessels** — each AIS point is turned into two extruded polygons (hull + deckhouse) built

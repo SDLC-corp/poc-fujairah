@@ -8,6 +8,9 @@ import {
 import { selectFeature } from '../../features/selection/selectionSlice'
 import { setTab } from '../../features/ui/uiSlice'
 import { AREA_COLORS } from '../../map/areaColors'
+import { buildOccupancySeries } from '../../utils/occupancyCurve'
+import FleetMixDonut from '../FleetMixDonut'
+import OccupancyWave from '../OccupancyWave'
 import RawJson from '../RawJson'
 
 /** Threshold at which the console raises an occupancy warning. */
@@ -35,6 +38,7 @@ export default function DashboardScreen() {
   const available = Math.max(0, totalSpots - occupied)
   const utilisation = totalSpots ? Math.round((occupied / totalSpots) * 100) : 0
   const busiest = capacity[0]
+  const series = buildOccupancySeries(utilisation)
   // Written state as well as colour, so the meter never depends on hue alone.
   const load =
     utilisation >= 85
@@ -66,6 +70,7 @@ export default function DashboardScreen() {
       awaitingAssignment: awaiting,
       spots: { total: totalSpots, occupied, available, utilisationPct: utilisation },
     },
+    forecast: series.map((p) => ({ time: p.time, utilisationPct: p.pct, kind: p.kind })),
     byArea: capacity.map((r) => ({
       code: r.area.properties.code,
       capacity: r.capacity,
@@ -134,6 +139,16 @@ export default function DashboardScreen() {
           A spot is one non-overlapping swing circle, so capacity ({totalSpots}) follows each area's
           size and the vessels currently in it.
         </p>
+      </section>
+
+      <section className="panel">
+        <h2>Occupancy through the day</h2>
+        <OccupancyWave series={series} />
+      </section>
+
+      <section className="panel">
+        <h2>Fleet by class</h2>
+        <FleetMixDonut />
       </section>
 
       <section className="panel">

@@ -1392,7 +1392,8 @@ input[type='range'] {
 }
 
 .legend-swatch-predicted {
-  background: repeating-linear-gradient(135deg, #9dbdf0, #9dbdf0 3px, #cadcf8 3px, #cadcf8 6px);
+  background: repeating-linear-gradient(135deg, #bcd3f3, #bcd3f3 3px, #eaf1fb 3px, #eaf1fb 6px);
+  box-shadow: inset 0 0 0 1px rgba(27, 86, 181, 0.45);
 }
 
 .insight {
@@ -1443,6 +1444,91 @@ input[type='range'] {
   letter-spacing: 0;
   font-size: 11.5px;
   font-weight: 600;
+}
+
+.wave {
+  margin: 0;
+}
+
+.wave svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.wave-now {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--navy-800);
+}
+
+.wave-tick {
+  font-size: 9px;
+  fill: var(--muted);
+}
+
+.wave figcaption {
+  margin-top: 6px;
+}
+
+/* --- fleet mix donut --- */
+
+.donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.donut {
+  width: 132px;
+  height: 132px;
+  flex: none;
+}
+
+.donut-total {
+  font-size: 24px;
+  font-weight: 650;
+  fill: var(--navy-900);
+}
+
+.donut-caption {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  fill: var(--muted);
+}
+
+.donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.donut-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.donut-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--navy-800);
+}
+
+.donut-pct {
+  width: 34px;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* tables + key/value */
