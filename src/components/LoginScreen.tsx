@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { signIn, clearAuthError, DEMO_EMAIL, DEMO_PASSWORD } from '../features/auth/authSlice'
+import { signIn, clearAuthError,  } from '../features/auth/authSlice'
 
 export default function LoginScreen() {
   const dispatch = useAppDispatch()
@@ -16,11 +16,7 @@ export default function LoginScreen() {
     dispatch(signIn({ email, password }))
   }
 
-  function fillDemo() {
-    setEmail(DEMO_EMAIL)
-    setPassword(DEMO_PASSWORD)
-    dispatch(clearAuthError())
-  }
+ 
 
   return (
     <div className="login">
