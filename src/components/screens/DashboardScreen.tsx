@@ -6,15 +6,15 @@ import {
   selectVesselAreaIndex,
 } from '../../features/analysis/selectors'
 import { selectFeature } from '../../features/selection/selectionSlice'
-import { setTab } from '../../features/ui/uiSlice'
+import { focusFeature } from '../../features/view/viewSlice'
+import type { FocusTarget } from '../../features/view/viewSlice'
+import type { LayerId } from '../../types/gis'
 import { AREA_COLORS } from '../../map/areaColors'
 import { buildOccupancySeries } from '../../utils/occupancyCurve'
+import { OCCUPANCY_ALERT_PCT } from '../../utils/occupancyLoad'
 import FleetMixDonut from '../FleetMixDonut'
 import OccupancyWave from '../OccupancyWave'
 import RawJson from '../RawJson'
-
-/** Threshold at which the console raises an occupancy warning. */
-const OCCUPANCY_ALERT_PCT = 80
 
 /**
  * Overview of the offshore anchorage: the live map sits beside these panels, and
@@ -39,13 +39,6 @@ export default function DashboardScreen() {
   const utilisation = totalSpots ? Math.round((occupied / totalSpots) * 100) : 0
   const busiest = capacity[0]
   const series = buildOccupancySeries(utilisation)
-  // Written state as well as colour, so the meter never depends on hue alone.
-  const load =
-    utilisation >= 85
-      ? { className: 'meter-crit', label: 'Critical' }
-      : utilisation >= 70
-        ? { className: 'meter-warn', label: 'Busy' }
-        : { className: '', label: 'Normal' }
   // Cap the warnings: a busy anchorage would otherwise bury the real alerts.
   const nearFull = capacity
     .filter((r) => r.capacity && r.occupied / r.capacity >= OCCUPANCY_ALERT_PCT / 100)
@@ -59,6 +52,15 @@ export default function DashboardScreen() {
       vessel: e.vessel,
       area: e.areas.find((a) => a.properties.category === 'anchorage')?.properties.code ?? '—',
     }))
+
+  /**
+   * Jump the map to whatever an alert is reporting: select it so the detail
+   * card and highlight follow, and frame it so the popup lands in view.
+   */
+  function reveal(layer: LayerId, target: FocusTarget, id: string) {
+    dispatch(selectFeature({ layer, id }))
+    dispatch(focusFeature({ target, id }))
+  }
 
   const payload = {
     generatedAt: '2026-08-03T09:15:00Z',
@@ -104,42 +106,7 @@ export default function DashboardScreen() {
 
   return (
     <>
-      <section className="panel">
-        <h2>Summary</h2>
-        <div className="stat-grid">
-          <div className="stat">
-            <span className="stat-value">{fleet.length}</span>
-            <span className="stat-label">Total vessels</span>
-          </div>
-          <div className="stat">
-            <span className="stat-value">{available}</span>
-            <span className="stat-label">Spots available</span>
-          </div>
-          <div className="stat">
-            <span className="stat-value">{occupied}</span>
-            <span className="stat-label">Spots occupied</span>
-          </div>
-          <div className="stat">
-            <span className="stat-value">{awaiting}</span>
-            <span className="stat-label">Awaiting a spot</span>
-          </div>
-        </div>
 
-        <div className={`meter ${load.className}`}>
-          <div className="meter-head">
-            <span>Anchorage utilisation</span>
-            <span className="meter-state">{load.label}</span>
-            <strong>{utilisation}%</strong>
-          </div>
-          <div className="meter-track">
-            <div className="meter-fill" style={{ width: `${utilisation}%` }} />
-          </div>
-        </div>
-        <p className="muted hint">
-          A spot is one non-overlapping swing circle, so capacity ({totalSpots}) follows each area's
-          size and the vessels currently in it.
-        </p>
-      </section>
 
       <section className="panel">
         <h2>Occupancy through the day</h2>
@@ -169,43 +136,59 @@ export default function DashboardScreen() {
               <span className="feed-tag">
                 {b.fence.properties.kind === 'exclusion' ? 'Exclusion' : 'Advisory'}
               </span>
-              <div>
+              <button
+                type="button"
+                className="feed-go"
+                onClick={() => reveal('geofences', 'geofence', b.fence.properties.id)}
+              >
                 <strong>{b.vessels.length}</strong>{' '}
                 {b.vessels.length === 1 ? 'vessel' : 'vessels'} inside{' '}
                 <strong>{b.fence.properties.name}</strong> ({b.fence.properties.cause}, Area{' '}
                 {b.fence.properties.area})
-                <span className="feed-time">geofence · live</span>
-              </div>
+                <span className="feed-time">geofence · live — show on map</span>
+              </button>
             </li>
           ))}
           {incursions.map((i) => (
             <li key={i.vessel.properties.id} className="feed-item feed-high">
               <span className="feed-tag">Restricted</span>
-              <div>
+              <button
+                type="button"
+                className="feed-go"
+                onClick={() => reveal('vessels', 'vessel', i.vessel.properties.id)}
+              >
                 <strong>{i.vessel.properties.name}</strong> is inside {i.area.properties.name} —
                 anchoring and steaming prohibited
-                <span className="feed-time">live</span>
-              </div>
+                <span className="feed-time">live — show on map</span>
+              </button>
             </li>
           ))}
           {nearFull.map((r) => (
             <li key={r.area.properties.id} className="feed-item feed-warn">
               <span className="feed-tag">Occupancy</span>
-              <div>
+              <button
+                type="button"
+                className="feed-go"
+                onClick={() => reveal('anchorages', 'area', r.area.properties.id)}
+              >
                 Occupancy threshold reached in <strong>Area {r.area.properties.code}</strong> —{' '}
                 {r.occupied} of {r.capacity} spots ({OCCUPANCY_ALERT_PCT}% limit)
-                <span className="feed-time">live</span>
-              </div>
+                <span className="feed-time">live — show on map</span>
+              </button>
             </li>
           ))}
           {incoming.map(({ vessel, area }) => (
             <li key={vessel.properties.id} className="feed-item feed-info">
               <span className="feed-tag">Traffic</span>
-              <div>
+              <button
+                type="button"
+                className="feed-go"
+                onClick={() => reveal('vessels', 'vessel', vessel.properties.id)}
+              >
                 <strong>{vessel.properties.name}</strong> under way at {vessel.properties.speedKn} kn
                 in Area {area}
-                <span className="feed-time">live</span>
-              </div>
+                <span className="feed-time">live — show on map</span>
+              </button>
             </li>
           ))}
           {breaches.length + incursions.length + nearFull.length + incoming.length === 0 && (
@@ -214,27 +197,7 @@ export default function DashboardScreen() {
         </ul>
       </section>
 
-      <section className="panel">
-        <h2>Quick actions</h2>
-        <div className="action-grid">
-          <button
-            type="button"
-            className="primary"
-            onClick={() => dispatch(setTab('assignment'))}
-          >
-            Assign anchorage{awaiting > 0 ? ` (${awaiting})` : ''}
-          </button>
-          <button type="button" onClick={() => dispatch(setTab('reports'))}>
-            View reports
-          </button>
-          <button type="button" onClick={() => dispatch(setTab('tracking'))}>
-            Track vessels
-          </button>
-          <button type="button" onClick={() => dispatch(setTab('occupancy'))}>
-            Occupancy
-          </button>
-        </div>
-      </section>
+     
 
       <section className="panel">
         <h2>

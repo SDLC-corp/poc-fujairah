@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { Map as MapLibreMap, NavigationControl, Popup, ScaleControl } from 'maplibre-gl'
-import type { GeoJSONSource, MapMouseEvent } from 'maplibre-gl'
+import { Map as MapLibreMap, Marker, NavigationControl, Popup, ScaleControl } from 'maplibre-gl'
+import type { GeoJSONSource, MapMouseEvent, MapTouchEvent } from 'maplibre-gl'
 import type { Feature, FeatureCollection } from 'geojson'
-import { centroid } from '@turf/turf'
+import { centroid, pointOnFeature } from '@turf/turf'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { clearSelection, selectFeature } from '../features/selection/selectionSlice'
 import {
+  cableLengthM,
+  checkSpotAt,
+  selectAreas,
   selectBufferFeature,
   selectLabelPoints,
   selectNearestBerthLine,
@@ -15,11 +18,22 @@ import {
   selectSwingCircles,
   selectVesselHulls,
 } from '../features/analysis/selectors'
+import type { FreeSpotProps } from '../features/analysis/selectors'
 import { setBearing, setPitch } from '../features/view/viewSlice'
 import { dismissArrival, finishTransit } from '../features/transit/transitSlice'
 import { anchorVessel } from '../features/portData/portDataSlice'
+import {
+  cancelRelocate,
+  clearSpot,
+  moveSpot,
+  pickSpot,
+  resetSpot,
+  selectSpot,
+  startRelocate,
+} from '../features/spots/spotsSlice'
 import { buildVesselHull } from '../map/vesselGeometry'
 import { registerAnchorIcon } from '../map/anchorIcon'
+import { VESSEL_LABELS } from '../map/vesselTypes'
 import {
   along,
   bbox,
@@ -52,6 +66,14 @@ import {
 } from '../map/layers'
 import type { LayerId } from '../types/gis'
 
+/** Popup bodies are built as HTML, so anything from the data is escaped first. */
+function esc(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
+  )
+}
+
 /** Maps a clicked style layer back to the toggleable data layer it belongs to. */
 const LAYER_OF: Record<string, LayerId> = {
   'vessels-hull-3d': 'vessels',
@@ -77,6 +99,17 @@ export default function MapView() {
   const buildingLayerRef = useRef<string | null>(null)
   const nameLayersRef = useRef<string[]>([])
   const framedTransitRef = useRef<number | null>(null)
+  /** Popup opened by an alert click; replaced or cleared on the next focus. */
+  const focusPopupRef = useRef<Popup | null>(null)
+  /** Handle, details card and identity of the free spot under inspection. */
+  const spotMarkerRef = useRef<Marker | null>(null)
+  const spotPopupRef = useRef<Popup | null>(null)
+  const spotIdRef = useRef<string | null>(null)
+  /**
+   * Popup.remove() fires 'close'. Without this, rebuilding the card on a mode
+   * change would look like the operator dismissing it and wipe the selection.
+   */
+  const spotClosingRef = useRef(false)
   // Bumped every time the port layers are (re-)attached to a style. Effects key
   // off it instead of a boolean so a style reload re-pushes data and state.
   const [styleEpoch, setStyleEpoch] = useState(0)
@@ -91,6 +124,7 @@ export default function MapView() {
   const geofences = useAppSelector((s) => s.portData.geofences)
   const showBuffer = useAppSelector((s) => s.analysis.showBuffer)
   const showNearestLine = useAppSelector((s) => s.analysis.showNearestBerthLine)
+  const swingFactor = useAppSelector((s) => s.analysis.swingFactor)
   const bufferFeature = useAppSelector(selectBufferFeature)
   const nearest = useAppSelector(selectNearestBerthLine)
   const vessels3d = useAppSelector((s) => s.layers.vessels3d)
@@ -104,6 +138,29 @@ export default function MapView() {
   const focusRequest = useAppSelector((s) => s.view.focusRequest)
   const transit = useAppSelector((s) => s.transit.active)
   const arrival = useAppSelector((s) => s.transit.arrived)
+  const selectedSpotId = useAppSelector((s) => s.spots.selectedId)
+  const relocating = useAppSelector((s) => s.spots.relocating)
+  const pickingFor = useAppSelector((s) => s.spots.pickingFor)
+  const movedSpots = useAppSelector((s) => s.spots.moved)
+  const areas = useAppSelector(selectAreas)
+  const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
+
+  // Drag handlers are attached once but must validate against current state,
+  // so everything they read goes through a ref rather than a stale closure.
+  const spotStateRef = useRef({ relocating, pickingFor })
+  spotStateRef.current = { relocating, pickingFor }
+  const areasRef = useRef(areas)
+  areasRef.current = areas
+  const vesselsRef = useRef(vessels?.features ?? [])
+  vesselsRef.current = vessels?.features ?? []
+  const freeSpotsRef = useRef(freeSpots.features)
+  freeSpotsRef.current = freeSpots.features
+  const swingFactorRef = useRef(swingFactor)
+  swingFactorRef.current = swingFactor
+  const safetyMarginRef = useRef(safetyMarginM)
+  safetyMarginRef.current = safetyMarginM
+  const movedSpotsRef = useRef(movedSpots)
+  movedSpotsRef.current = movedSpots
 
   /* Create the map once. */
   useEffect(() => {
@@ -151,6 +208,25 @@ export default function MapView() {
     map.on('styledata', ensurePortLayers)
 
     map.on('click', (e: MapMouseEvent) => {
+      // While a spot is being dragged the map's clicks belong to it.
+      if (spotStateRef.current.relocating) return
+
+      // A free spot wins over whatever area it sits in — it is the smaller,
+      // more specific target and the only one that can be relocated.
+      if (map.getLayer('free-spot-fill')) {
+        const spotHit = map.queryRenderedFeatures(e.point, { layers: ['free-spot-fill'] })[0]
+        if (spotHit) {
+          const spotId = (spotHit.properties?.id ?? spotHit.id) as string | undefined
+          if (spotId) {
+            // Armed from the assignment card: this click chooses the spot.
+            const forVessel = spotStateRef.current.pickingFor
+            if (forVessel) dispatch(pickSpot({ vesselId: forVessel, spotId }))
+            else dispatch(selectSpot(spotId))
+            return
+          }
+        }
+      }
+
       const layers = INTERACTIVE_LAYERS.filter((id) => map.getLayer(id))
       const hits = map.queryRenderedFeatures(e.point, { layers })
       // queryRenderedFeatures answers in render order (big area fills first), so
@@ -168,7 +244,10 @@ export default function MapView() {
     })
 
     map.on('mousemove', (e: MapMouseEvent) => {
-      const layers = INTERACTIVE_LAYERS.filter((id) => map.getLayer(id))
+      const layers = [
+        ...(map.getLayer('free-spot-fill') ? ['free-spot-fill'] : []),
+        ...INTERACTIVE_LAYERS.filter((id) => map.getLayer(id)),
+      ]
       const hits = layers.length ? map.queryRenderedFeatures(e.point, { layers }) : []
       map.getCanvas().style.cursor = hits.length ? 'pointer' : ''
     })
@@ -368,7 +447,7 @@ export default function MapView() {
     const vessel = vessels?.features.find((v) => v.properties.id === arrival.vesselId)
     if (!vessel) return
 
-    const cableM = vessel.properties.lengthM * 1.2
+    const cableM = cableLengthM(vessel.properties.lengthM, swingFactor)
     const seabed = destination(arrival.at, cableM / 1000, vessel.properties.headingDeg, {
       units: 'kilometers',
     }).geometry.coordinates as [number, number]
@@ -424,7 +503,7 @@ export default function MapView() {
 
     frame = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(frame)
-  }, [styleEpoch, arrival, vessels])
+  }, [styleEpoch, arrival, vessels, swingFactor])
 
   /* Confirm the arrival on the map itself. */
   useEffect(() => {
@@ -446,11 +525,69 @@ export default function MapView() {
     }
   }, [styleEpoch, arrival, dispatch])
 
-  /* Camera presets: the port quay, or the whole Fujairah Anchorage Area. */
+  /* Camera presets: the port quay, the whole Anchorage Area, or one feature. */
   useEffect(() => {
     const map = mapRef.current
     if (!map || !styleEpoch || !focusRequest) return
-    if (focusRequest.target === 'anchorage' && anchorages?.features.length) {
+
+    // A previous alert's popup is stale the moment the camera moves elsewhere.
+    focusPopupRef.current?.remove()
+    focusPopupRef.current = null
+
+    if (focusRequest.target === 'point') {
+      if (!focusRequest.coordinates) return
+      map.flyTo({
+        center: focusRequest.coordinates,
+        zoom: Math.max(map.getZoom(), 14),
+        duration: 800,
+      })
+    } else if (focusRequest.target === 'vessel') {
+      const vessel = vessels?.features.find((v) => v.properties.id === focusRequest.id)
+      if (!vessel) return
+      // Close enough to read the hull and its swing circle, but never zoom back
+      // out on an operator who has already gone in further than this.
+      map.flyTo({
+        center: vessel.geometry.coordinates as [number, number],
+        zoom: Math.max(map.getZoom(), 14.5),
+        duration: 800,
+      })
+      const p = vessel.properties
+      focusPopupRef.current = new Popup({ closeButton: true, offset: 16, className: 'focus-popup' })
+        .setLngLat(vessel.geometry.coordinates as [number, number])
+        .setHTML(
+          `<strong>${esc(p.name)}</strong>` +
+            `<span>${esc(VESSEL_LABELS[p.type] ?? p.type)} · ${p.lengthM} × ${p.beamM} m</span>` +
+            `<small>IMO ${esc(p.imo)} · ${esc(p.flag)} · ${p.speedKn} kn · ${esc(p.status)}</small>`,
+        )
+        .addTo(map)
+    } else if (focusRequest.target === 'area' || focusRequest.target === 'geofence') {
+      const source =
+        focusRequest.target === 'area' ? anchorages?.features : geofences?.features
+      const feature = source?.find((f) => f.properties.id === focusRequest.id)
+      if (!feature) return
+
+      const [w, s, e, n] = bbox(feature)
+      map.fitBounds(
+        [
+          [w, s],
+          [e, n],
+        ],
+        { padding: 70, maxZoom: 14, duration: 800 },
+      )
+
+      const props = feature.properties as Record<string, unknown>
+      const detail =
+        focusRequest.target === 'area'
+          ? String(props.purpose ?? '')
+          : `${String(props.cause ?? '')}${props.area ? ` · Area ${String(props.area)}` : ''}`
+      focusPopupRef.current = new Popup({ closeButton: true, offset: 12, className: 'focus-popup' })
+        .setLngLat(centroid(feature).geometry.coordinates as [number, number])
+        .setHTML(
+          `<strong>${esc(String(props.name ?? focusRequest.id))}</strong>` +
+            (detail ? `<span>${esc(detail)}</span>` : ''),
+        )
+        .addTo(map)
+    } else if (focusRequest.target === 'anchorage' && anchorages?.features.length) {
       const [w, s, e, n] = bbox(anchorages)
       map.fitBounds(
         [
@@ -462,7 +599,7 @@ export default function MapView() {
     } else {
       map.fitBounds(PORT_BOUNDS, { padding: 50, duration: 900 })
     }
-  }, [styleEpoch, focusRequest, anchorages])
+  }, [styleEpoch, focusRequest, anchorages, vessels, geofences])
 
   /* Drive the camera from the store; map gestures push their result back. */
   useEffect(() => {
@@ -545,6 +682,213 @@ export default function MapView() {
       map.easeTo({ center: [lng, lat], duration: 600 })
     }
   }, [styleEpoch, selected, anchorages, geofences, vessels])
+
+  /* Free spot: click for details, then relocate by dragging. */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleEpoch) return
+
+    const dragSource = () => map.getSource(SOURCE_IDS.spotDrag) as GeoJSONSource | undefined
+    const spot = freeSpots.features.find((f) => f.properties.id === selectedSpotId)
+
+    // Nothing selected — tear everything down.
+    if (!spot) {
+      spotMarkerRef.current?.remove()
+      spotMarkerRef.current = null
+      spotClosingRef.current = true
+      spotPopupRef.current?.remove()
+      spotClosingRef.current = false
+      spotPopupRef.current = null
+      spotIdRef.current = null
+      dragSource()?.setData(EMPTY_FC)
+      return
+    }
+
+    const radiusM = spot.properties.radiusM
+    const centre = pointOnFeature(spot).geometry.coordinates as [number, number]
+
+    /** Redraw the ghost circle and re-run the checks in one pass. */
+    const drawAt = (lng: number, lat: number) => {
+      const verdict = checkSpotAt(
+        [lng, lat],
+        spot.properties.id,
+        radiusM,
+        areasRef.current,
+        vesselsRef.current,
+        freeSpotsRef.current,
+        swingFactorRef.current,
+        safetyMarginRef.current,
+      )
+      dragSource()?.setData({
+        type: 'FeatureCollection',
+        features: [
+          {
+            ...turfCircle([lng, lat], radiusM / 1000, { units: 'kilometers', steps: 40 }),
+            properties: { ok: verdict.ok },
+          },
+        ],
+      } as FeatureCollection)
+      spotMarkerRef.current?.getElement().classList.toggle('spot-handle-bad', !verdict.ok)
+      // The popup narrates why, live under the cursor.
+      spotPopupRef.current?.setDOMContent(buildSpotPopup(spot.properties, [lng, lat], verdict))
+      spotPopupRef.current?.setLngLat([lng, lat])
+    }
+
+    /** Details card: identity, position, and the relocate / reset controls. */
+    function buildSpotPopup(
+      props: FreeSpotProps,
+      at: [number, number],
+      verdict: ReturnType<typeof checkSpotAt> | null,
+    ) {
+      const box = document.createElement('div')
+      box.className = 'spot-popup'
+
+      const title = document.createElement('strong')
+      title.textContent = `Free spot ${props.id}`
+      const meta = document.createElement('span')
+      meta.textContent = `Area ${props.area} · ${Math.round(props.radiusM)} m swing radius`
+      const coords = document.createElement('small')
+      coords.textContent = `${at[1].toFixed(5)}°N, ${at[0].toFixed(5)}°E`
+      box.append(title, meta, coords)
+
+      if (verdict) {
+        const status = document.createElement('p')
+        status.className = `spot-verdict ${verdict.ok ? 'ok' : 'bad'}`
+        status.textContent = verdict.ok
+          ? `Clear — inside Area ${verdict.areaCode}`
+          : verdict.problems[0]
+        box.append(status)
+        if (!verdict.ok && verdict.problems.length > 1) {
+          const more = document.createElement('small')
+          more.textContent = verdict.problems.slice(1).join(' · ')
+          box.append(more)
+        }
+      }
+
+      const actions = document.createElement('div')
+      actions.className = 'spot-popup-actions'
+      if (!spotStateRef.current.relocating) {
+        const relocate = document.createElement('button')
+        relocate.type = 'button'
+        relocate.className = 'spot-popup-move'
+        relocate.textContent = 'Relocate spot'
+        relocate.addEventListener('click', () => dispatch(startRelocate()))
+        actions.append(relocate)
+        if (movedSpotsRef.current[props.id]) {
+          const reset = document.createElement('button')
+          reset.type = 'button'
+          reset.className = 'spot-popup-reset'
+          reset.textContent = 'Reset'
+          reset.addEventListener('click', () => dispatch(resetSpot(props.id)))
+          actions.append(reset)
+        }
+      } else {
+        const done = document.createElement('button')
+        done.type = 'button'
+        done.className = 'spot-popup-move'
+        done.textContent = 'Done'
+        done.addEventListener('click', () => dispatch(cancelRelocate()))
+        actions.append(done)
+      }
+      box.append(actions)
+      return box
+    }
+
+    // Rebuild from scratch whenever the spot or the mode changes — cheap, and
+    // it keeps the marker's draggable flag and handlers in step.
+    if (spotIdRef.current !== `${spot.properties.id}:${relocating}`) {
+      spotMarkerRef.current?.remove()
+      spotClosingRef.current = true
+      spotPopupRef.current?.remove()
+      spotClosingRef.current = false
+      spotIdRef.current = `${spot.properties.id}:${relocating}`
+
+      const el = document.createElement('div')
+      el.className = `spot-handle${relocating ? ' spot-handle-live' : ''}`
+      if (relocating) {
+        // A move cross, so it reads as "pick this up" rather than just a dot.
+        el.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+          'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+          '<path d="M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5' +
+          'M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5"/></svg>'
+        el.title = 'Drag to move this spot'
+      }
+      // draggable stays off — the drag is driven by hand below.
+      const marker = new Marker({ element: el }).setLngLat(centre).addTo(map)
+
+      const popup = new Popup({
+        closeButton: true,
+        closeOnClick: false,
+        offset: 26,
+        className: 'focus-popup',
+      })
+        .setLngLat(centre)
+        .setDOMContent(buildSpotPopup(spot.properties, centre, null))
+        .addTo(map)
+      popup.on('close', () => {
+        if (!spotClosingRef.current) dispatch(clearSpot())
+      })
+
+      /**
+       * The drag is driven here rather than through Marker's own `draggable`
+       * flag. That flag depends on the map's mousedown landing on the marker
+       * element; when anything else swallows it the gesture silently falls
+       * through to DragPan and the map pans instead. Taking the pointer
+       * ourselves — and switching DragPan off for the duration — makes the
+       * behaviour unconditional.
+       */
+      if (relocating) {
+        const beginDrag = (down: Event) => {
+          down.preventDefault()
+          down.stopPropagation()
+          map.dragPan.disable()
+          el.classList.add('spot-handle-dragging')
+
+          const onMove = (ev: MapMouseEvent | MapTouchEvent) => {
+            marker.setLngLat(ev.lngLat)
+            drawAt(ev.lngLat.lng, ev.lngLat.lat)
+          }
+          const onUp = (ev: MapMouseEvent | MapTouchEvent) => {
+            map.off('mousemove', onMove)
+            map.off('touchmove', onMove)
+            map.dragPan.enable()
+            el.classList.remove('spot-handle-dragging')
+            dispatch(
+              moveSpot({
+                id: spot.properties.id,
+                coordinates: [
+                  Number(ev.lngLat.lng.toFixed(6)),
+                  Number(ev.lngLat.lat.toFixed(6)),
+                ],
+              }),
+            )
+          }
+
+          map.on('mousemove', onMove)
+          map.on('touchmove', onMove)
+          map.once('mouseup', onUp)
+          map.once('touchend', onUp)
+        }
+
+        el.addEventListener('mousedown', beginDrag)
+        el.addEventListener('touchstart', beginDrag, { passive: false })
+      }
+
+      spotMarkerRef.current = marker
+      spotPopupRef.current = popup
+    } else {
+      spotMarkerRef.current?.setLngLat(centre)
+      spotPopupRef.current?.setLngLat(centre)
+    }
+
+    if (relocating) {
+      drawAt(centre[0], centre[1])
+    } else {
+      dragSource()?.setData(EMPTY_FC)
+      spotPopupRef.current?.setDOMContent(buildSpotPopup(spot.properties, centre, null))
+    }
+  }, [styleEpoch, selectedSpotId, relocating, freeSpots, dispatch])
 
   /* Turf-derived analysis overlays. */
   useEffect(() => {

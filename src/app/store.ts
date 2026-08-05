@@ -7,6 +7,7 @@ import viewReducer from '../features/view/viewSlice'
 import uiReducer from '../features/ui/uiSlice'
 import transitReducer from '../features/transit/transitSlice'
 import authReducer from '../features/auth/authSlice'
+import spotsReducer from '../features/spots/spotsSlice'
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +19,7 @@ export const store = configureStore({
     ui: uiReducer,
     transit: transitReducer,
     auth: authReducer,
+    spots: spotsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     // GeoJSON collections are large and immutable in practice; the deep

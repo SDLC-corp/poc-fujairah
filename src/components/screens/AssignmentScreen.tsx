@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
-import { selectAssignmentQueue, selectPassageWay } from '../../features/analysis/selectors'
+import {
+  selectAssignmentQueue,
+  selectFreeSpots,
+  selectPassageWay,
+} from '../../features/analysis/selectors'
 import type { AssignmentCandidate, SpotOption } from '../../features/analysis/selectors'
 import { selectFeature } from '../../features/selection/selectionSlice'
 import { startTransit } from '../../features/transit/transitSlice'
+import { cancelPicking, clearPick, startPicking } from '../../features/spots/spotsSlice'
+import { distance, pointOnFeature } from '@turf/turf'
 import { formatDateTime, formatDistance } from '../../utils/format'
 import { buildRoute } from '../../map/route'
 import { VESSEL_LABELS } from '../../map/vesselTypes'
@@ -25,10 +31,31 @@ export default function AssignmentScreen() {
   const [picked, setPicked] = useState<Record<string, SpotOption>>({})
   const [manual, setManual] = useState<Record<string, SpotOption>>({})
   const [assigned, setAssigned] = useState<Record<string, SpotOption>>({})
+  const freeSpots = useAppSelector(selectFreeSpots)
+  const pickingFor = useAppSelector((s) => s.spots.pickingFor)
+  const pickedSpots = useAppSelector((s) => s.spots.picked)
+
+  /** Turn a free spot clicked on the map into the same shape the allocator emits. */
+  const fromMap = (c: AssignmentCandidate): SpotOption | null => {
+    const spotId = pickedSpots[c.vessel.properties.id]
+    if (!spotId) return null
+    const spot = freeSpots.features.find((f) => f.properties.id === spotId)
+    if (!spot) return null
+    const centre = pointOnFeature(spot).geometry.coordinates as [number, number]
+    return {
+      spotId,
+      areaCode: spot.properties.area,
+      coordinates: centre,
+      distanceM: distance(c.vessel, centre, { units: 'kilometers' }) * 1000,
+      slackM: Math.round(spot.properties.radiusM - c.requiredRadiusM),
+    }
+  }
 
   const choiceFor = (c: AssignmentCandidate) => {
     const id = c.vessel.properties.id
-    return assigned[id] ?? manual[id] ?? picked[id] ?? c.recommended
+    // A spot chosen on the map is the most explicit instruction there is, so it
+    // outranks the area override and the alternatives.
+    return assigned[id] ?? fromMap(c) ?? manual[id] ?? picked[id] ?? c.recommended
   }
 
   const payload = {
@@ -126,6 +153,48 @@ export default function AssignmentScreen() {
                     {VESSEL_LABELS[p.type].toLowerCase()} — operator override.
                   </p>
                 )}
+                {/* ---- work the spot on the map ---- */}
+                <div className={`spot-actions${pickingFor === p.id ? ' picking' : ''}`}>
+                 
+                  {pickingFor === p.id ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => dispatch(cancelPicking())}
+                    >
+                      Cancel pick
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      disabled={isAssigned}
+                      onClick={() => dispatch(startPicking(p.id))}
+                    >
+                      Choose spot on map
+                    </button>
+                  )}
+                  {pickedSpots[p.id] && (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      disabled={isAssigned}
+                      onClick={() => dispatch(clearPick(p.id))}
+                    >
+                      Use suggestion
+                    </button>
+                  )}
+                </div>
+
+                {pickingFor === p.id && (
+                  <p className="notice-callout">
+                    Click a green free spot on the map to assign it to {p.name}.
+                  </p>
+                )}
+                {pickedSpots[p.id] && pickingFor !== p.id && (
+                  <p className="muted hint">Spot chosen from the map.</p>
+                )}
+
                 <label className="manual-pick">
                   <span>Manual override</span>
                   <select
@@ -151,6 +220,7 @@ export default function AssignmentScreen() {
                     ))}
                   </select>
                 </label>
+
 
                 {c.alternatives.length > 0 && (
                   <div className="filter-row">

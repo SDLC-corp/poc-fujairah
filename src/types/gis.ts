@@ -34,6 +34,72 @@ export type VesselType =
   | 'livestockcarrier'
   | 'lngcarrier'
 
+/**
+ * Why the vessel is calling. These follow the area designations in Notice to
+ * Mariners No. 346 one-for-one, so a purpose maps directly onto the anchorage
+ * areas the Harbour Master would direct the vessel to.
+ */
+export type CallPurpose =
+  | 'awaiting-orders'
+  | 'waiting-berth'
+  | 'bunkering'
+  | 'marine-services'
+  | 'hazardous-services'
+  | 'lng-sts'
+  | 'oil-sts'
+  | 'spm'
+  | 'naval'
+
+export type CargoKind =
+  | 'none'
+  | 'liquid-bulk'
+  | 'dry-bulk'
+  | 'gas'
+  | 'container'
+  | 'general'
+  | 'ro-ro'
+
+export type RequiredService =
+  | 'fuel'
+  | 'lube-oil'
+  /** Discharge of oily residues and tank washings — MARPOL Annex I slops. */
+  | 'de-sloping'
+  | 'water'
+  | 'stores'
+  | 'crew-change'
+  | 'repairs'
+  | 'tug'
+  /** Garbage reception — MARPOL Annex V, distinct from de-sloping. */
+  | 'waste'
+
+/**
+ * The anchorage request an agent files before arrival. Everything here is
+ * declared by the agent rather than derived from AIS, so it is kept apart from
+ * the vessel's live position data.
+ */
+export interface AnchorageRequest {
+  mmsi: string | null
+  callSign: string | null
+  dwtT: number | null
+  gt: number | null
+  lastPort: string
+  nextPort: string
+  agent: string
+  purpose: CallPurpose
+  /** Destination, when the call is for a berth or SPM rather than open anchorage. */
+  terminal: string | null
+  berth: string | null
+  spmNumber: string | null
+  cargoType: CargoKind
+  cargoName: string
+  hazardous: boolean
+  /** IMDG class, only meaningful when `hazardous` is true. */
+  imoClass: string | null
+  quantityT: number | null
+  services: RequiredService[]
+  submittedAt: string
+}
+
 export type VesselProps = {
   id: string
   name: string
@@ -55,6 +121,10 @@ export type VesselProps = {
   ata?: string | null
   /** Estimated time of departure, ISO 8601. */
   etd?: string | null
+  /** Actual time of departure, ISO 8601 — set once the vessel has sailed. */
+  atd?: string | null
+  /** Present only on vessels entered through the anchorage request form. */
+  request?: AnchorageRequest
 }
 
 export type AnchorageFeature = Feature<Polygon | Point, AnchorageProps>

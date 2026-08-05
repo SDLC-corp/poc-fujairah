@@ -1,4 +1,4 @@
-import type { VesselType } from '../types/gis'
+import type { VesselProps, VesselType } from '../types/gis'
 
 /** AIS vessel-type palette, as supplied. Single source of truth for map + UI. */
 export const VESSEL_COLORS: Record<VesselType, string> = {
@@ -33,6 +33,27 @@ export const VESSEL_LABELS: Record<VesselType, string> = {
   landingcraft: 'Landing craft',
   livestockcarrier: 'Livestock carrier',
   lngcarrier: 'LNG carrier',
+}
+
+export type VesselStatus = VesselProps['status']
+
+/**
+ * How each AIS status is written in the UI. `awaiting` is the queue the
+ * assignment workflow feeds from — vessels in port limits with no spot yet.
+ */
+export const VESSEL_STATUS_LABELS: Record<VesselStatus, string> = {
+  moored: 'Moored',
+  anchored: 'Anchored',
+  underway: 'Under way',
+  awaiting: 'Waiting to anchor',
+}
+
+/** Short form for the status pill, where the full wording will not fit. */
+export const VESSEL_STATUS_SHORT: Record<VesselStatus, string> = {
+  moored: 'Moored',
+  anchored: 'Anchored',
+  underway: 'Under way',
+  awaiting: 'Waiting',
 }
 
 export const VESSEL_TYPES = Object.keys(VESSEL_COLORS) as VesselType[]

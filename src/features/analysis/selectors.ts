@@ -38,9 +38,39 @@ export const selectBufferRadiusKm = (s: RootState) => s.analysis.bufferRadiusKm
 export const selectSwingFactor = (s: RootState) => s.analysis.swingFactor
 export const selectSafetyMarginM = (s: RootState) => s.analysis.safetyMarginM
 
-/** Swing radius for one vessel: LOA x factor, plus the safety margin. */
+/**
+ * Swing radius for one vessel, measured from the anchor: the cable paid out
+ * plus the vessel's own length, plus the safety margin.
+ */
 export function swingRadiusM(lengthM: number, factor: number, marginM: number): number {
   return lengthM * factor + marginM
+}
+
+/**
+ * Cable paid out, derived from the swing factor so the two can never disagree:
+ * radius = cable + LOA + margin, therefore cable = LOA x (factor - 1).
+ */
+export function cableLengthM(lengthM: number, factor: number): number {
+  return Math.max(0, lengthM * (factor - 1))
+}
+
+/**
+ * Where the anchor is lying. A vessel at anchor rides back on its cable with
+ * the bow towards the anchor, so the anchor sits ahead of the bow along the
+ * heading — and it is the anchor, not the ship, that the swing circle turns
+ * about.
+ */
+export function anchorPosition(
+  coordinates: number[],
+  lengthM: number,
+  headingDeg: number,
+  factor: number,
+): [number, number] {
+  const cableM = cableLengthM(lengthM, factor)
+  if (cableM === 0) return coordinates as [number, number]
+  return destination(coordinates, cableM / 1000, headingDeg, {
+    units: 'kilometers',
+  }).geometry.coordinates as [number, number]
 }
 
 type AreaPolygon = Feature<Polygon | MultiPolygon>
@@ -136,8 +166,16 @@ export const selectSwingCircles = createSelector(
     type: 'FeatureCollection',
     features: (vessels?.features ?? []).flatMap((vessel) => {
       const radiusM = swingRadiusM(vessel.properties.lengthM, factor, marginM)
+      // The circle turns about the anchor, not the ship: the vessel lies back
+      // on its cable and sweeps this water as the tide and wind swing it round.
+      const centre = anchorPosition(
+        vessel.geometry.coordinates,
+        vessel.properties.lengthM,
+        vessel.properties.headingDeg,
+        factor,
+      )
       // 36 steps keeps ~500 circles cheap while still reading as round.
-      const ring = circle(vessel.geometry.coordinates, radiusM / 1000, {
+      const ring = circle(centre, radiusM / 1000, {
         units: 'kilometers',
         steps: 36,
       })
@@ -155,7 +193,7 @@ export const selectSwingCircles = createSelector(
           type: 'Feature' as const,
           id: vessel.properties.id,
           properties,
-          geometry: destination(vessel.geometry.coordinates, radiusM / 1000, 0, {
+          geometry: destination(centre, radiusM / 1000, 0, {
             units: 'kilometers',
           }).geometry,
         },
@@ -244,9 +282,11 @@ const MAX_FREE_SPOTS = 1200
  * keeps the positions whose swing circle clears every vessel already lying
  * there. What is left is genuinely free water, not just unoccupied area.
  */
+export const selectMovedSpots = (s: RootState) => s.spots.moved
+
 export const selectFreeSpots = createSelector(
-  [selectAreas, selectVesselAreaIndex, selectSwingFactor, selectSafetyMarginM],
-  (areas, index, factor, marginM): FeatureCollection<Polygon, FreeSpotProps> => {
+  [selectAreas, selectVesselAreaIndex, selectSwingFactor, selectSafetyMarginM, selectMovedSpots],
+  (areas, index, factor, marginM, moved): FeatureCollection<Polygon, FreeSpotProps> => {
     const byArea = new Map<string, VesselFeature[]>()
     for (const entry of index) {
       for (const a of entry.areas) {
@@ -290,8 +330,17 @@ export const selectFreeSpots = createSelector(
           const centre: [number, number] = [lon, originLat + r * stepLat]
           if (!booleanPointInPolygon(centre, areaFeature)) continue
 
+          // A free spot is where the anchor would be let go, so the clearance
+          // that matters is anchor-to-anchor: both swing circles turn about
+          // those points, not about the hulls.
           const clashes = here.some((v) => {
-            const gap = distance(centre, v, { units: 'kilometers' }) * 1000
+            const theirAnchor = anchorPosition(
+              v.geometry.coordinates,
+              v.properties.lengthM,
+              v.properties.headingDeg,
+              factor,
+            )
+            const gap = distance(centre, theirAnchor, { units: 'kilometers' }) * 1000
             return gap < radiusM + swingRadiusM(v.properties.lengthM, factor, marginM)
           })
           if (clashes) continue
@@ -311,9 +360,97 @@ export const selectFreeSpots = createSelector(
       }
     }
 
-    return { type: 'FeatureCollection', features }
+    // Hand-placed spots replace their grid position. Applied last so the grid
+    // itself stays a pure function of the geometry.
+    return {
+      type: 'FeatureCollection',
+      features: features.map((spot) => {
+        const at = moved[spot.properties.id]
+        if (!at) return spot
+        return {
+          ...spot,
+          geometry: circle(at, spot.properties.radiusM / 1000, {
+            units: 'kilometers',
+            steps: 28,
+          }).geometry,
+        }
+      }),
+    }
   },
 )
+
+/* ------------------------------------------------------------------ *
+ * Moving a spot by hand: is the new position legal?
+ * ------------------------------------------------------------------ */
+
+export interface SpotCheck {
+  ok: boolean
+  /** Anchorage area the centre falls in, if any. */
+  areaCode: string | null
+  /** Why it is refused, worst first. Empty when `ok`. */
+  problems: string[]
+}
+
+/**
+ * Geometry check for a relocated spot: it has to sit inside a declared
+ * anchorage, outside the Restricted Area, clear of every vessel already at
+ * anchor, and clear of the other free spots. Pure, so the map can run it on
+ * every pointer move during a drag.
+ */
+export function checkSpotAt(
+  at: [number, number],
+  spotId: string,
+  radiusM: number,
+  areas: AreaFeature[],
+  vessels: VesselFeature[],
+  otherSpots: Feature<Polygon, FreeSpotProps>[],
+  factor: number,
+  marginM: number,
+): SpotCheck {
+  const problems: string[] = []
+
+  const containing = areas.filter((a) => booleanPointInPolygon(at, a))
+  const anchorage = containing.find((a) => a.properties.category === 'anchorage')
+  const restricted = containing.find((a) => a.properties.category === 'restricted')
+
+  if (restricted) problems.push(`Inside ${restricted.properties.name} — anchoring prohibited`)
+  if (!anchorage) problems.push('Outside every declared anchorage area')
+
+  // Anchor-to-anchor clearance against vessels already lying at anchor.
+  const hits: { name: string; shortM: number }[] = []
+  for (const v of vessels) {
+    if (v.properties.status === 'awaiting') continue
+    const theirAnchor = anchorPosition(
+      v.geometry.coordinates,
+      v.properties.lengthM,
+      v.properties.headingDeg,
+      factor,
+    )
+    const need = radiusM + swingRadiusM(v.properties.lengthM, factor, marginM)
+    const gap = distance(at, theirAnchor, { units: 'kilometers' }) * 1000
+    if (gap < need) hits.push({ name: v.properties.name, shortM: Math.round(need - gap) })
+  }
+
+  // …and against the other free spots, so two spots cannot be stacked.
+  let spotClashes = 0
+  for (const other of otherSpots) {
+    if (other.properties.id === spotId) continue
+    const centre = pointOnFeature(other).geometry.coordinates as [number, number]
+    const need = radiusM + other.properties.radiusM
+    if (distance(at, centre, { units: 'kilometers' }) * 1000 < need) spotClashes += 1
+  }
+
+  hits.sort((a, b) => b.shortM - a.shortM)
+  for (const hit of hits.slice(0, 2)) {
+    problems.push(`Overlaps ${hit.name} — ${hit.shortM} m short of clearance`)
+  }
+  if (hits.length > 2) problems.push(`…and ${hits.length - 2} more vessels`)
+  if (spotClashes > 0) {
+    problems.push(`Overlaps ${spotClashes} other free ${spotClashes === 1 ? 'spot' : 'spots'}`)
+  }
+
+  return { ok: problems.length === 0, areaCode: anchorage?.properties.code ?? null, problems }
+}
 
 /* ------------------------------------------------------------------ *
  * Capacity: occupied spots plus the free ones that were found
@@ -374,16 +511,19 @@ export interface AnchorMarkProps {
  * bow. Drawn as the anchor itself plus the chain running back to the ship.
  */
 export const selectAnchorMarks = createSelector(
-  [selectVessels],
-  (vessels): FeatureCollection<Point | LineString, AnchorMarkProps> => {
+  [selectVessels, selectSwingFactor],
+  (vessels, factor): FeatureCollection<Point | LineString, AnchorMarkProps> => {
     const features: Feature<Point | LineString, AnchorMarkProps>[] = []
 
     for (const vessel of vessels?.features ?? []) {
       if (vessel.properties.status !== 'anchored') continue
-      const cableM = vessel.properties.lengthM * 1.2
-      const drop = destination(vessel.geometry.coordinates, cableM / 1000, vessel.properties.headingDeg, {
-        units: 'kilometers',
-      })
+      // Same anchor the swing circle is drawn about.
+      const drop = anchorPosition(
+        vessel.geometry.coordinates,
+        vessel.properties.lengthM,
+        vessel.properties.headingDeg,
+        factor,
+      )
       const id = vessel.properties.id
       features.push({
         type: 'Feature',
@@ -391,14 +531,14 @@ export const selectAnchorMarks = createSelector(
         properties: { id, kind: 'chain' },
         geometry: {
           type: 'LineString',
-          coordinates: [vessel.geometry.coordinates, drop.geometry.coordinates],
+          coordinates: [vessel.geometry.coordinates, drop],
         },
       })
       features.push({
         type: 'Feature',
         id,
         properties: { id, kind: 'anchor' },
-        geometry: drop.geometry,
+        geometry: { type: 'Point', coordinates: drop },
       })
     }
 

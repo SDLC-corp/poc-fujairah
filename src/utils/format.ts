@@ -24,6 +24,15 @@ export function formatDateTime(iso?: string | null): string {
   })
 }
 
+/** Whole minutes between two ISO timestamps, or null if either is missing. */
+export function minutesBetween(from?: string | null, to?: string | null): number | null {
+  if (!from || !to) return null
+  const a = new Date(from).getTime()
+  const b = new Date(to).getTime()
+  if (Number.isNaN(a) || Number.isNaN(b)) return null
+  return Math.round((b - a) / 60_000)
+}
+
 /** Whole hours between two ISO timestamps, or null if either is missing. */
 export function hoursBetween(from?: string | null, to?: string | null): number | null {
   if (!from || !to) return null

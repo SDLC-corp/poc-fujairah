@@ -4,6 +4,8 @@ import { loadPortData } from './features/portData/portDataSlice'
 import { toggleNav } from './features/ui/uiSlice'
 import { signOut } from './features/auth/authSlice'
 import LoginScreen from './components/LoginScreen'
+import DashboardKpis from './components/DashboardKpis'
+import HeaderUtilisation from './components/HeaderUtilisation'
 import MapView from './components/MapView'
 import TabRail from './components/TabRail'
 import { TABS } from './components/tabs'
@@ -53,6 +55,9 @@ export default function App() {
   // the dashboard's live overview and the assignment workflow. The rest are
   // data-only.
   const showsMap = activeTab === 'assignment' || activeTab === 'dashboard'
+  // Tracking carries its own map and lays out its two columns itself, so it
+  // opts out of both the standard split and the scrolling card grid.
+  const ownsLayout = activeTab === 'tracking'
 
   return (
     <div className={`app${navOpen ? ' nav-open' : ''}`}>
@@ -74,6 +79,7 @@ export default function App() {
         {/* <span className={`status status-${status}`}>
           {status === 'ready' ? 'Data loaded' : status === 'loading' ? 'Loading…' : status}
         </span> */}
+        <HeaderUtilisation />
         <div className="app-user">
           <span className="app-user-name" title={user.email}>
             {user.name}
@@ -93,7 +99,27 @@ export default function App() {
             <span className="mock-tag">sample data</span>
           </div>
 
-          {showsMap ? (
+          {activeTab === 'dashboard' ? (
+            /* KPI cards across the top, then map beside the statistics. The
+               page scrolls as one rather than each pane scrolling itself. */
+            <div className="screen-scroll">
+              <DashboardKpis />
+              <div className="dash-body">
+                <div className="dash-map">
+                  <MapView />
+                  <MapFocusControl />
+                  <MapLegend />
+                  <FeatureDetails />
+                  {status === 'failed' && (
+                    <div className="map-error">Failed to load port data: {error}</div>
+                  )}
+                </div>
+                <div className="dash-panels">
+                  <Screen />
+                </div>
+              </div>
+            </div>
+          ) : showsMap ? (
             <div className="screen-split">
               <div className="map-pane">
                 <MapView />
@@ -108,6 +134,8 @@ export default function App() {
                 <Screen />
               </aside>
             </div>
+          ) : ownsLayout ? (
+            <Screen />
           ) : (
             <div className="screen-scroll">
               <div className="screen-grid">

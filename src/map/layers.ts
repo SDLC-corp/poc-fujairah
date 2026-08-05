@@ -28,6 +28,7 @@ export const SOURCE_IDS = {
   labels: 'src-labels',
   buffer: 'src-buffer',
   nearestLine: 'src-nearest-line',
+  spotDrag: 'src-spot-drag',
 } as const
 
 /** Style layers belonging to each toggleable data layer, bottom to top. */
@@ -541,6 +542,27 @@ export function addPortLayers(map: MapLibreMap) {
     },
     'vessels-halo',
   )
+  // Swing circle the operator is dragging into place — drawn above everything
+  // else so it stays readable over occupied water.
+  // The spot being relocated: green while the position is legal, red when not.
+  add({
+    id: 'spot-drag-fill',
+    type: 'fill',
+    source: SOURCE_IDS.spotDrag,
+    paint: {
+      'fill-color': ['case', ['get', 'ok'], '#16a34a', '#dc2626'],
+      'fill-opacity': 0.22,
+    },
+  })
+  add({
+    id: 'spot-drag-outline',
+    type: 'line',
+    source: SOURCE_IDS.spotDrag,
+    paint: {
+      'line-color': ['case', ['get', 'ok'], '#15803d', '#b91c1c'],
+      'line-width': 2.4,
+    },
+  })
   add({
     id: 'nearest-line',
     type: 'line',

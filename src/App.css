@@ -2413,3 +2413,2255 @@ input[type='range'] {
     padding: 24px;
   }
 }
+/* ---------------- dashboard KPI grid ---------------- */
+
+/* Reflows by available width: six across on a wide console, folding down to
+   two on a laptop and one on a phone. */
+.kpi-band {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: 8px;
+  flex: none;
+  padding: 10px 14px;
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 10px 13px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  color: var(--navy-500);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(27, 86, 181, 0.14);
+  transition: transform 0.16s ease;
+}
+
+.kpi-ok .kpi-icon {
+  color: var(--ok);
+  background: #e6f4ed;
+  box-shadow: inset 0 0 0 1px rgba(16, 121, 74, 0.16);
+}
+
+.kpi-warn .kpi-icon {
+  color: var(--warn);
+  background: #fdf1de;
+  box-shadow: inset 0 0 0 1px rgba(178, 106, 0, 0.18);
+}
+
+.kpi-alert .kpi-icon {
+  color: var(--alert);
+  background: var(--alert-soft);
+  box-shadow: inset 0 0 0 1px rgba(192, 57, 43, 0.18);
+}
+
+/* Value over label, so the number is the thing the eye lands on. */
+.kpi-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.kpi-value {
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  color: var(--navy-800);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-warn .kpi-value {
+  color: var(--warn);
+}
+
+.kpi-alert .kpi-value {
+  color: var(--alert);
+}
+
+.kpi-label {
+  min-width: 0;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Affordance only on the tiles that navigate. */
+.kpi-go {
+  display: flex;
+  margin-left: auto;
+  padding-left: 4px;
+  color: var(--muted);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.kpi-link {
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.kpi-link:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.kpi-link:hover .kpi-icon {
+  transform: scale(1.06);
+}
+
+.kpi-link:hover .kpi-go,
+.kpi-link:focus-visible .kpi-go {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.kpi-link:focus-visible {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .kpi-band {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 7px;
+    padding: 9px 10px;
+  }
+
+  .kpi {
+    gap: 9px;
+    padding: 9px 10px;
+  }
+
+  .kpi-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .kpi-value {
+    font-size: 19px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-icon,
+  .kpi-go,
+  .kpi-link {
+    transition: none;
+  }
+
+  .kpi-link:hover {
+    transform: none;
+  }
+}
+
+/* ---------------- header utilisation meter ---------------- */
+
+/* Sits on the navy header bar, so the palette is light-on-dark rather than
+   the surface tokens the in-panel meter uses. */
+.head-meter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  white-space: nowrap;
+}
+
+.head-meter-label {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.head-meter-track {
+  position: relative;
+  display: block;
+  width: 92px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.head-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: #5ad19a;
+  transition: width 0.35s ease;
+}
+
+.meter-warn.head-meter .head-meter-fill {
+  background: #f0b357;
+}
+
+.meter-crit.head-meter .head-meter-fill {
+  background: #ef6f61;
+}
+
+.head-meter-value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.head-meter-state {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.meter-warn.head-meter .head-meter-state {
+  color: #ffe0b0;
+  background: rgba(240, 179, 87, 0.2);
+}
+
+.meter-crit.head-meter .head-meter-state {
+  color: #ffd7d1;
+  background: rgba(239, 111, 97, 0.24);
+}
+
+/* Shed the meter's optional parts before the title starts truncating. */
+@media (max-width: 1100px) {
+  .head-meter-label {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .head-meter-state {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .head-meter {
+    display: none;
+  }
+}
+
+/* ---------------- tracking workspace ---------------- */
+
+/* Two equal columns, each split top/bottom, filling the screen without the
+   page itself scrolling — only the two inner panes do. */
+.track-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 1.35fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.track-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Left: fixed-height search block, list takes the rest. */
+.track-search {
+  flex: none;
+}
+
+.track-search .text-input {
+  margin-bottom: 10px;
+}
+
+.track-results {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The one element that scrolls in each pane. */
+.track-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.track-results .track-list {
+  padding-right: 4px;
+}
+
+/* Right: map on top, details beneath. */
+.track-map {
+  position: relative;
+  flex: 1 1 58%;
+  min-height: 220px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.track-map .map-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* The focus preset buttons are absolutely placed for the full-bleed map pane;
+   pull them inside this rounded panel instead. */
+.track-map .map-focus {
+  top: 10px;
+  left: 10px;
+}
+
+.track-detail {
+  flex: 1 1 42%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.track-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.track-detail-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.track-detail-name strong {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-detail-name .muted {
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-detail-more {
+  flex: none;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: var(--accent);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.track-detail-more:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* Full-width rows inside the two-column key/value grid. */
+.track-detail .kv-span {
+  grid-column: 1 / -1;
+}
+
+/* Stack the two columns before either becomes unusably narrow. */
+@media (max-width: 1024px) {
+  .track-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+
+  .track-col {
+    min-height: 0;
+  }
+
+  .track-results {
+    flex: none;
+  }
+
+  .track-results .track-scroll {
+    max-height: 340px;
+  }
+
+  .track-map {
+    flex: none;
+    height: 320px;
+  }
+
+  .track-detail {
+    flex: none;
+  }
+}
+
+/* Chips carrying an explicit written label rather than a raw enum value —
+   `capitalize` would otherwise render "Waiting To Anchor". */
+.filter-chip.chip-labelled {
+  text-transform: none;
+}
+
+/* ---------------- occupancy screen ---------------- */
+
+/* Tone variants for the existing badge / stat primitives. */
+.badge-warn {
+  background: #fdf1de;
+  color: var(--warn);
+}
+
+.stat-ok::before {
+  background: var(--ok);
+  opacity: 1;
+}
+
+.stat-warn::before {
+  background: var(--warn);
+  opacity: 1;
+}
+
+.stat-alert::before {
+  background: var(--alert);
+  opacity: 1;
+}
+
+.stat-warn .stat-value {
+  color: var(--warn);
+}
+
+.stat-alert .stat-value {
+  color: var(--alert);
+}
+
+/* Area occupancy: a bar per area reads faster than a column of numbers. */
+.area-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.area-row {
+  display: grid;
+  grid-template-columns: 54px 1fr 38px 54px 62px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.area-row:hover {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.area-row.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.area-row:focus-visible {
+  outline: 2px solid var(--navy-500);
+  outline-offset: -1px;
+}
+
+.area-code {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.area-swatch {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 3px;
+}
+
+.area-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.area-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--navy-500);
+  transition: width 0.35s ease;
+}
+
+.area-meter.meter-ok .area-meter-fill {
+  background: var(--ok);
+}
+
+.area-meter.meter-warn .area-meter-fill {
+  background: var(--warn);
+}
+
+.area-meter.meter-alert .area-meter-fill {
+  background: var(--alert);
+}
+
+.area-pct {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.area-counts {
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.area-free {
+  font-size: 11px;
+  text-align: right;
+  color: var(--ok);
+}
+
+.area-free-none {
+  color: var(--alert);
+  font-weight: 600;
+}
+
+/* Whole-row click target for the parked-vessel table. */
+.table-rows tbody tr {
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.table-rows tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.table-rows tbody tr.row-open {
+  background: var(--accent-soft);
+}
+
+.vessel-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.vessel-cell-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.vessel-cell-text .muted {
+  font-size: 10.5px;
+}
+
+/* ---------------- vessel slide-over ---------------- */
+
+.drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  border: 0;
+  padding: 0;
+  background: rgba(7, 26, 51, 0.32);
+  cursor: pointer;
+  animation: drawer-fade 0.18s ease;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  width: min(400px, 92vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -12px 0 32px rgba(10, 37, 64, 0.16);
+  animation: drawer-in 0.22s cubic-bezier(0.22, 0.7, 0.3, 1);
+}
+
+@keyframes drawer-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.drawer-title strong {
+  font-size: 14.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-title .muted {
+  font-size: 11px;
+}
+
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 16px 16px;
+  scrollbar-width: thin;
+}
+
+.drawer-section {
+  margin: 16px 0 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.drawer-foot {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.drawer-foot button {
+  flex: 1;
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12.5px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.drawer-foot button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.drawer-foot .primary-button {
+  color: #fff;
+  background: var(--navy-500);
+  border-color: var(--navy-500);
+}
+
+.drawer-foot .primary-button:hover {
+  background: var(--navy-600);
+  border-color: var(--navy-600);
+}
+
+@media (max-width: 640px) {
+  .area-row {
+    grid-template-columns: 46px 1fr 34px 48px;
+    gap: 8px;
+  }
+
+  .area-free {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .drawer-scrim,
+  .area-meter-fill {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Secondary heading inside a panel, below the h2. */
+.sub-head {
+  margin: 16px 0 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* Label / value rows — the compact readout under a panel's headline stats. */
+.fact-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.fact-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.fact-list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.fact-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fact-value {
+  font-size: 12.5px;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.fact-value strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.fact-value .muted {
+  font-size: 11.5px;
+}
+
+.fact-warn strong {
+  color: var(--warn);
+}
+
+.fact-alert strong {
+  color: var(--alert);
+}
+
+/* ---------------- modal form ---------------- */
+
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 41;
+  width: min(720px, 94vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 64px rgba(10, 37, 64, 0.28);
+  animation: modal-in 0.2s cubic-bezier(0.22, 0.7, 0.3, 1);
+}
+
+@keyframes modal-in {
+  from {
+    transform: translate(-50%, calc(-50% + 12px));
+    opacity: 0;
+  }
+}
+
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: none;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-head h3 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+
+.modal-head .muted {
+  font-size: 11.5px;
+}
+
+.modal-head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 18px 18px;
+  scrollbar-width: thin;
+}
+
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: none;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 0 0 14px 14px;
+}
+
+.modal-foot button {
+  width: auto;
+  margin: 0;
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 13px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.modal-foot button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.modal-foot .primary-button {
+  color: #fff;
+  background: var(--navy-500);
+  border-color: var(--navy-500);
+}
+
+.modal-foot .primary-button:hover {
+  background: var(--navy-600);
+  border-color: var(--navy-600);
+}
+
+/* ---------------- grouped form sections ---------------- */
+
+.form-block {
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+}
+
+.form-block:last-of-type {
+  border-bottom: 0;
+}
+
+.form-block legend {
+  padding: 14px 0 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.form-grid .span2 {
+  grid-column: span 2;
+}
+
+.form-grid select,
+.form-grid .text-input {
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.form-grid select:focus,
+.form-grid .text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.form-grid .text-input:disabled,
+.form-grid select:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Radio / checkbox groups — one tappable card per option. */
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.choice:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.choice input {
+  flex: none;
+  accent-color: var(--navy-500);
+  margin: 0;
+}
+
+.choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 500;
+}
+
+.choice:has(input:focus-visible) {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 1px;
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid .span2 {
+    grid-column: span 2;
+  }
+
+  .modal {
+    width: 96vw;
+    max-height: 92vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal {
+    animation: none;
+  }
+}
+
+/* ---------------- purpose of call cards ---------------- */
+
+.purpose-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.purpose-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.purpose-card:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.purpose-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.purpose-card input {
+  flex: none;
+  margin: 2px 0 0;
+  accent-color: var(--navy-500);
+}
+
+.purpose-card:has(input:focus-visible) {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 1px;
+}
+
+.purpose-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.purpose-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.purpose-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.purpose-areas {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.purpose-note {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Area code chip, colour-matched to the chart. */
+.area-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px 1px 5px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.area-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.area-chip-inline {
+  vertical-align: middle;
+  margin: 0 1px;
+}
+
+/* Rule-derived note — quoting the notice, not an error. */
+.notice-callout {
+  margin: 10px 0 0;
+  padding: 9px 12px;
+  border-radius: 9px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--navy-700);
+  background: var(--accent-soft);
+  border: 1px solid rgba(27, 86, 181, 0.2);
+}
+
+/* ---------------- glossary ---------------- */
+
+.glossary {
+  margin-top: 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.glossary summary {
+  padding: 8px 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+}
+
+.glossary summary::-webkit-details-marker {
+  display: none;
+}
+
+.glossary summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.glossary[open] summary::before {
+  content: '▾ ';
+}
+
+.glossary dl {
+  margin: 0;
+  padding: 0 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.glossary dt {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.glossary dd {
+  margin: 1px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .purpose-card {
+    transition: none;
+  }
+}
+
+/* ---------------- required services ---------------- */
+
+.legend-count {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Sub-heading naming the notice's own split between service classes. */
+.service-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.service-group-head:first-of-type {
+  margin-top: 4px;
+}
+
+.service-group-head .muted {
+  font-size: 10.5px;
+  font-weight: 400;
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.service-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px 8px 9px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.service-tile:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.service-tile.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.service-tile input {
+  flex: none;
+  margin: 0;
+  accent-color: var(--navy-500);
+}
+
+.service-tile:has(input:focus-visible) {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 1px;
+}
+
+.service-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: color 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.service-tile.selected .service-icon {
+  color: var(--navy-500);
+  background: #fff;
+  border-color: var(--accent);
+}
+
+.service-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.service-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.service-hint {
+  font-size: 10.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-tile,
+  .service-icon {
+    transition: none;
+  }
+}
+
+/* ---------------- field-level validation ---------------- */
+
+/* Red border plus a soft ring — visible against both surface tones. */
+.form-grid .input-error,
+.form-grid .input-error:focus {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+}
+
+.form-grid .input-error:focus {
+  box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.16);
+}
+
+/* Colour is never the only signal — the label turns red and carries the text. */
+.form-grid label.has-error {
+  color: var(--alert);
+}
+
+.field-error {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  font-weight: 500;
+  color: var(--alert);
+}
+
+.field-error::before {
+  content: '⚠ ';
+}
+
+.form-error-summary {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--alert);
+  background: var(--alert-soft);
+  border: 1px solid rgba(192, 57, 43, 0.28);
+}
+
+/* ---------------- clickable alert feed ---------------- */
+
+/* The alert body is the click target; the tag chip stays decorative. */
+.feed-go {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feed-go:hover .feed-time,
+.feed-go:focus-visible .feed-time {
+  color: var(--accent);
+}
+
+.feed-item:has(.feed-go:hover) {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.feed-go:focus-visible {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ---------------- alert focus popup ---------------- */
+
+.focus-popup .maplibregl-popup-content {
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-family: inherit;
+  max-width: 240px;
+}
+
+.focus-popup strong {
+  display: block;
+  font-size: 13px;
+  color: var(--navy-800);
+}
+
+.focus-popup span {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.focus-popup small {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ---------------- reports: template picker ---------------- */
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 9px;
+}
+
+.template-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.template-card:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+
+.template-card.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.template-card:focus-visible {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 1px;
+}
+
+.template-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.template-card.selected .template-icon {
+  color: var(--navy-500);
+  background: #fff;
+  border-color: var(--accent);
+}
+
+.template-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.template-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.template-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* ---------------- reports: controls row ---------------- */
+
+.report-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.report-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.report-controls select {
+  width: 100%;
+  padding: 8px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.report-controls select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.generate-button {
+  flex: none;
+  padding: 9px 20px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  border: 1px solid var(--navy-500);
+  border-radius: 9px;
+  background: var(--navy-500);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.generate-button:hover {
+  background: var(--navy-600);
+  border-color: var(--navy-600);
+}
+
+.generate-button:focus-visible {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 2px;
+}
+
+/* ---------------- reports: chart frame ---------------- */
+
+.chart-frame {
+  display: flex;
+  gap: 8px;
+}
+
+/* Value axis, aligned to the same steps the gridlines use. */
+.chart-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: none;
+  height: 150px;
+  padding-top: 6px;
+  font-size: 9.5px;
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-plot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.chart-lines {
+  position: absolute;
+  inset: 6px 0 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.chart-lines span {
+  display: block;
+  height: 1px;
+  background: var(--border);
+}
+
+.chart-lines span:last-child {
+  background: var(--border-strong);
+}
+
+/* ---------------- reports: history table ---------------- */
+
+.ref-cell {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.format-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--navy-600);
+  background: var(--accent-soft);
+  border: 1px solid rgba(27, 86, 181, 0.2);
+}
+
+@media (max-width: 720px) {
+  .report-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .generate-button {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .template-card {
+    transition: none;
+  }
+}
+
+/* ---------------- vessel details hero ---------------- */
+
+.vessel-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.vessel-hero-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 12px;
+  color: var(--navy-900);
+  box-shadow: inset 0 0 0 1px rgba(10, 37, 64, 0.18);
+}
+
+.vessel-hero-id {
+  flex: 1;
+  min-width: 200px;
+}
+
+.vessel-hero-id h2 {
+  margin: 0 0 2px;
+  font-size: 19px;
+  letter-spacing: -0.2px;
+}
+
+.vessel-hero-id .muted {
+  margin: 0;
+  font-size: 12px;
+}
+
+.vessel-hero-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+}
+
+.hazard-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--alert);
+  background: var(--alert-soft);
+  border: 1px solid rgba(192, 57, 43, 0.3);
+}
+
+.vessel-hero-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+  align-items: flex-start;
+}
+
+.vessel-hero-actions button {
+  width: auto;
+  margin: 0;
+  padding: 8px 16px;
+  font: inherit;
+  font-size: 12.5px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vessel-hero-actions button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.vessel-hero-actions .primary-button {
+  color: #fff;
+  background: var(--navy-500);
+  border-color: var(--navy-500);
+}
+
+.vessel-hero-actions .primary-button:hover {
+  background: var(--navy-600);
+  border-color: var(--navy-600);
+}
+
+/* ---------------- purpose + services readout ---------------- */
+
+.purpose-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.service-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.service-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--navy-600);
+  background: var(--accent-soft);
+  border: 1px solid rgba(27, 86, 181, 0.2);
+}
+
+@media (max-width: 640px) {
+  .vessel-hero-actions {
+    width: 100%;
+  }
+
+  .vessel-hero-actions button {
+    flex: 1;
+  }
+}
+
+
+/* ---------------- free-spot handle + details popup ---------------- */
+
+/* Inspect: a small navy pin on the spot. Relocate: a live green handle. */
+.spot-handle {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--navy-500);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(10, 37, 64, 0.35);
+  cursor: pointer;
+  touch-action: none;
+}
+
+/* Relocate mode: a larger green handle carrying a move cross. */
+.spot-handle-live {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: #16a34a;
+  color: #fff;
+  cursor: grab;
+}
+
+.spot-handle-live svg {
+  width: 17px;
+  height: 17px;
+  pointer-events: none;
+}
+
+.spot-handle-live:active {
+  cursor: grabbing;
+}
+
+.spot-handle-bad {
+  background: #dc2626;
+}
+
+.spot-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 240px;
+}
+
+.spot-popup strong {
+  font-size: 13px;
+  color: var(--navy-800);
+}
+
+.spot-popup span {
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+.spot-popup small {
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.spot-verdict {
+  margin: 5px 0 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.spot-verdict.ok {
+  color: #15803d;
+  background: #f0fdf4;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+.spot-verdict.bad {
+  color: var(--alert);
+  background: var(--alert-soft);
+  border: 1px solid rgba(192, 57, 43, 0.28);
+}
+
+.spot-popup-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.spot-popup-move,
+.spot-popup-reset {
+  flex: 1;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.spot-popup-move {
+  color: #fff;
+  border: 1px solid #16a34a;
+  background: #16a34a;
+}
+
+.spot-popup-move:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.spot-popup-reset {
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+}
+
+.spot-popup-reset:hover {
+  background: var(--surface-2);
+}
+
+/* Feedback while the handle is actually under the pointer. */
+.spot-handle-dragging {
+  cursor: grabbing;
+  box-shadow: 0 0 0 6px rgba(22, 163, 74, 0.22), 0 2px 8px rgba(10, 37, 64, 0.4);
+}
+
+/* ---------------- dashboard: single scrolling page ---------------- */
+
+/* The KPI grid runs edge to edge; the scroll container's padding applies to
+   everything below it. */
+.screen-scroll > .kpi-band {
+  margin: -16px -18px 14px;
+}
+
+/* A fixed slice of the viewport rather than the remaining height, so the
+   panels below it are reachable by scrolling. */
+.dash-map {
+  position: relative;
+  height: min(58vh, 560px);
+  min-height: 300px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* The detail card is anchored to the map pane, so cap it to this height. */
+.dash-map .details-card {
+  max-height: calc(100% - 28px);
+}
+
+@media (max-width: 900px) {
+  .screen-scroll > .kpi-band {
+    margin: -16px -18px 12px;
+  }
+
+  .dash-map {
+    height: 50vh;
+    min-height: 260px;
+  }
+}
+
+/* ---------------- dashboard: one scrolling page ---------------- */
+
+/* The KPI grid runs edge to edge; the container's padding applies below it. */
+.screen-scroll > .kpi-band {
+  margin: -16px -18px 14px;
+}
+
+/* Map beside the statistics, both flowing with the page scroll. */
+.dash-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(330px, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+/* A fixed slice of the viewport, pinned so it stays in view while the
+   statistics column scrolls past it. */
+.dash-map {
+  position: sticky;
+  top: 0;
+  height: min(74vh, 700px);
+  min-height: 320px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* The detail card is anchored to the map, so cap it to the map's height. */
+.dash-map .details-card {
+  max-height: calc(100% - 28px);
+}
+
+.dash-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Below this the two columns are both too narrow — stack them. */
+@media (max-width: 1100px) {
+  .dash-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dash-map {
+    position: relative;
+    top: auto;
+    height: 52vh;
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 720px) {
+  .screen-scroll > .kpi-band {
+    margin: -16px -18px 12px;
+  }
+}
+
+/* ---------------- schedule performance ---------------- */
+
+.sched-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+/* Tone rides on a left rail so the card body stays calm. */
+.sched-leg {
+  padding: 11px 13px 11px 15px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-left: 3px solid var(--navy-500);
+}
+
+.sched-ok {
+  border-left-color: var(--ok);
+}
+
+.sched-warn {
+  border-left-color: var(--warn);
+}
+
+.sched-alert {
+  border-left-color: var(--alert);
+}
+
+.sched-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sched-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.sched-pill-ok {
+  background: #e6f4ed;
+  color: var(--ok);
+}
+
+.sched-pill-warn {
+  background: #fdf1de;
+  color: var(--warn);
+}
+
+.sched-pill-alert {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+.sched-rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sched-rows > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.sched-rows dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.sched-rows dd {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The variance is the number that matters — set it apart. */
+.sched-variance {
+  margin-top: 4px;
+  padding-top: 7px !important;
+  border-top: 1px dashed var(--border-strong);
+}
+
+.sched-variance dd {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.sched-warn .sched-variance dd {
+  color: var(--warn);
+}
+
+.sched-alert .sched-variance dd {
+  color: var(--alert);
+}
+
+.sched-ok .sched-variance dd {
+  color: var(--ok);
+}
+
+/* ---------------- field captions with full forms + info ---------------- */
+
+.field-caption {
+  display: block;
+  line-height: 1.35;
+}
+
+/* The expanded form is supporting text, not the label itself. */
+.field-full {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.field-unit {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+/* Circled i — hover for the explanation via the native tooltip. */
+.field-info {
+  display: inline-grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  margin-left: 5px;
+  vertical-align: -1px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-size: 9px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--muted);
+  background: var(--surface);
+  cursor: help;
+  transition: color 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.field-info:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.has-error .field-info {
+  border-color: rgba(192, 57, 43, 0.45);
+  color: var(--alert);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-info {
+    transition: none;
+  }
+}
+
+/* ---------------- assignment: spot actions ---------------- */
+
+.spot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.spot-actions .ghost-button {
+  flex: 1 1 auto;
+  min-width: 120px;
+}
+
+/* While armed, the map is waiting for a click — say so on the card too. */
+.spot-actions.picking .ghost-button {
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+/* ---------------- vessel details layout ---------------- */
+
+/* The screen grid flows panels into equal columns, which leaves ragged gaps
+   when their heights differ this much. Two self-packing stacks instead. */
+.screen-grid > .vessel-layout {
+  grid-column: 1 / -1;
+}
+
+.vessel-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+/* Identity and the raw payload run the full width. */
+.vessel-layout > .panel-wide,
+.vessel-layout > .raw-json {
+  grid-column: 1 / -1;
+}
+
+.vessel-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Tighter inside the panels — this page is dense by nature. */
+.vessel-layout .panel h2 {
+  margin-bottom: 10px;
+}
+
+.vessel-layout .kv {
+  gap: 8px 10px;
+}
+
+.vessel-layout .sub-head {
+  margin: 14px 0 7px;
+}
+
+.vessel-layout .swing-box {
+  margin-top: 12px;
+}
+
+@media (max-width: 1024px) {
+  .vessel-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
