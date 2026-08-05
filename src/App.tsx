@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from './app/hooks'
 import { loadPortData } from './features/portData/portDataSlice'
 import { toggleNav } from './features/ui/uiSlice'
+import { signOut } from './features/auth/authSlice'
+import LoginScreen from './components/LoginScreen'
 import MapView from './components/MapView'
 import TabRail from './components/TabRail'
 import { TABS } from './components/tabs'
@@ -35,10 +37,15 @@ export default function App() {
   const error = useAppSelector((s) => s.portData.error)
   const navOpen = useAppSelector((s) => s.ui.navOpen)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
+  const user = useAppSelector((s) => s.auth.user)
 
   useEffect(() => {
-    if (status === 'idle') dispatch(loadPortData())
-  }, [status, dispatch])
+    // Port data is only fetched once past the gate, so a signed-out visitor
+    // never pulls the dataset.
+    if (user && status === 'idle') dispatch(loadPortData())
+  }, [user, status, dispatch])
+
+  if (!user) return <LoginScreen />
 
   const Screen = SCREENS[activeTab]
   const tab = TABS.find((t) => t.id === activeTab)
@@ -64,9 +71,17 @@ export default function App() {
         <div className="app-title">
           <h1>Port of Fujairah — Proof of Concept</h1>
         </div>
-        <span className={`status status-${status}`}>
+        {/* <span className={`status status-${status}`}>
           {status === 'ready' ? 'Data loaded' : status === 'loading' ? 'Loading…' : status}
-        </span>
+        </span> */}
+        <div className="app-user">
+          <span className="app-user-name" title={user.email}>
+            {user.name}
+          </span>
+          <button type="button" className="sign-out" onClick={() => dispatch(signOut())}>
+            Sign out
+          </button>
+        </div>
       </header>
 
       <div className="app-body">
