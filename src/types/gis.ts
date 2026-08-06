@@ -111,8 +111,18 @@ export type VesselProps = {
   draftM: number
   speedKn: number
   headingDeg: number
-  /** `awaiting` means outside the declared areas, queued for a spot. */
-  status: 'moored' | 'anchored' | 'underway' | 'awaiting'
+  /**
+   * Where the vessel is in her call. `awaiting` means outside the declared
+   * areas, queued for a spot; `sailed` means outbound and finished with the port.
+   */
+  status:
+    | 'awaiting'
+    | 'anchored'
+    | 'underway'
+    | 'shifting'
+    | 'berthing'
+    | 'moored'
+    | 'sailed'
   /** Area code the vessel was placed in, e.g. BN. Optional — derived live too. */
   area?: string | null
   /** Estimated time of arrival, ISO 8601 — set on vessels awaiting assignment. */

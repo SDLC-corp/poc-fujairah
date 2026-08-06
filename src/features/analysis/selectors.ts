@@ -5,6 +5,7 @@ import {
   booleanIntersects,
   circle,
   booleanPointInPolygon,
+  booleanWithin,
   buffer,
   destination,
   distance,
@@ -20,19 +21,38 @@ import type {
   Point,
   Polygon,
 } from 'geojson'
+import { takesUpWater } from '../../map/vesselTypes'
+import type { VesselStatus } from '../../map/vesselTypes'
 import type { RootState } from '../../app/store'
 import { buildVesselHull } from '../../map/vesselGeometry'
 import type { HullProps } from '../../map/vesselGeometry'
 import type {
   AnchorPointFeature,
   AreaFeature,
+  GeofenceCollection,
   GeofenceFeature,
   VesselFeature,
 } from '../../types/gis'
 
 export const selectAnchorages = (s: RootState) => s.portData.anchorages
 export const selectVessels = (s: RootState) => s.portData.vessels
-export const selectGeofences = (s: RootState) => s.portData.geofences
+/** Every fence in the register, raised or not. */
+export const selectAllGeofences = (s: RootState) => s.portData.geofences
+export const selectRaisedIncidents = (s: RootState) => s.incidents.raised
+
+/**
+ * Only the fences that have actually been reported. A fence sitting in the
+ * register is not yet an incident, so it is not on the map and not in the
+ * breach feed.
+ */
+export const selectGeofences = createSelector(
+  [selectAllGeofences, selectRaisedIncidents],
+  (geofences, raised): GeofenceCollection | null =>
+    geofences && {
+      ...geofences,
+      features: geofences.features.filter((f) => raised.includes(f.properties.id)),
+    },
+)
 export const selectSelected = (s: RootState) => s.selection.selected
 export const selectBufferRadiusKm = (s: RootState) => s.analysis.bufferRadiusKm
 export const selectSwingFactor = (s: RootState) => s.analysis.swingFactor
@@ -234,36 +254,6 @@ export const selectRestrictedIncursions = createSelector([selectVesselAreaIndex]
 )
 
 /* ------------------------------------------------------------------ *
- * Occupancy: how many vessels are lying in each declared area
- * ------------------------------------------------------------------ */
-
-export interface AreaOccupancy {
-  area: AreaFeature
-  count: number
-  anchored: number
-  underway: number
-}
-
-export const selectAreaOccupancy = createSelector(
-  [selectVesselAreaIndex, selectAreas],
-  (index, areas): AreaOccupancy[] => {
-    const rows = new Map<string, AreaOccupancy>(
-      areas.map((a) => [a.properties.id, { area: a, count: 0, anchored: 0, underway: 0 }]),
-    )
-    for (const entry of index) {
-      for (const a of entry.areas) {
-        const row = rows.get(a.properties.id)
-        if (!row) continue
-        row.count += 1
-        if (entry.vessel.properties.status === 'underway') row.underway += 1
-        else row.anchored += 1
-      }
-    }
-    return [...rows.values()].sort((x, y) => y.count - x.count)
-  },
-)
-
-/* ------------------------------------------------------------------ *
  * Free spots: where another vessel could actually be placed
  * ------------------------------------------------------------------ */
 
@@ -279,8 +269,9 @@ const MAX_FREE_SPOTS = 1200
 
 /**
  * Lays the same hexagonal grid the sample fleet uses over each anchorage and
- * keeps the positions whose swing circle clears every vessel already lying
- * there. What is left is genuinely free water, not just unoccupied area.
+ * keeps only the positions that would pass `checkSpotAt` — a spot the app
+ * offers must be one the operator could legally drag a spot to. What is left is
+ * genuinely free water, not just unoccupied area.
  */
 export const selectMovedSpots = (s: RootState) => s.spots.moved
 
@@ -297,6 +288,24 @@ export const selectFreeSpots = createSelector(
     }
 
     const features: Feature<Polygon, FreeSpotProps>[] = []
+    /** Centres of the spots accepted so far, so two spots cannot be stacked. */
+    const taken: { centre: [number, number]; radiusM: number }[] = []
+
+    // Anchoring is prohibited outright in the Restricted Area, and the grids are
+    // laid per area, so a spot must be checked against the whole fleet rather
+    // than only the vessels indexed to its own anchorage.
+    const restrictedAreas = areas.filter((a) => a.properties.category === 'restricted')
+    const fleet = index
+      .filter((e) => takesUpWater(e.vessel.properties.status))
+      .map((e) => ({
+        anchor: anchorPosition(
+          e.vessel.geometry.coordinates,
+          e.vessel.properties.lengthM,
+          e.vessel.properties.headingDeg,
+          factor,
+        ),
+        radiusM: swingRadiusM(e.vessel.properties.lengthM, factor, marginM),
+      }))
 
     for (const areaFeature of areas) {
       if (areaFeature.properties.category !== 'anchorage') continue
@@ -329,23 +338,29 @@ export const selectFreeSpots = createSelector(
           if (lon > east) continue
           const centre: [number, number] = [lon, originLat + r * stepLat]
           if (!booleanPointInPolygon(centre, areaFeature)) continue
+          if (restrictedAreas.some((ra) => booleanPointInPolygon(centre, ra))) continue
 
           // A free spot is where the anchor would be let go, so the clearance
           // that matters is anchor-to-anchor: both swing circles turn about
           // those points, not about the hulls.
-          const clashes = here.some((v) => {
-            const theirAnchor = anchorPosition(
-              v.geometry.coordinates,
-              v.properties.lengthM,
-              v.properties.headingDeg,
-              factor,
-            )
-            const gap = distance(centre, theirAnchor, { units: 'kilometers' }) * 1000
-            return gap < radiusM + swingRadiusM(v.properties.lengthM, factor, marginM)
-          })
-          if (clashes) continue
+          const foulsVessel = fleet.some(
+            (v) =>
+              distance(centre, v.anchor, { units: 'kilometers' }) * 1000 < radiusM + v.radiusM,
+          )
+          if (foulsVessel) continue
+
+          const foulsSpot = taken.some(
+            (s) => distance(centre, s.centre, { units: 'kilometers' }) * 1000 < radiusM + s.radiusM,
+          )
+          if (foulsSpot) continue
+
+          // Last, because it is the dearest test: the whole circle has to lie
+          // inside the anchorage, not just the point the anchor is let go at.
+          const ring = circle(centre, radiusM / 1000, { units: 'kilometers', steps: 28 })
+          if (!booleanWithin(ring, areaFeature)) continue
 
           const id = `FS-${areaFeature.properties.code}-${r}-${c}`
+          taken.push({ centre, radiusM })
           features.push({
             type: 'Feature',
             id,
@@ -354,7 +369,7 @@ export const selectFreeSpots = createSelector(
               area: areaFeature.properties.code,
               radiusM: Math.round(radiusM),
             },
-            geometry: circle(centre, radiusM / 1000, { units: 'kilometers', steps: 28 }).geometry,
+            geometry: ring.geometry,
           })
         }
       }
@@ -419,7 +434,9 @@ export function checkSpotAt(
   // Anchor-to-anchor clearance against vessels already lying at anchor.
   const hits: { name: string; shortM: number }[] = []
   for (const v of vessels) {
-    if (v.properties.status === 'awaiting') continue
+    // Same presence rule the free-spot grid uses, so a spot the app offers and
+    // a spot the operator drags are judged against the same set of vessels.
+    if (!takesUpWater(v.properties.status)) continue
     const theirAnchor = anchorPosition(
       v.geometry.coordinates,
       v.properties.lengthM,
@@ -468,15 +485,22 @@ const DEFAULT_LOA_M = 200
 /**
  * Occupied is what is lying there; available is how many free circles were
  * actually found, so the figures always agree with what the map draws.
+ *
+ * Occupied uses the same presence rule as the free-spot grid — a vessel either
+ * takes up water (occupied) or leaves it clear (available), never both and
+ * never neither. That is what keeps `capacity = occupied + available` stable.
  */
 export const selectAreaCapacity = createSelector(
   [selectAreas, selectVesselAreaIndex, selectFreeSpots],
   (areas, index, freeSpots): AreaCapacity[] => {
     const occupiedBy = new Map<string, number>()
     for (const entry of index) {
-      for (const a of entry.areas) {
-        occupiedBy.set(a.properties.id, (occupiedBy.get(a.properties.id) ?? 0) + 1)
-      }
+      if (!takesUpWater(entry.vessel.properties.status)) continue
+      // Counted once, against the anchorage it is lying in. Adding it to every
+      // polygon it touches would double-count a vessel in overlapping areas.
+      const host = entry.areas.find((a) => a.properties.category === 'anchorage')
+      if (!host) continue
+      occupiedBy.set(host.properties.id, (occupiedBy.get(host.properties.id) ?? 0) + 1)
     }
 
     const freeBy = new Map<string, number>()
@@ -493,6 +517,79 @@ export const selectAreaCapacity = createSelector(
         return { area: a, capacity: occupied + available, occupied, available }
       })
       .sort((x, y) => y.occupied - x.occupied)
+  },
+)
+
+/* ------------------------------------------------------------------ *
+ * Port totals: the one place these figures are worked out
+ * ------------------------------------------------------------------ */
+
+export interface PortTotals {
+  /** Every vessel on the feed. */
+  fleet: number
+  /** Every status, including those at zero — the counts sum to `fleet`. */
+  byStatus: Record<VesselStatus, number>
+  /** Vessels taking up water inside a declared anchorage. */
+  occupied: number
+  /** Of those, the ones actually brought up on an anchor. */
+  occupiedAtAnchor: number
+  /** Of those, the ones making way inside the anchorage — not on an anchor. */
+  occupiedManoeuvring: number
+  /** Free spots the grid found. */
+  available: number
+  /** occupied + available. */
+  capacity: number
+  utilisationPct: number
+}
+
+const emptyStatusCounts = (): Record<VesselStatus, number> => ({
+  awaiting: 0,
+  anchored: 0,
+  underway: 0,
+  shifting: 0,
+  berthing: 0,
+  moored: 0,
+  sailed: 0,
+})
+
+/**
+ * Header, dashboard band, dashboard panels and the occupancy screen all show
+ * these numbers. Deriving them four times by hand is how they drift, so they
+ * are worked out once here and every screen reads the result.
+ */
+export const selectPortTotals = createSelector(
+  [selectVessels, selectAreaCapacity, selectVesselAreaIndex],
+  (vessels, capacity, index): PortTotals => {
+    const fleet = vessels?.features ?? []
+
+    // Seeded with every key, so a status nobody is in still reports 0 rather
+    // than dropping out — the buckets always add back up to the fleet.
+    const byStatus = emptyStatusCounts()
+    for (const v of fleet) byStatus[v.properties.status] += 1
+
+    const occupied = capacity.reduce((sum, r) => sum + r.occupied, 0)
+    const available = capacity.reduce((sum, r) => sum + r.available, 0)
+    const total = occupied + available
+
+    // Split the occupied figure so the band can say *why* it exceeds the number
+    // at anchor: a vessel heaving up or shifting inside the anchorage still has
+    // that water, and still blocks the free-spot grid.
+    const occupiedAtAnchor = index.filter(
+      (e) =>
+        e.vessel.properties.status === 'anchored' &&
+        e.areas.some((a) => a.properties.category === 'anchorage'),
+    ).length
+
+    return {
+      fleet: fleet.length,
+      byStatus,
+      occupied,
+      occupiedAtAnchor,
+      occupiedManoeuvring: occupied - occupiedAtAnchor,
+      available,
+      capacity: total,
+      utilisationPct: total ? Math.round((occupied / total) * 100) : 0,
+    }
   },
 )
 

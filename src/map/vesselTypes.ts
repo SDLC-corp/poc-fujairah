@@ -42,19 +42,52 @@ export type VesselStatus = VesselProps['status']
  * assignment workflow feeds from — vessels in port limits with no spot yet.
  */
 export const VESSEL_STATUS_LABELS: Record<VesselStatus, string> = {
-  moored: 'Moored',
-  anchored: 'Anchored',
-  underway: 'Under way',
   awaiting: 'Waiting to anchor',
+  anchored: 'At anchor',
+  underway: 'Under way',
+  shifting: 'Proceeding to berth',
+  berthing: 'Berthing',
+  moored: 'Moored alongside',
+  sailed: 'Sailed',
 }
 
 /** Short form for the status pill, where the full wording will not fit. */
 export const VESSEL_STATUS_SHORT: Record<VesselStatus, string> = {
-  moored: 'Moored',
+  awaiting: 'Waiting',
   anchored: 'Anchored',
   underway: 'Under way',
-  awaiting: 'Waiting',
+  shifting: 'To berth',
+  berthing: 'Berthing',
+  moored: 'Moored',
+  sailed: 'Sailed',
 }
+
+/** Offered in call order, which is how an operator thinks about the move. */
+export const VESSEL_STATUS_ORDER: VesselStatus[] = [
+  'awaiting',
+  'anchored',
+  'underway',
+  'shifting',
+  'berthing',
+  'moored',
+  'sailed',
+]
+
+/**
+ * States in which the vessel is not on the water in the anchorage: `awaiting`
+ * is queued outside the declared areas, `sailed` has left. Everything else is
+ * physically there and takes up water, whether or not it is on its anchor.
+ *
+ * This is the single test behind "is a spot occupied?" and "does this vessel
+ * block a free spot?" — the two must agree or capacity will not add up.
+ */
+export const VESSEL_ABSENT: ReadonlySet<VesselStatus> = new Set<VesselStatus>([
+  'awaiting',
+  'sailed',
+])
+
+/** True when the vessel is lying in the anchorage and so taking up water. */
+export const takesUpWater = (status: VesselStatus) => !VESSEL_ABSENT.has(status)
 
 export const VESSEL_TYPES = Object.keys(VESSEL_COLORS) as VesselType[]
 

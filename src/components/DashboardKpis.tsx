@@ -55,28 +55,9 @@ export default function DashboardKpis() {
   const available = Math.max(0, totalSpots - occupied)
 
   const kpis: Kpi[] = [
-    {
-      key: 'total',
-      value: fleet.length,
-      label: 'Total vessels',
-      icon: 'vessel',
-      note: `${capacity.length} anchorage areas`,
-      goTo: 'tracking',
-    },
-    {
-      key: 'anchored',
-      value: anchored,
-      label: 'At anchor',
-      icon: 'anchor',
-      note: `${fleet.length ? Math.round((anchored / fleet.length) * 100) : 0}% of fleet`,
-    },
-    {
-      key: 'underway',
-      value: underway,
-      label: 'Under way',
-      icon: 'underway',
-      note: 'making way in port limits',
-    },
+  
+    
+   
     {
       key: 'awaiting',
       value: awaiting,

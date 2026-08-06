@@ -13,14 +13,18 @@ import { flagName } from '../../utils/flags'
 import MapView from '../MapView'
 import MapFocusControl from '../MapFocusControl'
 import RawJson from '../RawJson'
+import { setVesselStatus } from '../../features/portData/portDataSlice'
+import type { VesselProps } from '../../types/gis'
 import {
+  VESSEL_STATUS_ORDER,
   VESSEL_COLORS,
   VESSEL_LABELS,
   VESSEL_STATUS_LABELS,
   VESSEL_STATUS_SHORT,
 } from '../../map/vesselTypes'
 
-const STATUSES = ['all', 'moored', 'anchored', 'underway', 'awaiting'] as const
+/** Filter chips follow the same call order the status dropdown offers. */
+const STATUSES = ['all', ...VESSEL_STATUS_ORDER] as const
 
 const STATUS_FILTER_LABELS: Record<(typeof STATUSES)[number], string> = {
   all: 'All',
@@ -118,7 +122,7 @@ export default function TrackingScreen() {
 
         <section className="panel track-results">
           <h2>
-            Contacts<span className="badge badge-ok">{rows.length}</span>
+            Vessels <span className="badge badge-ok">{rows.length}</span>
           </h2>
           <div className="track-scroll">
             <ul className="track-list">
@@ -149,6 +153,43 @@ export default function TrackingScreen() {
                         <span className="muted">{row.speedKn} kn</span>
                       </span>
                     </button>
+
+                    {/* Siblings of the row button — a form control nested inside a
+                        button is invalid, and the click would select the row too. */}
+                    <div className="track-row-actions">
+                      <select
+                        className="track-status-select"
+                        aria-label={`Change status of ${row.name}`}
+                        title={`Status — ${VESSEL_STATUS_LABELS[row.status]}`}
+                        value={row.status}
+                        onChange={(e) =>
+                          dispatch(
+                            setVesselStatus({
+                              vesselId: row.id,
+                              status: e.target.value as VesselProps['status'],
+                            }),
+                          )
+                        }
+                      >
+                        {VESSEL_STATUS_ORDER.map((st) => (
+                          <option key={st} value={st}>
+                            {VESSEL_STATUS_LABELS[st]}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Selects first, so the details screen opens on this vessel. */}
+                      <button
+                        type="button"
+                        className="track-row-more"
+                        onClick={() => {
+                          pick(row.id)
+                          dispatch(setTab('vessel'))
+                        }}
+                      >
+                        Full details
+                      </button>
+                    </div>
                   </li>
                 )
               })}

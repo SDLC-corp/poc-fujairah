@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import {
+  selectGeofences,
   selectNearestBerthByVessel,
   selectVesselAreaIndex,
   swingRadiusM,
@@ -24,7 +25,7 @@ export default function FeatureDetails() {
   const selected = useAppSelector((s) => s.selection.selected)
   const vessels = useAppSelector((s) => s.portData.vessels)
   const anchorages = useAppSelector((s) => s.portData.anchorages)
-  const geofences = useAppSelector((s) => s.portData.geofences)
+  const geofences = useAppSelector(selectGeofences)
   const areaIndex = useAppSelector(selectVesselAreaIndex)
   const nearest = useAppSelector(selectNearestBerthByVessel)
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)

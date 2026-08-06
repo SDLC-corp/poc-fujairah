@@ -9,7 +9,7 @@ export default function TabRail() {
 
   return (
     <nav className="tab-rail" aria-label="Screens">
-      {TABS.map((tab) => (
+      {TABS.filter((t) => !t.offRail).map((tab) => (
         <button
           key={tab.id}
           type="button"

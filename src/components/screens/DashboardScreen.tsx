@@ -2,6 +2,7 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   selectAreaCapacity,
   selectGeofenceBreaches,
+  selectPortTotals,
   selectRestrictedIncursions,
   selectVesselAreaIndex,
 } from '../../features/analysis/selectors'
@@ -22,21 +23,19 @@ import RawJson from '../RawJson'
  */
 export default function DashboardScreen() {
   const dispatch = useAppDispatch()
-  const vessels = useAppSelector((s) => s.portData.vessels)
   const capacity = useAppSelector(selectAreaCapacity)
   const incursions = useAppSelector(selectRestrictedIncursions)
   const index = useAppSelector(selectVesselAreaIndex)
   const breaches = useAppSelector(selectGeofenceBreaches)
+  const totals = useAppSelector(selectPortTotals)
 
-  const fleet = vessels?.features ?? []
-  const anchored = fleet.filter((v) => v.properties.status === 'anchored').length
-  const underway = fleet.filter((v) => v.properties.status === 'underway').length
-  const awaiting = fleet.filter((v) => v.properties.status === 'awaiting').length
-
-  const totalSpots = capacity.reduce((sum, r) => sum + r.capacity, 0)
-  const occupied = capacity.reduce((sum, r) => sum + r.occupied, 0)
-  const available = Math.max(0, totalSpots - occupied)
-  const utilisation = totalSpots ? Math.round((occupied / totalSpots) * 100) : 0
+  const {
+    byStatus,
+    capacity: totalSpots,
+    occupied,
+    available,
+    utilisationPct: utilisation,
+  } = totals
   const busiest = capacity[0]
   const series = buildOccupancySeries(utilisation)
   // Cap the warnings: a busy anchorage would otherwise bury the real alerts.
@@ -66,10 +65,9 @@ export default function DashboardScreen() {
     generatedAt: '2026-08-03T09:15:00Z',
     area: 'Port of Fujairah — offshore anchorage',
     summary: {
-      vesselsTracked: fleet.length,
-      anchored,
-      underway,
-      awaitingAssignment: awaiting,
+      vesselsTracked: totals.fleet,
+      byStatus,
+      awaitingAssignment: byStatus.awaiting,
       spots: { total: totalSpots, occupied, available, utilisationPct: utilisation },
     },
     forecast: series.map((p) => ({ time: p.time, utilisationPct: p.pct, kind: p.kind })),

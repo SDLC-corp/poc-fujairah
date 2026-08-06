@@ -10,6 +10,7 @@ import MapView from './components/MapView'
 import TabRail from './components/TabRail'
 import { TABS } from './components/tabs'
 import FeatureDetails from './components/FeatureDetails'
+import IncidentAlert from './components/IncidentAlert'
 import MapFocusControl from './components/MapFocusControl'
 import MapLegend from './components/MapLegend'
 import DashboardScreen from './components/screens/DashboardScreen'
@@ -91,6 +92,10 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Mounted at the root so a reported incident follows the operator
+          whichever screen they are on. */}
+      <IncidentAlert />
 
       <div className="app-body">
         <TabRail />

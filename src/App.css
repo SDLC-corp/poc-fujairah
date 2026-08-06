@@ -137,9 +137,8 @@
 }
 
 .tab-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .tab-rail button:hover {
@@ -496,9 +495,8 @@ input[type='range'] {
 }
 
 .fleet-main .muted {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .dot {
@@ -849,9 +847,8 @@ input[type='range'] {
 }
 
 .legend-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* ---------------- screen building blocks ---------------- */
@@ -1257,27 +1254,101 @@ input[type='range'] {
   gap: 6px;
 }
 
-.track-list button {
+.track-list li {
+  display: flex;
+  flex-direction: column;
+  /* Without this the select's longest option sets the row's min width and the
+     whole list scrolls sideways. */
+  min-width: 0;
+}
+
+.track-row-actions {
+  /* Grid, not flex: `minmax(0, 1fr)` lets the select shrink past its longest
+     option, which a flex item will not do. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 6px 10px 7px;
+  border: 1px solid var(--border);
+  border-top: 1px dashed var(--border);
+  border-radius: 0 0 9px 9px;
+  background: var(--surface-2);
+}
+
+.track-row-more {
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--navy-500);
+  white-space: nowrap;
+}
+
+.track-row-more:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.track-status-select {
   width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+  padding: 4px 7px;
+  border-radius: 7px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.track-status-select:hover {
+  border-color: var(--accent);
+}
+
+.track-status-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* The row button and the action strip beneath it are two halves of one card,
+   so the join between them carries no border or radius. */
+.track-list li > button {
+  width: 100%;
+  min-width: 0;
   display: flex;
   align-items: flex-start;
   gap: 9px;
   text-align: left;
   padding: 9px 10px;
-  border-radius: 9px;
   border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 9px 9px 0 0;
   background: var(--surface-2);
 }
 
-.track-list button:hover {
+.track-list li > button:hover {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
 
-.track-list button.selected {
+.track-list li > button.selected {
   border-color: var(--accent);
   background: var(--accent-soft);
   box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Selecting the row lights the strip too, so the card reads as one unit. */
+.track-list li:has(> button.selected) .track-row-actions {
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .track-main {
@@ -1325,6 +1396,22 @@ input[type='range'] {
 .pill-awaiting {
   background: #ede9fe;
   color: #6d28d9;
+}
+
+/* The berthing half of the call — distinct hues from the anchorage states. */
+.pill-shifting {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.pill-berthing {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+
+.pill-sailed {
+  background: #e2e8f0;
+  color: #475569;
 }
 
 /* charts */
@@ -2419,7 +2506,7 @@ input[type='range'] {
    two on a laptop and one on a phone. */
 .kpi-band {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
   gap: 8px;
   flex: none;
   padding: 10px 14px;
@@ -2503,9 +2590,8 @@ input[type='range'] {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Affordance only on the tiles that navigate. */
@@ -2722,6 +2808,12 @@ input[type='range'] {
   padding-right: 4px;
 }
 
+/* The contact list scrolls vertically only — nothing in a row may push it wide.
+   (`overflow-y: auto` alone computes `overflow-x` to `auto`, not `visible`.) */
+.track-results .track-scroll {
+  overflow-x: hidden;
+}
+
 /* Right: map on top, details beneath. */
 .track-map {
   position: relative;
@@ -2771,16 +2863,14 @@ input[type='range'] {
 
 .track-detail-name strong {
   font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .track-detail-name .muted {
   font-size: 11.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .track-detail-more {
@@ -3069,9 +3159,8 @@ input[type='range'] {
 
 .drawer-title strong {
   font-size: 14.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .drawer-title .muted {
@@ -3729,8 +3818,8 @@ input[type='range'] {
 .service-hint {
   font-size: 10.5px;
   color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -4931,16 +5020,14 @@ input[type='range'] {
 
 .pb-detail-name strong {
   font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .pb-detail-name .muted {
   font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .pb-detail-body {
@@ -4985,4 +5072,131 @@ input[type='range'] {
   font-weight: 650;
   color: var(--navy-800);
   font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ *
+ * Incident alert — a geofence reported while the console is up
+ * ------------------------------------------------------------------ */
+
+.incident-alert {
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  z-index: 60;
+  width: min(360px, calc(100vw - 32px));
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 12px 13px;
+  border-radius: 12px;
+  border: 1px solid var(--warn);
+  border-left: 4px solid var(--warn);
+  background: var(--surface);
+  box-shadow: 0 14px 34px rgb(15 23 42 / 18%);
+  animation: incident-in 260ms ease-out;
+}
+
+/* An exclusion zone is a prohibition, not a caution — it reads louder. */
+.incident-alert.incident-high {
+  border-color: var(--alert);
+  border-left-color: var(--alert);
+}
+
+@keyframes incident-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .incident-alert {
+    animation: none;
+  }
+}
+
+.incident-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #fdf3e2;
+  color: var(--warn);
+}
+
+.incident-high .incident-icon {
+  background: #fdeaea;
+  color: var(--alert);
+}
+
+.incident-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.incident-body strong {
+  font-size: 13.5px;
+}
+
+.incident-body .muted {
+  font-size: 11.5px;
+}
+
+.incident-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.incident-high .incident-tag {
+  color: var(--alert);
+}
+
+.incident-actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.incident-show {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.incident-show:hover {
+  filter: brightness(1.07);
+}
+
+.incident-dismiss {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.incident-dismiss:hover {
+  background: var(--surface-2);
+  color: var(--text);
 }

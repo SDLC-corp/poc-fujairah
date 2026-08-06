@@ -6,7 +6,14 @@
  * Deterministic — a seeded PRNG, so regenerating gives the same fleet.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
-import { bbox, booleanPointInPolygon, distance } from '@turf/turf'
+import {
+  bbox,
+  booleanPointInPolygon,
+  booleanWithin,
+  circle,
+  destination,
+  distance,
+} from '@turf/turf'
 
 /** Upper bound per area; the real count is whatever fits without circles touching. */
 const MAX_PER_AREA = 40
@@ -15,6 +22,8 @@ const MAX_PER_AREA = 40
  * to assign, so the sample fleet leaves realistic vacancies.
  */
 const FILL_RATE = 0.62
+/** Draws of type/length/heading a grid point gets before it is abandoned. */
+const ATTEMPTS_PER_POINT = 12
 /** Must match the app defaults in analysisSlice — swing radius = LOA x factor + margin. */
 const SWING_FACTOR = 2
 const SAFETY_MARGIN_M = 10
@@ -70,11 +79,42 @@ const beamFor = (type, loa) =>
   SMALL_CRAFT.includes(type) ? Math.max(8, Math.round(loa / 3.5)) : Math.max(11, Math.round(loa / 6.2))
 const draftFor = (loa) => Number((loa / 19 + 2).toFixed(1))
 
+/* ------------------------------------------------------------------ *
+ * Swing geometry — must mirror selectors.ts exactly, or the generated
+ * fleet will look clear here and foul on the map.
+ * ------------------------------------------------------------------ */
+
+const radiusOf = (lengthM) => lengthM * SWING_FACTOR + SAFETY_MARGIN_M
+
+/**
+ * The circle turns about the anchor, not the ship: the vessel rides back on its
+ * cable with the bow towards the anchor, so the centre sits `cable` metres ahead
+ * along the heading. Placing on the vessel position instead leaves every circle
+ * displaced by up to a full ship length, which is how neighbours end up fouling.
+ */
+const anchorOf = (coordinates, lengthM, headingDeg) => {
+  const cableM = Math.max(0, lengthM * (SWING_FACTOR - 1))
+  if (!cableM) return coordinates
+  return destination(coordinates, cableM / 1000, headingDeg, { units: 'kilometers' }).geometry
+    .coordinates
+}
+
+const ringOf = (anchor, radiusM) =>
+  circle(anchor, radiusM / 1000, { units: 'kilometers', steps: 64 })
+
 const anchorages = JSON.parse(readFileSync(process.argv[2], 'utf8'))
 const areas = anchorages.features.filter((f) => f.geometry.type === 'Polygon')
 
 const features = []
+/** Anchor and radius of every vessel already placed, for the fouling test. */
+const swings = []
 let n = 0
+
+/** True when this circle would touch one already on the water. */
+const fouls = (anchor, radiusM) =>
+  swings.some(
+    (s) => distance(anchor, s.anchor, { units: 'kilometers' }) * 1000 < radiusM + s.radiusM,
+  )
 
 for (const areaFeature of areas) {
   const { code, category } = areaFeature.properties
@@ -114,25 +154,38 @@ for (const areaFeature of areas) {
   }
 
   placed.forEach((coordinates) => {
-    const type = profile.types[Math.floor(rand() * profile.types.length)]
     const [minLoa, maxLoa] = profile.size
-    const lengthM = Math.round(minLoa + rand() * (maxLoa - minLoa))
+
+    // Draw a berth this point can actually take. The grid pitch is set by the
+    // largest ship the area allows, but a point near the boundary still has to
+    // hold the whole circle, so a shorter ship or a different heading may fit
+    // where the first draw does not. Give each point a few tries before
+    // abandoning it — that keeps the fleet dense without ever fouling.
+    let fit = null
+    for (let attempt = 0; attempt < ATTEMPTS_PER_POINT && !fit; attempt++) {
+      const type = profile.types[Math.floor(rand() * profile.types.length)]
+      const lengthM = Math.round(minLoa + rand() * (maxLoa - minLoa))
+      const headingDeg = Math.round(rand() * 359)
+      const radiusM = radiusOf(lengthM)
+      const anchor = anchorOf(coordinates, lengthM, headingDeg)
+      // Both rules the notice implies: stay inside your own area, and keep your
+      // swing clear of everyone else's.
+      if (!booleanWithin(ringOf(anchor, radiusM), areaFeature)) continue
+      if (fouls(anchor, radiusM)) continue
+      fit = { type, lengthM, headingDeg, radiusM, anchor }
+    }
+    if (!fit) return
+
+    const { type, lengthM, headingDeg, radiusM, anchor } = fit
     // Most vessels at an anchorage are brought up; a few are still manoeuvring.
     const underway = rand() < 0.12
     // Arrival in the last five days, departure in the next four — the feed would
     // carry these; they drive dwell time and departure planning.
     const ata = new Date(NOW - Math.round((2 + rand() * 118) * HOUR)).toISOString()
     const etd = new Date(NOW + Math.round((3 + rand() * 93) * HOUR)).toISOString()
-    // Areas are gridded independently, so two vessels either side of a shared
-    // border can still foul each other. Drop the later one.
-    const radiusM = lengthM * SWING_FACTOR + SAFETY_MARGIN_M
-    const fouls = features.some((f) => {
-      const gap = distance(coordinates, f.geometry.coordinates, { units: 'kilometers' }) * 1000
-      return gap < radiusM + f.properties.lengthM * SWING_FACTOR + SAFETY_MARGIN_M
-    })
-    if (fouls) return
 
     n += 1
+    swings.push({ anchor, radiusM })
     features.push({
       type: 'Feature',
       id: `V-${String(n).padStart(4, '0')}`,
@@ -150,7 +203,7 @@ for (const areaFeature of areas) {
         beamM: beamFor(type, lengthM),
         draftM: draftFor(lengthM),
         speedKn: underway ? Number((0.5 + rand() * 6).toFixed(1)) : 0,
-        headingDeg: Math.round(rand() * 359),
+        headingDeg,
         status: underway ? 'underway' : 'anchored',
         area: code,
         ata,
@@ -178,7 +231,16 @@ const WAITING_POSITIONS = [
   [56.634, 25.268],
 ]
 AWAITING.forEach(([name, type, lengthM, flag, etaHours, eta], i) => {
+  const headingDeg = 250 + i * 7
+  const radiusM = radiusOf(lengthM)
+  const anchor = anchorOf(WAITING_POSITIONS[i], lengthM, headingDeg)
+  // Outside the declared areas by design, so no containment rule applies — but
+  // they still must not sit on top of anyone.
+  if (fouls(anchor, radiusM)) {
+    throw new Error(`waiting vessel ${name} fouls a vessel already on the water`)
+  }
   n += 1
+  swings.push({ anchor, radiusM })
   features.push({
     type: 'Feature',
     id: `V-${String(n).padStart(4, '0')}`,
@@ -192,7 +254,7 @@ AWAITING.forEach(([name, type, lengthM, flag, etaHours, eta], i) => {
       beamM: beamFor(type, lengthM),
       draftM: draftFor(lengthM),
       speedKn: Number((6 + i * 0.7).toFixed(1)),
-      headingDeg: 250 + i * 7,
+      headingDeg,
       status: 'awaiting',
       area: null,
       ata: null,
@@ -216,7 +278,17 @@ TRANSITS.forEach((coordinates, i) => {
   if (restricted && !booleanPointInPolygon(coordinates, restricted)) {
     throw new Error(`transit ${i} is not inside the Restricted Area`)
   }
+  const lengthM = [183, 210, 168][i]
+  const headingDeg = [310, 285, 20][i]
+  const radiusM = radiusOf(lengthM)
+  const anchor = anchorOf(coordinates, lengthM, headingDeg)
+  // These are steaming through a prohibited area to trip the incursion alert,
+  // so they are meant to breach that boundary — but not to foul other vessels.
+  if (fouls(anchor, radiusM)) {
+    throw new Error(`transit ${i} fouls a vessel already on the water`)
+  }
   n += 1
+  swings.push({ anchor, radiusM })
   features.push({
     type: 'Feature',
     id: `V-${String(n).padStart(4, '0')}`,
@@ -226,11 +298,11 @@ TRANSITS.forEach((coordinates, i) => {
       imo: String(9700000 + i * 137),
       type: 'chemicaltanker',
       flag: ['AE', 'MT', 'PA'][i],
-      lengthM: [183, 210, 168][i],
+      lengthM,
       beamM: [32, 34, 28][i],
       draftM: [10.8, 12.1, 9.4][i],
       speedKn: [4.6, 3.2, 5.1][i],
-      headingDeg: [310, 285, 20][i],
+      headingDeg,
       status: 'underway',
       area: 'RA',
       ata: new Date(NOW - 6 * HOUR).toISOString(),

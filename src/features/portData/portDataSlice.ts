@@ -5,6 +5,7 @@ import type {
   GeofenceCollection,
   VesselCollection,
   VesselFeature,
+  VesselProps,
 } from '../../types/gis'
 
 interface PortData {
@@ -56,6 +57,56 @@ const portDataSlice = createSlice({
       state.vessels.features.push(action.payload)
     },
 
+    /**
+     * Operator-ordered status change. Speed, area and the actual times are kept
+     * consistent with the new state, so the rest of the console — the schedule
+     * panel especially — has something real to read rather than a bare label.
+     */
+    setVesselStatus(
+      state,
+      action: PayloadAction<{ vesselId: string; status: VesselProps['status'] }>,
+    ) {
+      const vessel = state.vessels?.features.find(
+        (f) => f.properties.id === action.payload.vesselId,
+      )
+      if (!vessel) return
+      const p = vessel.properties
+      const now = new Date().toISOString()
+      p.status = action.payload.status
+
+      switch (action.payload.status) {
+        case 'anchored':
+          p.speedKn = 0
+          p.ata = p.ata ?? now
+          p.atd = null
+          break
+        case 'underway':
+        case 'shifting':
+          p.speedKn = 8
+          break
+        case 'berthing':
+          // Alongside manoeuvring — dead slow, and no longer in an anchorage.
+          p.speedKn = 2
+          p.area = null
+          break
+        case 'moored':
+          p.speedKn = 0
+          p.ata = p.ata ?? now
+          p.area = null
+          p.atd = null
+          break
+        case 'sailed':
+          p.speedKn = 10
+          p.area = null
+          p.atd = now
+          break
+        case 'awaiting':
+          p.speedKn = 0
+          p.area = null
+          break
+      }
+    },
+
     /** Drops a vessel onto its assigned spot once it has finished moving. */
     anchorVessel(
       state,
@@ -99,5 +150,5 @@ const portDataSlice = createSlice({
   },
 })
 
-export const { addVessel, anchorVessel } = portDataSlice.actions
+export const { addVessel, anchorVessel, setVesselStatus } = portDataSlice.actions
 export default portDataSlice.reducer

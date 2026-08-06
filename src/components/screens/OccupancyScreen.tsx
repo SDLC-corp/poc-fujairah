@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
-import { selectAreaCapacity, selectVesselAreaIndex } from '../../features/analysis/selectors'
+import {
+  selectAreaCapacity,
+  selectPortTotals,
+  selectVesselAreaIndex,
+} from '../../features/analysis/selectors'
 import { selectFeature } from '../../features/selection/selectionSlice'
 import { formatDateTime, hoursBetween } from '../../utils/format'
 import { buildOccupancySeries } from '../../utils/occupancyCurve'
@@ -19,9 +23,8 @@ export default function OccupancyScreen() {
   /** Which vessel the slide-over is showing; independent of map selection. */
   const [openVessel, setOpenVessel] = useState<string | null>(null)
 
-  const totalSpots = capacity.reduce((sum, r) => sum + r.capacity, 0)
-  const occupied = capacity.reduce((sum, r) => sum + r.occupied, 0)
-  const utilisation = totalSpots ? Math.round((occupied / totalSpots) * 100) : 0
+  const { capacity: totalSpots, occupied, utilisationPct: utilisation } =
+    useAppSelector(selectPortTotals)
   const load = utilisationLoad(utilisation)
 
   /* --- occupancy chart: measured now, projected forward ------------------ */

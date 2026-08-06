@@ -15,6 +15,7 @@ import {
   selectNearestBerthLine,
   selectAnchorMarks,
   selectFreeSpots,
+  selectGeofences,
   selectSwingCircles,
   selectVesselHulls,
 } from '../features/analysis/selectors'
@@ -123,7 +124,7 @@ export default function MapView() {
   const selected = useAppSelector((s) => s.selection.selected)
   const vessels = useAppSelector((s) => s.portData.vessels)
   const anchorages = useAppSelector((s) => s.portData.anchorages)
-  const geofences = useAppSelector((s) => s.portData.geofences)
+  const geofences = useAppSelector(selectGeofences)
   const showBuffer = useAppSelector((s) => s.analysis.showBuffer)
   const showNearestLine = useAppSelector((s) => s.analysis.showNearestBerthLine)
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)

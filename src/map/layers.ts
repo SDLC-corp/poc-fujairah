@@ -319,7 +319,6 @@ export function addPortLayers(map: MapLibreMap) {
     id: 'swing-fill',
     type: 'fill',
     source: SOURCE_IDS.swing,
-    minzoom: 12.5,
     filter: ['==', ['geometry-type'], 'Polygon'],
     paint: {
       'fill-color': [
@@ -335,7 +334,6 @@ export function addPortLayers(map: MapLibreMap) {
     id: 'swing-outline',
     type: 'line',
     source: SOURCE_IDS.swing,
-    minzoom: 12.5,
     filter: ['==', ['geometry-type'], 'Polygon'],
     paint: {
       'line-color': [
