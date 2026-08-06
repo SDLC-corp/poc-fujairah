@@ -38,14 +38,42 @@ const areas = anchorages.features.filter(
 )
 const passage = anchorages.features.find((f) => f.properties.category === 'passage')
 
+/**
+ * Latitude of the corridor's running line — mirrors laneLatitude() in
+ * src/map/route.ts. The bbox centre will not do: the notch at the western end
+ * of the Passage Way drags it north of the corridor for most of its length.
+ */
+function laneLatitude(area) {
+  const LAT_STEPS = 96
+  const LON_STEPS = 48
+  const [west, south, east, north] = bbox(area)
+  let bestScore = -1
+  let bestLats = []
+  for (let i = 1; i < LAT_STEPS; i++) {
+    const lat = south + ((north - south) * i) / LAT_STEPS
+    let inside = 0
+    for (let j = 0; j <= LON_STEPS; j++) {
+      const lon = west + ((east - west) * j) / LON_STEPS
+      if (booleanPointInPolygon([lon, lat], area)) inside += 1
+    }
+    if (inside > bestScore) {
+      bestScore = inside
+      bestLats = []
+    }
+    if (inside === bestScore) bestLats.push(lat)
+  }
+  return bestLats.length ? bestLats[Math.floor(bestLats.length / 2)] : (south + north) / 2
+}
+
+const LANE_LAT = passage ? laneLatitude(passage) : null
+
 /** Route through the Passage Way, mirroring src/map/route.ts. */
 function buildRoute(from, to) {
   if (!passage) return [from, to]
-  const [west, south, east, north] = bbox(passage)
-  const laneLat = (south + north) / 2
+  const [west, , east] = bbox(passage)
   const joinLon = Math.min(Math.max(from[0], west), east)
   const leaveLon = Math.min(Math.max(to[0], west), east)
-  const path = [from, [joinLon, laneLat], [leaveLon, laneLat], to]
+  const path = [from, [joinLon, LANE_LAT], [leaveLon, LANE_LAT], to]
   return path.filter((p, i) => i === 0 || p[0] !== path[i - 1][0] || p[1] !== path[i - 1][1])
 }
 
