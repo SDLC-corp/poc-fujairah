@@ -28,6 +28,7 @@ export const SOURCE_IDS = {
   labels: 'src-labels',
   buffer: 'src-buffer',
   nearestLine: 'src-nearest-line',
+  playback: 'src-playback',
   spotDrag: 'src-spot-drag',
 } as const
 
@@ -462,25 +463,30 @@ export function addPortLayers(map: MapLibreMap) {
     type: 'circle',
     source: SOURCE_IDS.vessels,
     paint: {
-      'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 16, 0],
-      'circle-color': '#f59e0b',
-      'circle-opacity': 0.3,
+      'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 17, 0],
+      'circle-color': '#fde047',
+      'circle-opacity': 0.5,
+      'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 1.5, 0],
+      'circle-stroke-color': '#a16207',
     },
   })
+  // The flat view uses the same AIS ship symbol as playback — pre-coloured per
+  // vessel type and turned to the reported heading, rather than a bare dot.
   add({
     id: 'vessels-circle',
-    type: 'circle',
+    type: 'symbol',
     source: SOURCE_IDS.vessels,
-    paint: {
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 4, 16, 9],
-      'circle-color': vesselColor,
-      'circle-stroke-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3, 1.4],
-      'circle-stroke-color': [
-        'case',
-        ['boolean', ['feature-state', 'selected'], false],
-        '#fde047',
-        '#0b1220',
+    layout: {
+      'icon-image': [
+        'coalesce',
+        ['image', ['concat', 'ship-', ['get', 'type']]],
+        ['image', 'ship-unknown'],
       ],
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 16, 1.15],
+      'icon-rotate': ['get', 'headingDeg'],
+      'icon-rotation-alignment': 'map',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
     },
   })
   // Extruded hull + deckhouse. Both parts of a ship share its vessel id, so one
@@ -562,6 +568,15 @@ export function addPortLayers(map: MapLibreMap) {
       'line-color': ['case', ['get', 'ok'], '#15803d', '#b91c1c'],
       'line-width': 2.4,
     },
+  })
+  // Replayed approach: the whole route faint, the part already run solid, and
+  // the vessel's position at the scrub point on top.
+  add({
+    id: 'playback-done',
+    type: 'line',
+    source: SOURCE_IDS.playback,
+    filter: ['==', ['get', 'kind'], 'done'],
+    paint: { 'line-color': '#1b56b5', 'line-width': 3.2, 'line-opacity': 0.85 },
   })
   add({
     id: 'nearest-line',

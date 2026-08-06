@@ -14,6 +14,7 @@ import MapFocusControl from './components/MapFocusControl'
 import MapLegend from './components/MapLegend'
 import DashboardScreen from './components/screens/DashboardScreen'
 import TrackingScreen from './components/screens/TrackingScreen'
+import PlaybackScreen from './components/screens/PlaybackScreen'
 import OccupancyScreen from './components/screens/OccupancyScreen'
 import AssignmentScreen from './components/screens/AssignmentScreen'
 import VesselDetailsScreen from './components/screens/VesselDetailsScreen'
@@ -25,6 +26,7 @@ import './App.css'
 const SCREENS = {
   dashboard: DashboardScreen,
   tracking: TrackingScreen,
+  playback: PlaybackScreen,
   occupancy: OccupancyScreen,
   assignment: AssignmentScreen,
   vessel: VesselDetailsScreen,
@@ -57,7 +59,7 @@ export default function App() {
   const showsMap = activeTab === 'assignment' || activeTab === 'dashboard'
   // Tracking carries its own map and lays out its two columns itself, so it
   // opts out of both the standard split and the scrolling card grid.
-  const ownsLayout = activeTab === 'tracking'
+  const ownsLayout = activeTab === 'tracking' || activeTab === 'playback'
 
   return (
     <div className={`app${navOpen ? ' nav-open' : ''}`}>

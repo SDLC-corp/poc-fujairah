@@ -67,13 +67,40 @@ function heights(lengthM: number) {
   return { hull, deck }
 }
 
+/** The particulars the hull outline actually needs, whatever the source. */
+export interface HullInput {
+  id: string
+  name: string
+  type: string
+  lengthM: number
+  beamM: number
+  headingDeg: number
+  coordinates: Position
+}
+
 /**
  * Turns an AIS point into the two extrudable polygons that make up its 3D shape.
  * Both carry the vessel id so a single feature-state drives the whole ship.
  */
 export function buildVesselHull(vessel: VesselFeature): Array<Feature<Polygon, HullProps>> {
   const { id, name, type, lengthM, beamM, headingDeg } = vessel.properties
-  const centre = vessel.geometry.coordinates
+  return buildHullAt({
+    id,
+    name,
+    type,
+    lengthM,
+    beamM,
+    headingDeg,
+    coordinates: vessel.geometry.coordinates,
+  })
+}
+
+/**
+ * The same shape, from loose particulars — used by playback, where the fix
+ * comes from a recorded track rather than the live snapshot.
+ */
+export function buildHullAt(vessel: HullInput): Array<Feature<Polygon, HullProps>> {
+  const { id, name, type, lengthM, beamM, headingDeg, coordinates: centre } = vessel
   const { hull, deck } = heights(lengthM)
 
   const make = (

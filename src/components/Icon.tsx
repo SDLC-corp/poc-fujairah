@@ -33,6 +33,7 @@ const PATHS: Record<string, string> = {
   departure: 'M12 21V10M12 10 8 14M12 10l4 4M4 4h16',
   schedule: 'M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4',
   delay: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3.5 2M18.5 3.5 21 6',
+  playback: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10 8.5l6 3.5-6 3.5z',
 }
 
 export default function Icon({ name, size = 18 }: { name: string; size?: number }) {

@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "verify": "node scripts/verify-data.mjs",
-    "gen:vessels": "node scripts/gen-vessels.mjs public/data/anchorages.json public/data/vessels.json"
+    "gen:vessels": "node scripts/gen-vessels.mjs public/data/anchorages.json public/data/vessels.json",
+    "gen:playback": "node scripts/gen-playback.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",

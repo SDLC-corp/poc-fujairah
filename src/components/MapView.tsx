@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Map as MapLibreMap, Marker, NavigationControl, Popup, ScaleControl } from 'maplibre-gl'
 import type { GeoJSONSource, MapMouseEvent, MapTouchEvent } from 'maplibre-gl'
 import type { Feature, FeatureCollection } from 'geojson'
@@ -31,8 +31,10 @@ import {
   selectSpot,
   startRelocate,
 } from '../features/spots/spotsSlice'
+import { indexAt, sampleAt, trackLine } from '../utils/playbackTrack'
 import { buildVesselHull } from '../map/vesselGeometry'
 import { registerAnchorIcon } from '../map/anchorIcon'
+import { registerVesselIcons } from '../map/vesselIcon'
 import { VESSEL_LABELS } from '../map/vesselTypes'
 import {
   along,
@@ -64,7 +66,7 @@ import {
   SOURCE_IDS,
   THREE_D_VESSEL_LAYERS,
 } from '../map/layers'
-import type { LayerId } from '../types/gis'
+import type { LayerId, VesselCollection, VesselFeature, VesselProps, VesselType } from '../types/gis'
 
 /** Popup bodies are built as HTML, so anything from the data is escaped first. */
 function esc(value: string): string {
@@ -141,6 +143,10 @@ export default function MapView() {
   const selectedSpotId = useAppSelector((s) => s.spots.selectedId)
   const relocating = useAppSelector((s) => s.spots.relocating)
   const pickingFor = useAppSelector((s) => s.spots.pickingFor)
+  const playbackVesselId = useAppSelector((s) => s.playback.vesselId)
+  const playbackProgress = useAppSelector((s) => s.playback.progress)
+  const playbackData = useAppSelector((s) => s.playback.data)
+  const activeTab = useAppSelector((s) => s.ui.activeTab)
   const movedSpots = useAppSelector((s) => s.spots.moved)
   const areas = useAppSelector(selectAreas)
   const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
@@ -149,6 +155,14 @@ export default function MapView() {
   // so everything they read goes through a ref rather than a stale closure.
   const spotStateRef = useRef({ relocating, pickingFor })
   spotStateRef.current = { relocating, pickingFor }
+  /** Last track framed, so the camera is not yanked on every scrub. */
+  const fittedTrackRef = useRef<string | null>(null)
+  /** Read inside the framing effect without making it re-run on every frame. */
+  const playbackProgressRef = useRef(0)
+  /** True while the map is showing the replayed fleet rather than the snapshot. */
+  const replayingRef = useRef(false)
+  replayingRef.current = activeTab === 'playback'
+  playbackProgressRef.current = playbackProgress
   const areasRef = useRef(areas)
   areasRef.current = areas
   const vesselsRef = useRef(vessels?.features ?? [])
@@ -161,6 +175,51 @@ export default function MapView() {
   safetyMarginRef.current = safetyMarginM
   const movedSpotsRef = useRef(movedSpots)
   movedSpotsRef.current = movedSpots
+
+  /**
+   * On the playback screen the fleet comes from the recorded day rather than
+   * the live snapshot. Shaping it as ordinary VesselFeatures means the icon,
+   * the extruded hull and the selection halo all work on it untouched — no
+   * parallel set of playback-only layers.
+   */
+  const playbackFleet = useMemo<VesselCollection | null>(() => {
+    if (activeTab !== 'playback' || !playbackData) return null
+    const features: VesselFeature[] = []
+    for (const v of playbackData.vessels) {
+      const fix = sampleAt(v.track, playbackProgress)
+      if (!fix) continue
+      features.push({
+        type: 'Feature',
+        id: v.id,
+        properties: {
+          id: v.id,
+          name: v.name,
+          imo: v.imo,
+          type: v.type as VesselType,
+          flag: v.flag,
+          lengthM: v.lengthM,
+          beamM: v.beamM,
+          draftM: v.draftM,
+          speedKn: fix.speedKn,
+          headingDeg: fix.headingDeg,
+          status: fix.status as VesselProps['status'],
+          area: v.area,
+          ata: null,
+          etd: null,
+        },
+        geometry: { type: 'Point', coordinates: [fix.lon, fix.lat] },
+      })
+    }
+    return { type: 'FeatureCollection', features }
+  }, [activeTab, playbackData, playbackProgress])
+
+  const playbackHulls = useMemo<FeatureCollection | null>(
+    () =>
+      playbackFleet
+        ? { type: 'FeatureCollection', features: playbackFleet.features.flatMap(buildVesselHull) }
+        : null,
+    [playbackFleet],
+  )
 
   /* Create the map once. */
   useEffect(() => {
@@ -197,6 +256,7 @@ export default function MapView() {
     const ensurePortLayers = () => {
       if (map.getSource(SOURCE_IDS.anchorages)) return
       registerAnchorIcon(map)
+      registerVesselIcons(map)
       addPortLayers(map)
       const buildingLayer = findBuildingLayer(map)
       if (buildingLayer) configureBuildingLayer(map, buildingLayer)
@@ -240,6 +300,8 @@ export default function MapView() {
       }
       const id = (hit.properties?.id ?? hit.id) as string | undefined
       if (!id) return
+      // A click only selects — during playback that opens the details card
+      // without touching the transport. Following is an explicit choice.
       dispatch(selectFeature({ layer: LAYER_OF[hit.layer.id], id }))
     })
 
@@ -287,11 +349,13 @@ export default function MapView() {
     if (!map || !styleEpoch) return
     const pairs: [string, FeatureCollection | null][] = [
       [SOURCE_IDS.anchorages, anchorages],
-      [SOURCE_IDS.vessels, vessels],
-      [SOURCE_IDS.hulls, hulls],
-      [SOURCE_IDS.swing, swingCircles],
-      [SOURCE_IDS.freeSpots, freeSpots],
-      [SOURCE_IDS.anchors, anchorMarks],
+      [SOURCE_IDS.vessels, playbackFleet ?? vessels],
+      [SOURCE_IDS.hulls, playbackHulls ?? hulls],
+      // Swing circles, anchor marks and free spots all describe the snapshot,
+      // so they are dropped rather than shown against a replayed fleet.
+      [SOURCE_IDS.swing, playbackFleet ? null : swingCircles],
+      [SOURCE_IDS.freeSpots, playbackFleet ? null : freeSpots],
+      [SOURCE_IDS.anchors, playbackFleet ? null : anchorMarks],
       [SOURCE_IDS.geofences, geofences],
       [SOURCE_IDS.labels, labelPoints],
     ]
@@ -309,6 +373,8 @@ export default function MapView() {
     freeSpots,
     anchorMarks,
     labelPoints,
+    playbackFleet,
+    playbackHulls,
   ])
 
   /* Walk an assigned vessel from where it waited to its spot. */
@@ -889,6 +955,71 @@ export default function MapView() {
       spotPopupRef.current?.setDOMContent(buildSpotPopup(spot.properties, centre, null))
     }
   }, [styleEpoch, selectedSpotId, relocating, freeSpots, dispatch])
+
+  /**
+   * Trail behind the followed vessel only. Just the run already made — drawing
+   * the rest of the route ahead reads as a course line the vessel is steering,
+   * which is not what a replay is showing.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleEpoch) return
+    const source = map.getSource(SOURCE_IDS.playback) as GeoJSONSource | undefined
+    if (!source) return
+
+    const chosen = playbackData?.vessels.find((v) => v.id === playbackVesselId)
+    if (!playbackFleet || !chosen) {
+      source.setData(EMPTY_FC)
+      return
+    }
+
+    const upto = indexAt(chosen.track, playbackProgress)
+    const run = trackLine(chosen).slice(0, upto + 1)
+    source.setData({
+      type: 'FeatureCollection',
+      features:
+        run.length > 1
+          ? [{ type: 'Feature', properties: { kind: 'done' }, geometry: { type: 'LineString', coordinates: run } }]
+          : [],
+    } as FeatureCollection)
+  }, [styleEpoch, playbackData, playbackFleet, playbackVesselId, playbackProgress])
+
+  /**
+   * Frame the day's movement once on arriving at the replay. Changing the
+   * followed vessel afterwards only pans — never widens the view, which would
+   * throw away the zoom the operator has chosen.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleEpoch || activeTab !== 'playback') return
+    const chosen = playbackData?.vessels.find((v) => v.id === playbackVesselId)
+    if (!chosen || fittedTrackRef.current === chosen.id) return
+
+    const first = fittedTrackRef.current === null
+    fittedTrackRef.current = chosen.id
+
+    if (first) {
+      const lons = chosen.track.map((t) => t.lon)
+      const lats = chosen.track.map((t) => t.lat)
+      map.fitBounds(
+        [
+          [Math.min(...lons), Math.min(...lats)],
+          [Math.max(...lons), Math.max(...lats)],
+        ],
+        { padding: 90, maxZoom: 13.2, duration: 700 },
+      )
+      return
+    }
+
+    const fix = sampleAt(chosen.track, playbackProgressRef.current)
+    if (fix) {
+      map.easeTo({
+        center: [fix.lon, fix.lat],
+        zoom: Math.max(map.getZoom(), 12.5),
+        duration: 600,
+      })
+    }
+  }, [styleEpoch, activeTab, playbackData, playbackVesselId])
 
   /* Turf-derived analysis overlays. */
   useEffect(() => {

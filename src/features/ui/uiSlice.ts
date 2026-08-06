@@ -4,6 +4,7 @@ import type { PayloadAction } from '@reduxjs/toolkit'
 export type TabId =
   | 'dashboard'
   | 'tracking'
+  | 'playback'
   | 'occupancy'
   | 'assignment'
   | 'vessel'

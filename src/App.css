@@ -4665,3 +4665,324 @@ input[type='range'] {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------------- vessel playback ---------------- */
+
+/* The map takes the whole section; the transport sits under it in one row. */
+.playback-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+}
+
+.playback-map {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* Live readout floating over the map, so it costs no layout height. */
+.pb-readout {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 268px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 12px 13px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(6px);
+}
+
+.pb-readout header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 9px;
+  margin-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pb-readout header > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.pb-readout header strong {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-readout header .muted {
+  font-size: 11px;
+}
+
+.pb-readout .raw-json {
+  margin-top: 10px;
+}
+
+/* ---------------- transport bar ---------------- */
+
+.pb-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+  flex-wrap: wrap;
+  padding: 9px 13px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.pb-bar-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* The timeline takes whatever the fixed-width groups leave. */
+.pb-timeline {
+  flex: 1;
+  min-width: 220px;
+}
+
+.pb-select {
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  max-width: 200px;
+}
+
+.pb-date {
+  font-variant-numeric: tabular-nums;
+}
+
+.pb-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.pb-transport button {
+  display: grid;
+  place-items: center;
+  min-width: 38px;
+  height: 34px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.pb-transport button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.pb-transport button:focus-visible {
+  outline: 2px solid var(--navy-500);
+  outline-offset: 2px;
+}
+
+.pb-transport .pb-play {
+  min-width: 46px;
+  font-size: 14px;
+  color: #fff;
+  background: var(--navy-500);
+  border-color: var(--navy-500);
+}
+
+.pb-transport .pb-play:hover {
+  background: var(--navy-600);
+  border-color: var(--navy-600);
+}
+
+.pb-scrub {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--navy-500);
+  cursor: pointer;
+}
+
+.pb-clock {
+  flex: none;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .pb-readout {
+    position: static;
+    width: auto;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+    box-shadow: none;
+  }
+
+  .playback-map {
+    overflow: visible;
+  }
+
+  .pb-bar {
+    gap: 10px;
+  }
+
+  .pb-timeline {
+    order: 5;
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-transport button {
+    transition: none;
+  }
+}
+
+/* ---------------- playback: status + vessel details ---------------- */
+
+.pb-state {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.pb-state-bad {
+  color: var(--alert);
+  border-color: rgba(192, 57, 43, 0.35);
+  background: var(--alert-soft);
+}
+
+/* Details for whichever ship is selected — from the list or clicked on the map. */
+.pb-detail {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  width: 292px;
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.pb-detail header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pb-detail-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.pb-detail-name strong {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-detail-name .muted {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 2px 12px 12px;
+}
+
+.pb-detail-body .drawer-section:first-child {
+  margin-top: 10px;
+}
+
+.pb-raw-pre {
+  margin: 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: auto;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--navy-800);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Live figures sitting in the transport bar. */
+.pb-readout-inline {
+  margin-left: auto;
+  gap: 10px;
+}
+
+.pb-readout-inline .muted {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.pb-now {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--navy-800);
+  font-variant-numeric: tabular-nums;
+}
