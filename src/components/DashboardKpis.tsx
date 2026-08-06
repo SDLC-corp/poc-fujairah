@@ -46,8 +46,7 @@ export default function DashboardKpis() {
   const capacity = useAppSelector(selectAreaCapacity)
 
   const fleet = vessels?.features ?? []
-  const anchored = fleet.filter((v) => v.properties.status === 'anchored').length
-  const underway = fleet.filter((v) => v.properties.status === 'underway').length
+
   const awaiting = fleet.filter((v) => v.properties.status === 'awaiting').length
 
   const totalSpots = capacity.reduce((sum, r) => sum + r.capacity, 0)
