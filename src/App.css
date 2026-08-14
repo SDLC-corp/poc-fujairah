@@ -759,7 +759,11 @@ input[type='range'] {
   right: 48px;
   z-index: 2;
   pointer-events: none;
-  width: min(214px, 26vh);
+  /* Sized here rather than in the geometry: the viewBox scales, so this is the
+     only number that decides how much map the rose covers. The floor is set by
+     the numbers round the ring — take it much under 150px and the graduation
+     stops being readable, at which point the numbering has to thin out too. */
+  width: min(160px, 20vh);
   height: auto;
 }
 

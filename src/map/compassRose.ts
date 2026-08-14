@@ -26,21 +26,26 @@ const WMM_ANNUAL_CHANGE_DEG = 0.0052
 export const COMPASS_INK = '#111111'
 
 /**
- * Outer radius in SVG units, and the room outside it the numbers need. The
- * radius is set by the graduation rather than by taste: the numbers stand
- * outside the ring every ten degrees, so 36 of them share a circumference of
- * 2*pi*1.08*R and each needs about 14 units to stay off its neighbours. Below
- * R=76 they start to touch, and the ring stops being readable at all.
+ * Outer radius in SVG units, and the room outside it the numbers need.
+ *
+ * These are drawing units, not pixels — the viewBox scales to whatever width
+ * the CSS gives the rose, so this is the *layout* budget and the stylesheet
+ * decides how big it ends up on screen. What is fixed here is the ratio: the
+ * numbers stand outside the ring every ten degrees, so 36 of them share a
+ * circumference of 2*pi*1.12*R and each needs about 15 units clear. That holds
+ * at any final size; what does not survive shrinking is legibility, so the
+ * numbers are the thing to check before making the rose much smaller than the
+ * stylesheet already does.
  */
 export const ROSE_RADIUS = 84
-export const ROSE_PADDING = 16
+export const ROSE_PADDING = 14
 
 /** Radii as a fraction of the ring, following the chart's proportions. */
 const R_RING = 1
 const R_TICK_TEN = 0.915
 const R_TICK_FIVE = 0.945
 const R_TICK_ONE = 0.968
-const R_LABELS = 1.08
+const R_LABELS = 1.12
 /**
  * The north pointer: a needle standing inside the ring at 000, split down the
  * meridian with one half solid and one half open — the way a compass needle is

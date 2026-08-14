@@ -92,7 +92,7 @@ export default function CompassRose() {
             stroke={LABEL_HALO}
             strokeWidth={1.5}
             paintOrder="stroke"
-            fontSize={6.5}
+            fontSize={7}
             fontWeight={600}
             textAnchor="middle"
             dominantBaseline="central"
