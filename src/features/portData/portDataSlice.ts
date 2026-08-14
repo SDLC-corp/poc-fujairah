@@ -2,7 +2,9 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 import type {
   AnchorageCollection,
+  ContourCollection,
   GeofenceCollection,
+  SoundingCollection,
   VesselCollection,
   VesselFeature,
   VesselProps,
@@ -15,6 +17,10 @@ interface PortData {
   vessels: VesselCollection | null
   /** Operator-drawn geofences, editable independently of the official areas. */
   geofences: GeofenceCollection | null
+  /** Depth contours over the anchorage (npm run gen:contours). */
+  contours: ContourCollection | null
+  /** Spot soundings from the same run, on the same datum. */
+  soundings: SoundingCollection | null
 }
 
 interface PortDataState extends PortData {
@@ -26,6 +32,8 @@ const initialState: PortDataState = {
   anchorages: null,
   vessels: null,
   geofences: null,
+  contours: null,
+  soundings: null,
   status: 'idle',
   error: null,
 }
@@ -39,12 +47,14 @@ async function fetchJson<T>(url: string): Promise<T> {
 /** Loads the static GeoJSON datasets that stand in for a backend in this PoC. */
 export const loadPortData = createAsyncThunk('portData/load', async (): Promise<PortData> => {
   const base = `${import.meta.env.BASE_URL}data`
-  const [anchorages, vessels, geofences] = await Promise.all([
+  const [anchorages, vessels, geofences, contours, soundings] = await Promise.all([
     fetchJson<AnchorageCollection>(`${base}/anchorages.json`),
     fetchJson<VesselCollection>(`${base}/vessels.json`),
     fetchJson<GeofenceCollection>(`${base}/geofences.json`),
+    fetchJson<ContourCollection>(`${base}/contours.json`),
+    fetchJson<SoundingCollection>(`${base}/soundings.json`),
   ])
-  return { anchorages, vessels, geofences }
+  return { anchorages, vessels, geofences, contours, soundings }
 })
 
 const portDataSlice = createSlice({
@@ -142,6 +152,8 @@ const portDataSlice = createSlice({
         state.anchorages = action.payload.anchorages
         state.vessels = action.payload.vessels
         state.geofences = action.payload.geofences
+        state.contours = action.payload.contours
+        state.soundings = action.payload.soundings
       })
       .addCase(loadPortData.rejected, (state, action) => {
         state.status = 'failed'

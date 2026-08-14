@@ -13,6 +13,7 @@ import FeatureDetails from './components/FeatureDetails'
 import IncidentAlert from './components/IncidentAlert'
 import MapFocusControl from './components/MapFocusControl'
 import MapLegend from './components/MapLegend'
+import CompassRose from './components/CompassRose'
 import DashboardScreen from './components/screens/DashboardScreen'
 import TrackingScreen from './components/screens/TrackingScreen'
 import PlaybackScreen from './components/screens/PlaybackScreen'
@@ -115,6 +116,7 @@ export default function App() {
                 <div className="dash-map">
                   <MapView />
                   <MapFocusControl />
+                  <CompassRose />
                   <MapLegend />
                   <FeatureDetails />
                   {status === 'failed' && (
@@ -131,6 +133,7 @@ export default function App() {
               <div className="map-pane">
                 <MapView />
                 <MapFocusControl />
+                <CompassRose />
                 <MapLegend />
                 <FeatureDetails />
                 {status === 'failed' && (

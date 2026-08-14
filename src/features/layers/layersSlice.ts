@@ -13,7 +13,19 @@ interface LayersState {
 }
 
 const initialState: LayersState = {
-  visible: { anchorages: true, vessels: true, swing: true, freeSpots: true, geofences: true },
+  visible: {
+    anchorages: true,
+    // On by default. The only switch for it lives on the Settings screen, two
+    // screens away from the map, so defaulting it off effectively hides it.
+    contours: true,
+    soundings: true,
+    graticule: true,
+    compass: true,
+    vessels: true,
+    swing: true,
+    freeSpots: true,
+    geofences: true,
+  },
   vessels3d: true,
   buildings3d: true,
   mapNames: true,

@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Raw GEBCO samples for gen:contours — regenerable, and only a cache
+scripts/.gebco-cache.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

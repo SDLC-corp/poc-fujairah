@@ -10,7 +10,7 @@ import {
   selectSelectedVessel,
 } from '../features/analysis/selectors'
 import { selectFeature } from '../features/selection/selectionSlice'
-import { formatArea, formatDistance } from '../utils/format'
+import { formatArea, formatDistance, formatMetres, METRES_PER_NM } from '../utils/format'
 
 /**
  * Buffer + distance + overlap analysis around whichever vessel is selected,
@@ -24,6 +24,7 @@ export default function ProximityPanel() {
   const showLine = useAppSelector((s) => s.analysis.showNearestBerthLine)
   const nearest = useAppSelector(selectNearestBerthLine)
   const result = useAppSelector(selectProximityResult)
+  const radiusNm = (radiusKm * 1000) / METRES_PER_NM
 
   if (!vessel) {
     return (
@@ -39,17 +40,23 @@ export default function ProximityPanel() {
       <h2>Proximity analysis</h2>
       <p className="subject">{vessel.properties.name}</p>
 
+      {/* Set in miles like every other distance here, but the slice keeps its
+          radius in km because that is what Turf's buffer takes — so the mile is
+          converted at this boundary rather than rippling through the analysis. */}
       <label className="slider">
         <span>
-          Search radius <strong>{radiusKm.toFixed(2)} km</strong>
+          Search radius <strong>{radiusNm.toFixed(2)} NM</strong>
+          <span className="muted"> · {formatMetres(radiusKm * 1000)}</span>
         </span>
         <input
           type="range"
-          min={0.1}
-          max={3}
+          min={0.05}
+          max={1.6}
           step={0.05}
-          value={radiusKm}
-          onChange={(e) => dispatch(setBufferRadiusKm(Number(e.target.value)))}
+          value={radiusNm}
+          onChange={(e) =>
+            dispatch(setBufferRadiusKm((Number(e.target.value) * METRES_PER_NM) / 1000))
+          }
         />
       </label>
 

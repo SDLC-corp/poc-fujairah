@@ -16,6 +16,9 @@ const FONT_REGULAR = ['Noto Sans Regular']
 const FONT_BOLD = ['Noto Sans Bold']
 
 export const SOURCE_IDS = {
+  contours: 'src-contours',
+  soundings: 'src-soundings',
+  graticule: 'src-graticule',
   anchorages: 'src-anchorages',
   vessels: 'src-vessels',
   hulls: 'src-vessel-hulls',
@@ -34,6 +37,12 @@ export const SOURCE_IDS = {
 
 /** Style layers belonging to each toggleable data layer, bottom to top. */
 export const LAYER_GROUPS: Record<LayerId, string[]> = {
+  contours: ['contours-line', 'contours-label'],
+  soundings: ['soundings-label'],
+  graticule: ['graticule-line', 'graticule-tick', 'graticule-label'],
+  // The rose is an SVG instrument pinned to the pane, not a map layer, so its
+  // switch is read by CompassRose.tsx rather than applied to a style layer.
+  compass: [],
   anchorages: [
     'anchorages-fill',
     'anchorages-outline',
@@ -65,6 +74,15 @@ export const INTERACTIVE_LAYERS = [
   'vessels-circle',
   'anchorages-fill',
 ]
+
+/**
+ * Spot soundings, in the console's --muted (#5f7391) lifted a quarter toward
+ * white. Exported so the layer panel's swatch cannot drift from the map.
+ */
+export const SOUNDING_INK = '#8796ac'
+
+/** The graticule, in the console's --muted itself: read off, not followed. */
+export const GRATICULE_INK = '#5f7391'
 
 /** Incident fences: red for a hard exclusion, amber for advisory. */
 const geofenceColor: ExpressionSpecification = [
@@ -198,6 +216,34 @@ export function addPortLayers(map: MapLibreMap) {
       'fill-opacity': ['case', ['==', ['get', 'category'], 'restricted'], 0.14, 0.5],
     },
   })
+  /* --- depth contours --------------------------------------------------
+   * Slotted between the area fills and their outlines: over the tints so the
+   * lines stay legible — the FAA fills carry real weight at 0.5 opacity,
+   * unlike the light washes on the paper chart — but under the boundaries and
+   * area codes, which have to win. Depths are metres below Fujairah Harbour
+   * Datum; see scripts/gen-contours.mjs for the datum shift. */
+  add({
+    id: 'contours-line',
+    type: 'line',
+    source: SOURCE_IDS.contours,
+    minzoom: 9,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      // Index contours every 50 m carry the shape of the slope; the 10 m
+      // lines between them are lighter so they read as infill.
+      'line-color': ['case', ['get', 'major'], '#2f6288', '#6a97ba'],
+      'line-width': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        9,
+        ['case', ['get', 'major'], 1.6, 0.8],
+        14,
+        ['case', ['get', 'major'], 3.2, 1.6],
+      ],
+      'line-opacity': 0.9,
+    },
+  })
   add({
     id: 'anchorages-outline',
     type: 'line',
@@ -253,6 +299,47 @@ export function addPortLayers(map: MapLibreMap) {
       'text-allow-overlap': true,
     },
     paint: { 'text-color': '#0c4a6e', 'text-halo-color': '#f8fafc', 'text-halo-width': 1.7 },
+  })
+
+  /* --- graticule -------------------------------------------------------
+   * Meridians and parallels every 5', graduated at 1' and subdivided at 0.2'.
+   * Over the area fills, as the sheet runs its graduation straight across the
+   * tinted areas, but under everything that has to be read. The ticks are
+   * geometry in minutes rather than pixels, so they hold their proportion to
+   * the graduation at every zoom — see graticule.ts. */
+  add({
+    id: 'graticule-line',
+    type: 'line',
+    source: SOURCE_IDS.graticule,
+    filter: ['==', ['get', 'kind'], 'line'],
+    minzoom: 9,
+    paint: {
+      'line-color': GRATICULE_INK,
+      'line-width': 0.6,
+      'line-opacity': 0.45,
+    },
+  })
+  add({
+    id: 'graticule-tick',
+    type: 'line',
+    source: SOURCE_IDS.graticule,
+    filter: ['==', ['get', 'kind'], 'tick'],
+    minzoom: 9,
+    paint: {
+      'line-color': GRATICULE_INK,
+      'line-width': ['case', ['get', 'major'], 1.4, 0.9],
+      // The tenths are a comb between the minutes; the minutes carry the scale,
+      // so they stay legible where the tenths fade out zoomed away.
+      'line-opacity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        9,
+        ['case', ['get', 'major'], 0.75, 0],
+        11.5,
+        ['case', ['get', 'major'], 0.85, 0.6],
+      ],
+    },
   })
 
   /* --- geofences: operator-drawn incident boundaries ------------------- */
@@ -525,6 +612,108 @@ export function addPortLayers(map: MapLibreMap) {
       'text-offset': [0, 1.3],
     },
     paint: { 'text-color': '#0f172a', 'text-halo-color': '#f8fafc', 'text-halo-width': 1.6 },
+  })
+
+  /**
+   * Contour depths are labelled last on purpose. MapLibre places symbols in
+   * style order, so an early label layer wins every collision — putting these
+   * first buried the area codes and vessel names underneath them. Placed here
+   * they are the first thing dropped when the map gets crowded, which is the
+   * right priority for a depth reading. The lines themselves stay down with the
+   * bathymetry, under the spots and vessels.
+   */
+  add({
+    id: 'contours-label',
+    type: 'symbol',
+    source: SOURCE_IDS.contours,
+    minzoom: 10,
+    layout: {
+      'text-field': ['concat', ['to-string', ['get', 'depthM']], ' m'],
+      'text-font': FONT_BOLD,
+      'text-size': ['case', ['get', 'major'], 11, 10],
+      'symbol-placement': 'line',
+      'symbol-spacing': 240,
+      'text-rotation-alignment': 'map',
+      'text-pitch-alignment': 'viewport',
+    },
+    paint: {
+      'text-color': ['case', ['get', 'major'], '#1e4a6d', '#3f7096'],
+      'text-halo-color': '#f8fafc',
+      'text-halo-width': 1.8,
+      // Every 50 m is labelled from the start; the 10 m lines only name
+      // themselves once there is room for them.
+      'text-opacity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        11.5,
+        ['case', ['get', 'major'], 1, 0],
+        12.5,
+        1,
+      ],
+    },
+  })
+
+  // Each graticule line names itself, repeated along its length so a position
+  // can be read wherever the operator happens to be looking.
+  add({
+    id: 'graticule-label',
+    type: 'symbol',
+    source: SOURCE_IDS.graticule,
+    filter: ['==', ['get', 'kind'], 'line'],
+    minzoom: 10,
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-font': FONT_REGULAR,
+      'text-size': 10,
+      'symbol-placement': 'line',
+      'symbol-spacing': 320,
+      'text-rotation-alignment': 'map',
+      'text-pitch-alignment': 'viewport',
+      // Clear of the line it names, on the side the sheet writes it.
+      'text-offset': [0, -0.7],
+    },
+    paint: {
+      'text-color': GRATICULE_INK,
+      'text-halo-color': '#f8fafc',
+      'text-halo-width': 1.6,
+      'text-opacity': 0.9,
+    },
+  })
+
+  /* --- spot soundings --------------------------------------------------
+   * The scattered depth figures that carry the sheet, on the same datum as the
+   * contours. They are posted every 1.8 km, which is denser than the map can
+   * show zoomed out — so rather than gating them by zoom, they are left to
+   * collide: `symbol-sort-key` is the generator's tier, so the coarse 3.6 km
+   * soundings win placement and hold the water at low zoom while the finer ones
+   * fill in as the map opens up. Lowest priority of any label here, so a
+   * sounding is dropped before an area code or a ship's name is. */
+  add({
+    id: 'soundings-label',
+    type: 'symbol',
+    source: SOURCE_IDS.soundings,
+    minzoom: 10,
+    layout: {
+      'text-field': ['to-string', ['get', 'depthM']],
+      'text-font': FONT_REGULAR,
+      'text-size': ['interpolate', ['linear'], ['zoom'], 10, 9, 14, 11],
+      'symbol-sort-key': ['get', 'tier'],
+      // The density knob. Padding is the space a sounding reserves against its
+      // neighbours, so raising it is what actually thins the field — the
+      // generator only decides how many are *available* to place.
+      'text-padding': 18,
+    },
+    paint: {
+      // Set well back from the contour labels: a sounding is read off, not
+      // followed, and 1400 of them at contour weight would bury the chart. The
+      // tone is the console's own --muted lifted a quarter toward white, so the
+      // field of figures reads as the same navy-on-white as the rest of the UI.
+      'text-color': SOUNDING_INK,
+      'text-halo-color': '#f8fafc',
+      'text-halo-width': 1.2,
+      'text-opacity': 0.9,
+    },
   })
 
   /* --- analysis overlays ---------------------------------------------- */

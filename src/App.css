@@ -748,6 +748,21 @@ input[type='range'] {
   border-color: var(--accent);
 }
 
+/* The rose holds the top right corner, set in far enough to clear the zoom and
+   pitch control that MapLibre puts there. Clicks go through it to the chart —
+   it is an instrument to read, not a thing to press. It gives up width on a
+   short pane rather than filling it: the panes are sized in vh, so vh stands
+   in for the pane's own height well enough to keep the rose in proportion. */
+.compass-rose {
+  position: absolute;
+  top: 10px;
+  right: 48px;
+  z-index: 2;
+  pointer-events: none;
+  width: min(214px, 26vh);
+  height: auto;
+}
+
 /* the left column is controls + legend, so details open on the right */
 .map-pane .details-card {
   top: 130px;
@@ -2835,6 +2850,17 @@ input[type='range'] {
 .track-map .map-focus {
   top: 10px;
   left: 10px;
+}
+
+/* Details open on the right, clear of the extent presets — and narrower and
+   shorter than elsewhere, because this pane is only 58% of a column and the
+   full-height card of the dashboard would swallow it. */
+.track-map .details-card {
+  top: 10px;
+  left: auto;
+  right: 10px;
+  width: 274px;
+  max-height: calc(100% - 20px);
 }
 
 .track-detail {

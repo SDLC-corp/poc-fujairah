@@ -12,6 +12,7 @@ import { formatArea, formatDistance } from '../../utils/format'
 import { flagName } from '../../utils/flags'
 import MapView from '../MapView'
 import MapFocusControl from '../MapFocusControl'
+import FeatureDetails from '../FeatureDetails'
 import RawJson from '../RawJson'
 import { setVesselStatus } from '../../features/portData/portDataSlice'
 import type { VesselProps } from '../../types/gis'
@@ -201,9 +202,13 @@ export default function TrackingScreen() {
 
       {/* ---------- right: map above, selected vessel's details below ---------- */}
       <div className="track-col">
+        {/* The card rides the map here as it does on the dashboard: picking a
+            contact should answer "which one is that, and what is it" on the
+            chart itself, without the eye going down to the pane below. */}
         <div className="track-map">
           <MapView />
           <MapFocusControl />
+          <FeatureDetails />
         </div>
 
         <section className="panel track-detail">

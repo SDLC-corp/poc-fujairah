@@ -1,4 +1,21 @@
+/** One nautical mile, and the cable — a tenth of it — that charts subdivide by. */
+export const METRES_PER_NM = 1852
+const METRES_PER_CABLE = METRES_PER_NM / 10
+
+/** 13100 -> "7.07 NM". Metres are kept for anything inside a cable. */
 export function formatDistance(metres: number): string {
+  // Under a cable there is no mile left to read: two decimals of a mile is 19 m
+  // of resolution, which is coarser than the clearances being judged. Those are
+  // worked in metres anyway, the way the swing circle and the safety margin are.
+  if (metres < METRES_PER_CABLE) return `${metres.toFixed(0)} m`
+  return `${(metres / METRES_PER_NM).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} NM`
+}
+
+/** The same distance in metres, for a caption under the mile figure. */
+export function formatMetres(metres: number): string {
   return metres < 1000
     ? `${metres.toFixed(0)} m`
     : `${(metres / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} km`

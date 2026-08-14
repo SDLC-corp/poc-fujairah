@@ -34,6 +34,7 @@ import {
 } from '../features/spots/spotsSlice'
 import { indexAt, sampleAt, trackLine } from '../utils/playbackTrack'
 import { buildVesselHull } from '../map/vesselGeometry'
+import { buildGraticule } from '../map/graticule'
 import { registerAnchorIcon } from '../map/anchorIcon'
 import { registerVesselIcons } from '../map/vesselIcon'
 import { VESSEL_LABELS } from '../map/vesselTypes'
@@ -90,6 +91,11 @@ const LAYER_OF: Record<string, LayerId> = {
 const SOURCES_OF: Record<LayerId, string[]> = {
   vessels: [SOURCE_IDS.vessels, SOURCE_IDS.hulls, SOURCE_IDS.swing],
   anchorages: [SOURCE_IDS.anchorages],
+  // Chart furniture is backdrop — not in INTERACTIVE_LAYERS, never selected.
+  contours: [],
+  soundings: [],
+  graticule: [],
+  compass: [],
   swing: [SOURCE_IDS.swing],
   freeSpots: [SOURCE_IDS.freeSpots],
   geofences: [SOURCE_IDS.geofences],
@@ -104,6 +110,15 @@ export default function MapView() {
   const framedTransitRef = useRef<number | null>(null)
   /** Popup opened by an alert click; replaced or cleared on the next focus. */
   const focusPopupRef = useRef<Popup | null>(null)
+  /**
+   * Nonce of the last focus request actually acted on. The request carries `n`
+   * precisely so asking twice re-fires, but the effect also depends on the
+   * vessel, area and geofence data — so without this, any change to those
+   * re-runs an old request. Anchoring a vessel changes the vessel data, which
+   * is why a completed move used to end by flying back and re-opening the
+   * vessel popup over a ship that had just been parked.
+   */
+  const handledFocusRef = useRef<number | null>(null)
   /** Handle, details card and identity of the free spot under inspection. */
   const spotMarkerRef = useRef<Marker | null>(null)
   const spotPopupRef = useRef<Popup | null>(null)
@@ -124,6 +139,11 @@ export default function MapView() {
   const selected = useAppSelector((s) => s.selection.selected)
   const vessels = useAppSelector((s) => s.portData.vessels)
   const anchorages = useAppSelector((s) => s.portData.anchorages)
+  const contours = useAppSelector((s) => s.portData.contours)
+  const soundings = useAppSelector((s) => s.portData.soundings)
+  // Geometry, not data: the graticule is fixed by the coordinate system itself,
+  // so it is built once rather than fetched or stored.
+  const graticule = useMemo(() => buildGraticule(), [])
   const geofences = useAppSelector(selectGeofences)
   const showBuffer = useAppSelector((s) => s.analysis.showBuffer)
   const showNearestLine = useAppSelector((s) => s.analysis.showNearestBerthLine)
@@ -156,6 +176,13 @@ export default function MapView() {
   // so everything they read goes through a ref rather than a stale closure.
   const spotStateRef = useRef({ relocating, pickingFor })
   spotStateRef.current = { relocating, pickingFor }
+  /**
+   * A move owns the map while it runs. Read through a ref so the effects that
+   * consult it are not re-run by the transit itself — they only need to know
+   * whether one is under way at the moment they fire.
+   */
+  const transitRef = useRef(transit)
+  transitRef.current = transit
   /** Last track framed, so the camera is not yanked on every scrub. */
   const fittedTrackRef = useRef<string | null>(null)
   /** Read inside the framing effect without making it re-run on every frame. */
@@ -225,9 +252,10 @@ export default function MapView() {
   /* Create the map once. */
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+    const container = containerRef.current
 
     const map = new MapLibreMap({
-      container: containerRef.current,
+      container,
       style: BASEMAP_STYLE,
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
@@ -243,13 +271,35 @@ export default function MapView() {
     }
     map.on('pitchend', syncCamera)
     map.on('rotateend', syncCamera)
+    // Also while the drag is still running, so the compass rose turns with the
+    // map instead of snapping round when the gesture ends. The camera effect
+    // ignores a store value the map already holds, so this cannot fight it.
+    map.on('rotate', syncCamera)
     mapRef.current = map
+
+    /**
+     * MapLibre watches the window, not its own container. The map is built
+     * inside a CSS grid that has not finished resolving — `.dash-body` sizes
+     * its map column against a sibling that is still measuring, and the split
+     * screens hand the pane whatever is left after a 520 px panel — so the
+     * canvas gets locked to the first size the container reports, which is tall
+     * and narrow, and stays that shape until something happens to resize the
+     * window. That is the map that loads portrait and then snaps landscape.
+     * Watching the container instead fixes the size the moment layout settles,
+     * and keeps it right when a panel opens or a tab changes the pane's width.
+     */
+    const resizeObserver = new ResizeObserver(() => map.resize())
+    resizeObserver.observe(container)
     if (import.meta.env.DEV) {
       ;(window as unknown as { __map?: MapLibreMap }).__map = map
     }
 
     map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right')
     map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left')
+    // Both bars, because both units are in use here: swing circles and safety
+    // margins are worked in metres, but a passage distance is read in miles —
+    // and a mile is what the graticule's parallels are graduated in.
+    map.addControl(new ScaleControl({ unit: 'nautical' }), 'bottom-left')
 
     // Vector styles finish loading in stages, so rather than betting on one
     // event, attach the port layers as soon as the style can hold them and
@@ -316,6 +366,7 @@ export default function MapView() {
     })
 
     return () => {
+      resizeObserver.disconnect()
       map.remove()
       mapRef.current = null
       setStyleEpoch(0)
@@ -349,6 +400,9 @@ export default function MapView() {
     const map = mapRef.current
     if (!map || !styleEpoch) return
     const pairs: [string, FeatureCollection | null][] = [
+      [SOURCE_IDS.contours, contours],
+      [SOURCE_IDS.soundings, soundings],
+      [SOURCE_IDS.graticule, graticule],
       [SOURCE_IDS.anchorages, anchorages],
       [SOURCE_IDS.vessels, playbackFleet ?? vessels],
       [SOURCE_IDS.hulls, playbackHulls ?? hulls],
@@ -367,6 +421,9 @@ export default function MapView() {
   }, [
     styleEpoch,
     anchorages,
+    contours,
+    soundings,
+    graticule,
     geofences,
     vessels,
     hulls,
@@ -377,6 +434,24 @@ export default function MapView() {
     playbackFleet,
     playbackHulls,
   ])
+
+  /**
+   * Clear the deck before a move. By the time a vessel is ordered to its spot
+   * the map is carrying the leftovers of choosing it: the popup from focusing
+   * the vessel, pinned to the berth it is about to leave, and the free spot's
+   * inspection card, over water that is about to be occupied. Both are stale
+   * the moment the ship gathers way, and the passage is the thing to watch —
+   * so they go first, and the arrival's own popup is then the only one that
+   * opens. Keyed on `startedAt`, so it runs once per move and not on every
+   * frame of one.
+   */
+  useEffect(() => {
+    if (!transit) return
+    focusPopupRef.current?.remove()
+    focusPopupRef.current = null
+    if (selectedSpotId) dispatch(clearSpot())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transit?.startedAt])
 
   /* Walk an assigned vessel from where it waited to its spot. */
   useEffect(() => {
@@ -596,6 +671,25 @@ export default function MapView() {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !styleEpoch || !focusRequest) return
+    // One camera move per request. The data this effect reads keeps changing
+    // under it — anchoring a vessel rewrites the vessel it was asked to frame —
+    // and re-running an already-served request would fly the camera back and
+    // re-open its popup long after the operator asked for anything.
+    if (handledFocusRef.current === focusRequest.n) return
+
+    // The target may simply not have loaded yet; leave the request unserved so
+    // a later render can honour it rather than swallowing it here.
+    const served = () => {
+      handledFocusRef.current = focusRequest.n
+    }
+
+    // Nothing frames anything while a vessel is under way. The request is
+    // consumed rather than left pending, or it would fire the instant the ship
+    // parks and yank the camera off the arrival it was ordered to show.
+    if (transitRef.current) {
+      served()
+      return
+    }
 
     // A previous alert's popup is stale the moment the camera moves elsewhere.
     focusPopupRef.current?.remove()
@@ -603,6 +697,7 @@ export default function MapView() {
 
     if (focusRequest.target === 'point') {
       if (!focusRequest.coordinates) return
+      served()
       map.flyTo({
         center: focusRequest.coordinates,
         zoom: Math.max(map.getZoom(), 14),
@@ -611,6 +706,7 @@ export default function MapView() {
     } else if (focusRequest.target === 'vessel') {
       const vessel = vessels?.features.find((v) => v.properties.id === focusRequest.id)
       if (!vessel) return
+      served()
       // Close enough to read the hull and its swing circle, but never zoom back
       // out on an operator who has already gone in further than this.
       map.flyTo({
@@ -632,6 +728,7 @@ export default function MapView() {
         focusRequest.target === 'area' ? anchorages?.features : geofences?.features
       const feature = source?.find((f) => f.properties.id === focusRequest.id)
       if (!feature) return
+      served()
 
       const [w, s, e, n] = bbox(feature)
       map.fitBounds(
@@ -655,6 +752,7 @@ export default function MapView() {
         )
         .addTo(map)
     } else if (focusRequest.target === 'anchorage' && anchorages?.features.length) {
+      served()
       const [w, s, e, n] = bbox(anchorages)
       map.fitBounds(
         [
@@ -663,7 +761,8 @@ export default function MapView() {
         ],
         { padding: 40, duration: 900 },
       )
-    } else {
+    } else if (focusRequest.target !== 'anchorage') {
+      served()
       map.fitBounds(PORT_BOUNDS, { padding: 50, duration: 900 })
     }
   }, [styleEpoch, focusRequest, anchorages, vessels, geofences])
@@ -739,13 +838,23 @@ export default function MapView() {
     }
     prevSelectionRef.current = { sources, id: selected.id }
 
-    const collection = { anchorages, vessels, swing: vessels, freeSpots: null, geofences }[
-      selected.layer
-    ]
+    const collection = {
+      anchorages,
+      vessels,
+      swing: vessels,
+      freeSpots: null,
+      geofences,
+      contours: null,
+      soundings: null,
+      graticule: null,
+      compass: null,
+    }[selected.layer]
     const feature = collection?.features.find((f) => f.properties.id === selected.id)
     if (!feature) return
     const [lng, lat] = centroid(feature).geometry.coordinates
-    if (!map.getBounds().contains([lng, lat])) {
+    // The highlight above still applies during a move; only the camera is held,
+    // because the passage is already framed and must not be panned off it.
+    if (!transitRef.current && !map.getBounds().contains([lng, lat])) {
       map.easeTo({ center: [lng, lat], duration: 600 })
     }
   }, [styleEpoch, selected, anchorages, geofences, vessels])
@@ -756,7 +865,12 @@ export default function MapView() {
     if (!map || !styleEpoch) return
 
     const dragSource = () => map.getSource(SOURCE_IDS.spotDrag) as GeoJSONSource | undefined
-    const spot = freeSpots.features.find((f) => f.properties.id === selectedSpotId)
+    // Nothing is inspected while a vessel is under way: the spot card describes
+    // water that is in the act of being taken, and a click landing on another
+    // spot mid-passage must not put a second card over the move.
+    const spot = transit
+      ? undefined
+      : freeSpots.features.find((f) => f.properties.id === selectedSpotId)
 
     // Nothing selected — tear everything down.
     if (!spot) {
@@ -955,7 +1069,7 @@ export default function MapView() {
       dragSource()?.setData(EMPTY_FC)
       spotPopupRef.current?.setDOMContent(buildSpotPopup(spot.properties, centre, null))
     }
-  }, [styleEpoch, selectedSpotId, relocating, freeSpots, dispatch])
+  }, [styleEpoch, selectedSpotId, relocating, freeSpots, transit, dispatch])
 
   /**
    * Trail behind the followed vessel only. Just the run already made — drawing

@@ -1,6 +1,15 @@
-import type { Feature, FeatureCollection, Point, Polygon } from 'geojson'
+import type { Feature, FeatureCollection, MultiLineString, Point, Polygon } from 'geojson'
 
-export type LayerId = 'anchorages' | 'vessels' | 'swing' | 'freeSpots' | 'geofences'
+export type LayerId =
+  | 'anchorages'
+  | 'contours'
+  | 'soundings'
+  | 'graticule'
+  | 'compass'
+  | 'vessels'
+  | 'swing'
+  | 'freeSpots'
+  | 'geofences'
 
 // Declared as `type` rather than `interface` so they keep an implicit index
 // signature and stay assignable to GeoJSON's `GeoJsonProperties` in Turf calls.
@@ -139,6 +148,36 @@ export type VesselProps = {
 
 export type AnchorageFeature = Feature<Polygon | Point, AnchorageProps>
 export type AnchorageCollection = FeatureCollection<Polygon | Point, AnchorageProps>
+
+/**
+ * One depth contour, contoured from GEBCO by `npm run gen:contours`. Depths are
+ * positive metres below Fujairah Harbour Datum, so they read as the chart prints
+ * them rather than as negative elevations.
+ */
+export type ContourProps = {
+  id: string
+  depthM: number
+  /** Index contour — every 50 m — drawn heavier and labelled first. */
+  major: boolean
+  source: string
+}
+
+export type ContourCollection = FeatureCollection<MultiLineString, ContourProps>
+
+/**
+ * One spot sounding — the scattered depth figures that carry a chart — on the
+ * same datum as the contours. Interpolated from the GEBCO grid, not a measured
+ * least depth: a charted sounding is the shoalest reading over a patch, and
+ * these are not, which is why the map labels them as approximate.
+ */
+export type SoundingProps = {
+  id: string
+  depthM: number
+  /** 0 coarsest (3.6 km), 1 finest (1.8 km). Drives placement priority. */
+  tier: number
+}
+
+export type SoundingCollection = FeatureCollection<Point, SoundingProps>
 
 /** An anchorage feature narrowed to its polygon form. */
 export type AreaFeature = Feature<Polygon, AnchorageProps>

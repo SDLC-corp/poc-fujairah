@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "verify": "node scripts/verify-data.mjs",
+    "gen:contours": "node scripts/gen-contours.mjs",
     "gen:vessels": "node scripts/gen-vessels.mjs public/data/anchorages.json public/data/vessels.json",
     "gen:playback": "node scripts/gen-playback.mjs"
   },

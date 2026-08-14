@@ -14,6 +14,10 @@ import type { LayerId } from '../types/gis'
 const LAYER_TITLE: Record<LayerId, string> = {
   vessels: 'Vessel',
   anchorages: 'Anchorage area',
+  contours: 'Depth contour',
+  soundings: 'Spot sounding',
+  graticule: 'Graticule',
+  compass: 'Compass rose',
   swing: 'Swing circle',
   freeSpots: 'Available spot',
   geofences: 'Geofence',
@@ -30,12 +34,26 @@ export default function FeatureDetails() {
   const nearest = useAppSelector(selectNearestBerthByVessel)
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)
   const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
+  const transit = useAppSelector((s) => s.transit.active)
 
   if (!selected) return null
+  // A move owns the map while it runs. The card would be describing a vessel
+  // at a position it is in the act of leaving, over the passage the operator
+  // ordered and is watching — so it stands down and comes back on arrival, the
+  // selection itself untouched.
+  if (transit) return null
 
-  const collection = { anchorages, vessels, swing: vessels, freeSpots: null, geofences }[
-    selected.layer
-  ]
+  const collection = {
+    anchorages,
+    vessels,
+    swing: vessels,
+    freeSpots: null,
+    geofences,
+    contours: null,
+    soundings: null,
+    graticule: null,
+    compass: null,
+  }[selected.layer]
   const feature = collection?.features.find((f) => f.properties.id === selected.id)
   if (!feature) return null
 
