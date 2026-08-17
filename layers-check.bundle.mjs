@@ -69,6 +69,8 @@ var SOURCE_IDS = {
 };
 var SOUNDING_INK = "#8796ac";
 var GRATICULE_INK = "#5f7391";
+var CONTOUR_INK = "#6a97ba";
+var CONTOUR_LABEL_INK = "#3f7096";
 var geofenceColor = [
   "match",
   ["get", "kind"],
@@ -128,18 +130,13 @@ function addPortLayers(map) {
     minzoom: 9,
     layout: { "line-join": "round", "line-cap": "round" },
     paint: {
-      // Index contours every 50 m carry the shape of the slope; the 10 m
-      // lines between them are lighter so they read as infill.
-      "line-color": ["case", ["get", "major"], "#2f6288", "#6a97ba"],
-      "line-width": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        9,
-        ["case", ["get", "major"], 1.6, 0.8],
-        14,
-        ["case", ["get", "major"], 3.2, 1.6]
-      ],
+      // One weight for every isobath. The usual convention thickens each 50 m
+      // line as an index to count from, but the FAA sits in 65-145 m, so only
+      // two of them ever cross the water the operator works in — the hierarchy
+      // cost more than it bought here. `major` is still carried on the feature
+      // and still decides which lines get labelled first.
+      "line-color": CONTOUR_INK,
+      "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 14, 1.6],
       "line-opacity": 0.9
     }
   });
@@ -490,18 +487,20 @@ function addPortLayers(map) {
     layout: {
       "text-field": ["concat", ["to-string", ["get", "depthM"]], " m"],
       "text-font": FONT_BOLD,
-      "text-size": ["case", ["get", "major"], 11, 10],
+      "text-size": 10,
       "symbol-placement": "line",
       "symbol-spacing": 240,
       "text-rotation-alignment": "map",
       "text-pitch-alignment": "viewport"
     },
     paint: {
-      "text-color": ["case", ["get", "major"], "#1e4a6d", "#3f7096"],
+      "text-color": CONTOUR_LABEL_INK,
       "text-halo-color": "#f8fafc",
       "text-halo-width": 1.8,
-      // Every 50 m is labelled from the start; the 10 m lines only name
-      // themselves once there is room for them.
+      // The lines all read the same weight now, so nothing here says one
+      // isobath outranks another. This is density, not hierarchy: twenty
+      // labelled contours at once is unreadable, so the 50s name themselves
+      // first and the 10 m lines join them as soon as there is room.
       "text-opacity": [
         "interpolate",
         ["linear"],

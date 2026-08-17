@@ -7,7 +7,7 @@ import {
 } from '../features/layers/layersSlice'
 import type { LayerId } from '../types/gis'
 import { COMPASS_INK } from '../map/compassRose'
-import { GRATICULE_INK, SOUNDING_INK } from '../map/layers'
+import { CONTOUR_INK, GRATICULE_INK, SOUNDING_INK } from '../map/layers'
 
 const LAYERS: { id: LayerId; label: string; swatch: string }[] = [
   { id: 'anchorages', label: 'Anchorage areas (FAA)', swatch: '#e03b32' },
@@ -17,7 +17,7 @@ const LAYERS: { id: LayerId; label: string; swatch: string }[] = [
   { id: 'geofences', label: 'Geofences (incidents)', swatch: '#dc2626' },
   // Chart furniture is backdrop, so it sits at the foot of the list — and under
   // the spots and vessels on the map.
-  { id: 'contours', label: 'Depth contours (10 m)', swatch: '#3f7096' },
+  { id: 'contours', label: 'Depth contours (10 m)', swatch: CONTOUR_INK },
   { id: 'soundings', label: 'Spot soundings', swatch: SOUNDING_INK },
   { id: 'graticule', label: 'Graticule (1′ = 1 NM)', swatch: GRATICULE_INK },
   { id: 'compass', label: 'Compass rose', swatch: COMPASS_INK },

@@ -182,8 +182,13 @@ MapLibre places symbols in style order, so an early label layer wins every colli
 depths first buried the area codes and vessel names. Placed at the end they are the first thing
 dropped when the map gets crowded, which is the right priority for a depth reading.
 
-Every 50 m is an index contour, drawn heavier and labelled from z10; the 10 m lines between them
-fade their labels in at z12.5. The toggle sits at the foot of **Settings → Layers**.
+**Every isobath is drawn at one weight and one colour.** The usual convention thickens each 50 m
+line as an index to count from, and that was how this started — but the FAA sits in 65–145 m, so
+only the 100 m and 150 m lines ever cross the water the operator works in. Two heavy lines out of
+twenty bought no counting and cost a visible hierarchy between depths that do not differ in
+importance. `major` is still carried on each feature, and still decides which lines name themselves
+first: twenty labelled contours at once is unreadable, so the 50s label from z11.5 and the 10 m
+lines join them at z12.5 — density, not rank. The toggle sits at the foot of **Settings → Layers**.
 
 **Why they are generated rather than fetched.** MapTiler Ocean ships a ready-made `contour_line`
 layer, and reading it straight off the `ocean` tileset is a dozen lines of style. But its tilejson
