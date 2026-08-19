@@ -32,6 +32,7 @@ import {
   selectSpot,
   startRelocate,
 } from '../features/spots/spotsSlice'
+//test
 import { indexAt, sampleAt, trackLine } from '../utils/playbackTrack'
 import { buildVesselHull } from '../map/vesselGeometry'
 import { buildGraticule } from '../map/graticule'
