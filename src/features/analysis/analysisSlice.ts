@@ -16,7 +16,15 @@ interface AnalysisState {
 
 const initialState: AnalysisState = {
   bufferRadiusKm: 0.6,
-  showBuffer: true,
+  /**
+   * Off by default. The buffer is a search radius for the proximity panel, not
+   * a property of the vessel — but on by default it drew a second dashed circle
+   * around every selection, sitting concentric with the swing circle and
+   * reading as if the ship had two safe areas. The swing circle is the water
+   * the vessel actually occupies and is the one that belongs on a click; the
+   * buffer is switched on from Proximity analysis when it is being used.
+   */
+  showBuffer: false,
   showNearestBerthLine: true,
   swingFactor: 2,
   safetyMarginM: 10,
