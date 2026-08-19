@@ -9,8 +9,8 @@ import type { PayloadAction } from '@reduxjs/toolkit'
  * to protect anything. Replace with a real backend session (httpOnly cookie or
  * short-lived token issued by the API) before any non-sample data sits behind it.
  */
-export const DEMO_EMAIL = 'admin@gmail.com'
-export const DEMO_PASSWORD = 'Sample@123'
+export const DEMO_EMAIL = 'operator@fujairahport.ae'
+export const DEMO_PASSWORD = 'FjP!8vQ#2mL@7xR9'
 
 const SESSION_KEY = 'fujairah.poc.session'
 
