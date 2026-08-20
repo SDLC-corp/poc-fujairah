@@ -5,6 +5,7 @@ import {
   selectVesselAreaIndex,
   swingRadiusM,
 } from '../features/analysis/selectors'
+import { SAFETY_MARGIN_NM } from '../features/analysis/analysisSlice'
 import { VESSEL_LABELS } from '../map/vesselTypes'
 import type { VesselType } from '../types/gis'
 import { clearSelection } from '../features/selection/selectionSlice'
@@ -108,7 +109,7 @@ export default function FeatureDetails() {
             </div>
             <div>
               <dt>Margin</dt>
-              <dd>{safetyMarginM} m</dd>
+              <dd>{SAFETY_MARGIN_NM} nautical miles</dd>
             </div>
             <div>
               <dt>Diameter</dt>

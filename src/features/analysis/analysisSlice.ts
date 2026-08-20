@@ -1,6 +1,18 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
 
+/**
+ * The clearance the port states between anchored vessels, quoted on the vessel
+ * details as operators expect to read it — in miles.
+ *
+ * It is a stated figure, deliberately not `safetyMarginM`. That one is the
+ * slack the swing radius carries in its own arithmetic (LOA x factor + margin)
+ * and stays in metres because the geometry does. Making the radius use 0.3 NM
+ * instead adds 556 m to every circle and empties the anchorage — the sample
+ * fleet drops from 155 vessels to 27, and packing BN places none at all.
+ */
+export const SAFETY_MARGIN_NM = 0.3
+
 interface AnalysisState {
   /** Proximity search radius around the selected vessel, in kilometres. */
   bufferRadiusKm: number

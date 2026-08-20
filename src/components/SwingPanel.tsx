@@ -1,5 +1,6 @@
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { setSafetyMarginM, setSwingFactor } from '../features/analysis/analysisSlice'
+import { METRES_PER_NM } from '../utils/format'
 
 /** Sample average LOA per area — what the allocator would preload per zone. */
 const AREA_DEFAULTS = [
@@ -17,6 +18,10 @@ export default function SwingPanel() {
   const dispatch = useAppDispatch()
   const factor = useAppSelector((s) => s.analysis.swingFactor)
   const margin = useAppSelector((s) => s.analysis.safetyMarginM)
+  // The field reads in miles; the store keeps metres, because the swing radius
+  // is built from LOA in metres and a mile of slack is not the granularity the
+  // margin is actually tuned at — 10 m is 0.005 NM.
+  const marginNm = Number((margin / METRES_PER_NM).toFixed(3))
 
   return (
     <>
@@ -36,21 +41,26 @@ export default function SwingPanel() {
             />
           </label>
           <label>
-            Safety margin (metres)
+            Safety margin (nautical miles)
             <input
               className="text-input"
               type="number"
               min={0}
-              max={500}
-              step={5}
-              value={margin}
-              onChange={(e) => dispatch(setSafetyMarginM(Number(e.target.value) || 0))}
+              max={0.5}
+              step={0.005}
+              value={marginNm}
+              onChange={(e) =>
+                dispatch(
+                  setSafetyMarginM(Number(((Number(e.target.value) || 0) * METRES_PER_NM).toFixed(1))),
+                )
+              }
             />
           </label>
         </div>
         <p className="muted hint">
-          Safe-area radius = LOA × factor + margin. A 200 m vessel currently needs{' '}
-          <strong>{200 * factor + margin} m</strong>.
+          Entered in miles, held in metres — currently <strong>{margin} m</strong>. Safe-area radius
+          = LOA × factor + margin, so a 200 m vessel needs{' '}
+          <strong>{Math.round(200 * factor + margin)} m</strong>.
         </p>
       </section>
 
@@ -72,7 +82,7 @@ export default function SwingPanel() {
                   <strong>{a.code}</strong>
                 </td>
                 <td>{a.loa} m</td>
-                <td className="muted">{a.loa * factor + margin} m</td>
+                <td className="muted">{Math.round(a.loa * factor + margin)} m</td>
               </tr>
             ))}
           </tbody>

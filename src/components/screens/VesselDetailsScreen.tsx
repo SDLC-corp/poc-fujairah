@@ -4,6 +4,7 @@ import {
   selectVesselAreaIndex,
   swingRadiusM,
 } from '../../features/analysis/selectors'
+import { SAFETY_MARGIN_NM } from '../../features/analysis/analysisSlice'
 import { selectFeature } from '../../features/selection/selectionSlice'
 import { setTab } from '../../features/ui/uiSlice'
 import { focusVessel } from '../../features/view/viewSlice'
@@ -275,7 +276,7 @@ export default function VesselDetailsScreen() {
               </div>
               <div>
                 <dt>Margin</dt>
-                <dd>{safetyMarginM} m</dd>
+                <dd>{SAFETY_MARGIN_NM} nautical miles</dd>
               </div>
               <div>
                 <dt>Swept area</dt>

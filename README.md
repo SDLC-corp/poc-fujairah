@@ -314,6 +314,44 @@ area is designated for. Deterministic, so regenerating gives the same fleet.
 The pitch assumes the default factor (×2) and margin (10 m); raising either in Settings will make
 circles overlap, which is the honest answer — the water simply is not there.
 
+### Packing an area full — WALLPACK_MHDF
+
+`npm run gen:wallpack` repacks one area (**BN** by default; pass a code as the third argument) with
+[gen-wallpack.mjs](scripts/gen-wallpack.mjs), leaving every other area exactly as `gen:vessels`
+produced it. `npm run gen:vessels` puts it back.
+
+This is the algorithm from Huang, Hsu & He (2010), *Assessing Capacity and Improving Utilization of
+Anchorages*, Figure 9. A **corner placement** is a position where the arriving disc touches two
+items — an edge of the anchorage or an already-placed disc — and its **hole degree** is
+`1 − dmin/r`, the gap to the nearest item it is *not* touching, scaled by its own radius. A disc
+wedged into a hole scores near 1; one lying against a single neighbour in open water scores near 0.
+The order is: take a two-side corner if one exists, else the vessel-side corner with the largest
+hole degree, else the two-vessel corner with the largest hole degree, else the anchorage is full.
+Sizes are packed largest-first, which is WALLPACK's own heuristic — put the big discs in the
+corners while the corners are still empty.
+
+**The fill grows in from the borders**, and that falls out of the algorithm rather than being
+imposed: with no vessels placed yet the only items to touch are the anchorage's own edges, so the
+first placements can only be corners, then wall positions, and only once there is a wall of ships
+do two-vessel holes appear.
+
+Packing **BN (31.7 km²)** places **61 vessels from 54 m to 366 m LOA at 84 % swing utilisation**,
+and `npm run verify` confirms **no swing circle overlaps another and none leaves the area**. BN
+then disappears from the free-spot list entirely — the allocator agrees it is full. Every vessel
+lies on the same heading with a few degrees of yaw, because they share one wind and one tide, which
+is also why the packed area reads as rows of parallel needles rather than a scatter.
+
+**Two margins, and they exist for numerical reasons rather than nautical ones.** The packing runs
+on a local equirectangular plane about the area's centroid — circle geometry in degrees is
+meaningless, since a degree of longitude is shorter than a degree of latitude — while
+`verify-data.mjs` checks containment with `booleanWithin` on a 64-gon in degree space and clearance
+with geodesic distance. Two different approximations, so a disc laid *exactly* tangent lands on
+either side of the line at random. `EPS_M` (5 m) backs every placement off its neighbours and
+`EDGE_EPS_M` (10 m) off the boundary. Both are noise against a 118 m radius; without them the
+verifier reports fouled pairs that are, in the arithmetic, exactly clear. The plane also uses the
+WGS-84 degree lengths rather than the spherical shorthand, which removes about 1.5 m of systematic
+error across a swing circle on its own.
+
 ### Supplying vessels
 
 Replace the sample fleet with your own Point features; `properties` must match `VesselProps` in
