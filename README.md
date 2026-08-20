@@ -335,11 +335,26 @@ imposed: with no vessels placed yet the only items to touch are the anchorage's 
 first placements can only be corners, then wall positions, and only once there is a wall of ships
 do two-vessel holes appear.
 
-Packing **BN (31.7 km²)** places **61 vessels from 54 m to 366 m LOA at 84 % swing utilisation**,
-and `npm run verify` confirms **no swing circle overlaps another and none leaves the area**. BN
-then disappears from the free-spot list entirely — the allocator agrees it is full. Every vessel
-lies on the same heading with a few degrees of yaw, because they share one wind and one tide, which
-is also why the packed area reads as rows of parallel needles rather than a scatter.
+Packing **BN (31.7 km²)** places **58 vessels from 54 m to 366 m LOA at 74 % swing utilisation**,
+and `npm run verify` confirms **no swing circle overlaps another and none leaves the area**. Every
+vessel lies on the same heading with a few degrees of yaw, because they share one wind and one
+tide, which is also why the packed area reads as rows of parallel needles rather than a scatter.
+
+**Two spots are held open**, and they have to be held deliberately. `selectFreeSpots` lays a hexagonal
+grid whose pitch is set by the *largest* vessel the area holds — 366 m here — so an offer needs a
+**742 m radius** circle clear of every anchor and centred on a grid point. A hole that big and that
+precisely placed does not fall out of a dense packing by luck. `RESERVE_SPOTS` therefore mirrors
+that selector's grid exactly (same pitch, same hexagonal offset, same origin), takes the grid
+points **nearest the middle of the area** whose circles fit wholly inside it, and packs around them
+as obstacles. The discs are dropped from the fleet afterwards, and the app rediscovers them as
+offers — BN reports **2 free spots** rather than being unassignable. Because that grid is centred
+on the area's bounding box, the first lands on BN's centroid exactly and the second 1.5 km out,
+both with the packing closed around them.
+
+Raising `RESERVE_SPOTS` is how you empty a berth: each reserved disc displaces the vessels the
+packer would otherwise have put there, so going from one spot to two dropped the fleet from 60 to
+58 and utilisation from 79 % to 74 %. A central hole is expensive — it blocks placements in every
+direction, where one against a wall only blocks inward.
 
 **Two margins, and they exist for numerical reasons rather than nautical ones.** The packing runs
 on a local equirectangular plane about the area's centroid — circle geometry in degrees is

@@ -47,6 +47,18 @@ const EPS_M = 5
 const EDGE_EPS_M = 10
 /** Runaway guard; a real anchorage fills long before this. */
 const MAX_VESSELS = 240
+/**
+ * Spots held open, so a packed area still has somewhere to assign a vessel to.
+ *
+ * They cannot be left to chance. `selectFreeSpots` lays a hexagonal grid whose
+ * pitch is set by the *largest* vessel the area holds — 366 m here, so a spot
+ * needs a 742 m radius circle clear of every anchor, centred on a grid point.
+ * A hole that big and that precisely placed will not fall out of a dense
+ * packing, so one is reserved on that same grid before packing starts and
+ * removed from the fleet afterwards: the packer treats it as an obstacle, and
+ * the app then rediscovers it as an offer.
+ */
+const RESERVE_SPOTS = 2
 const NOW = Date.UTC(2026, 7, 3, 9, 15)
 const HOUR = 3600_000
 
@@ -245,8 +257,41 @@ function twoVesselCorners(discs, r) {
  * Packing
  * ------------------------------------------------------------------ */
 
-function pack(ring, sizes) {
-  const discs = []
+/**
+ * The centres `selectFreeSpots` will search, in the order it searches them.
+ * Mirrors that selector exactly — the same pitch, the same hexagonal offset and
+ * the same origin — because a reserved hole is only useful if it lands where
+ * the app actually looks.
+ */
+function freeSpotGrid(lonLatRing, radiusM) {
+  const lons = lonLatRing.map((p) => p[0])
+  const lats = lonLatRing.map((p) => p[1])
+  const [west, east] = [Math.min(...lons), Math.max(...lons)]
+  const [south, north] = [Math.min(...lats), Math.max(...lats)]
+
+  const pitchM = radiusM * 2 * 1.03
+  const midLat = (south + north) / 2
+  const stepLon = pitchM / (111320 * Math.cos((midLat * Math.PI) / 180))
+  const stepLat = (pitchM * 0.866) / 111320
+  const rows = Math.max(1, Math.floor((north - south) / stepLat))
+  const cols = Math.max(1, Math.floor((east - west) / stepLon))
+  const originLat = south + (north - south - (rows - 1) * stepLat) / 2
+  const originLon = west + (east - west - (cols - 1) * stepLon) / 2
+
+  const out = []
+  for (let r = 0; r < rows; r++) {
+    const rowOffset = r % 2 === 1 ? stepLon / 2 : 0
+    for (let c = 0; c < cols; c++) {
+      const lon = originLon + c * stepLon + rowOffset
+      if (lon > east) continue
+      out.push([lon, originLat + r * stepLat])
+    }
+  }
+  return out
+}
+
+function pack(ring, sizes, reserved = []) {
+  const discs = [...reserved]
   const edges = []
   for (let i = 0; i < ring.length; i++) {
     edges.push([ring[i], ring[(i + 1) % ring.length]])
@@ -353,8 +398,29 @@ for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
 }
 areaM2 = Math.abs(areaM2 / 2)
 
+// Hold open the spots the app will look for, before anything is packed. The
+// radius is the one `selectFreeSpots` will use — set by the largest vessel the
+// area ends up holding, which is the largest in the mix.
+const spotRadiusM = radiusOf(Math.max(...SIZE_MIX.map((s) => s.loa)))
+const edgesOf = ring.map((p, i) => [p, ring[(i + 1) % ring.length]])
+const fitsWholly = ([x, y], r) =>
+  pointInRing([x, y], ring) && edgesOf.every(([a, b]) => distToSegment([x, y], a, b) >= r + EDGE_EPS_M)
+
+// Nearest the middle of the area first. The projection origin is the mean of
+// the ring's vertices, so distance from [0, 0] is distance from the centre —
+// the spot has to sit on the app's grid to be found at all, so this takes the
+// most central grid point that fits rather than an arbitrary free one.
+const reserved = freeSpotGrid(lonLatRing, spotRadiusM)
+  .map((lonLat) => {
+    const [x, y] = proj.to(lonLat)
+    return { x, y, r: spotRadiusM, lonLat, fromCentre: Math.hypot(x, y) }
+  })
+  .filter((s) => fitsWholly([s.x, s.y], spotRadiusM))
+  .sort((a, b) => a.fromCentre - b.fromCentre)
+  .slice(0, RESERVE_SPOTS)
+
 const sizes = SIZE_MIX.map((s) => ({ ...s }))
-const { placed, skipped } = pack(ring, sizes)
+const { placed, skipped } = pack(ring, sizes, reserved)
 
 const rand = mulberry32(areaCode.split('').reduce((a, c) => a + c.charCodeAt(0), 11) * 7919)
 
@@ -416,6 +482,16 @@ for (const p of placed) byLoa[p.loa] = (byLoa[p.loa] ?? 0) + 1
 
 console.log(`WALLPACK_MHDF — area ${areaCode}`)
 console.log(`  anchorage area    ${(areaM2 / 1e6).toFixed(2)} km2`)
+console.log(
+  `  spots reserved    ${reserved.length} at r=${Math.round(spotRadiusM)} m` +
+    reserved
+      .map(
+        (s) =>
+          ` [${s.lonLat[0].toFixed(4)}, ${s.lonLat[1].toFixed(4)}]` +
+          ` ${Math.round(s.fromCentre)} m from centre`,
+      )
+      .join(''),
+)
 console.log(`  vessels placed    ${placed.length}${skipped ? ` (${skipped} sizes would not fit)` : ''}`)
 console.log(`  swing utilisation ${((100 * discArea) / areaM2).toFixed(1)}%`)
 console.log('  by LOA:', byLoa)
