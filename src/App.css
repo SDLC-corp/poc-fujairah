@@ -5230,3 +5230,604 @@ input[type='range'] {
   background: var(--surface-2);
   color: var(--text);
 }
+
+/* ---------------- roles & permissions ---------------- */
+
+/* An action button living in a panel heading, pushed to the far end of it.
+   `.primary-button` and `.ghost-button` are full-width by default — they are
+   built for the bottom of a form card, and carry no horizontal padding because
+   the width supplies it. Sitting in a heading they have to shrink to their
+   label, so both the width and the padding are overridden here. */
+.head-action {
+  width: auto;
+  margin-left: auto;
+  margin-top: 0;
+  padding: 6px 13px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ghost-button.head-action.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* The roles table picks a row rather than opening anything, so the whole row
+   is the target and the selected one stays marked while you read the panels
+   below it. Scoped to this table — the app's other tables are not clickable
+   and must not be given a pointer that says they are. */
+.roles-table tbody tr.row-selected {
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.roles-table tbody tr:hover {
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+/* Underlined tabs across the head of the card, the way a record's sections are
+   usually switched — the active one is marked by the rule it sits on rather
+   than by a filled chip, so the bar reads as one control. */
+.role-tabbar {
+  display: flex;
+  gap: 4px;
+  margin: -4px -14px 0;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.role-tab {
+  margin: 0;
+  padding: 9px 13px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.role-tab:hover {
+  color: var(--navy-700);
+}
+
+.role-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* The selected role's identity beside its matrix. The matrix takes the larger
+   share because it is seven columns wide, and the facts beside it read happily
+   in a narrow column. The rule between them is the divider on the design. */
+.role-detail-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.9fr);
+  gap: 22px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.role-detail-col {
+  min-width: 0;
+}
+
+.role-detail-col + .role-detail-col {
+  border-left: 1px solid var(--border);
+  padding-left: 22px;
+}
+
+.role-detail-col > .sub-head:first-child {
+  margin-top: 0;
+}
+
+/* Label above value, stacked — a two-column definition list wraps badly at this
+   width and the values are the part being read. */
+.role-facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.role-facts dt {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+
+.role-facts dd {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.role-facts .fact-strong {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.fact-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.dot-active,
+.dot-inactive {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot-active {
+  background: var(--ok);
+}
+
+.dot-inactive {
+  background: var(--alert);
+}
+
+.role-perm-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.role-perm-head .sub-head {
+  margin: 0;
+}
+
+/* Six action columns plus the module name do not always fit the right-hand
+   column, so the table scrolls inside it rather than widening the panel. */
+.perm-scroll {
+  overflow-x: auto;
+}
+
+@media (max-width: 1180px) {
+  .role-detail-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Stacked, the divider belongs above the matrix rather than beside it. */
+  .role-detail-col + .role-detail-col {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding-left: 0;
+    padding-top: 16px;
+  }
+}
+
+/* ---- hierarchy ---- */
+
+/* Each ancestor sits under the last with a connector, so the chain of
+   inheritance reads top-down the way the role tree is described. */
+.role-chain {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.role-chain li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.role-chain li + li {
+  margin-top: 20px;
+}
+
+.role-chain li + li::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  width: 1px;
+  height: 12px;
+  background: var(--border-strong);
+}
+
+.role-chain li + li::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  transform: rotate(45deg);
+}
+
+.role-chain li.current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.role-chain li .badge {
+  margin-left: auto;
+  font-style: normal;
+}
+
+.role-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.role-children button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  text-align: left;
+  font-size: 13px;
+  margin-top: 0;
+}
+
+.role-children button:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.role-children span,
+.role-users span {
+  display: flex;
+  flex-direction: column;
+}
+
+.role-children small,
+.role-users small {
+  font-size: 11px;
+}
+
+/* ---- users and audit ---- */
+
+.role-users,
+.role-audit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.role-users li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.role-audit li {
+  display: grid;
+  grid-template-columns: 118px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+/* ---- the matrix ---- */
+
+/* Ruled in both directions. A 66-cell grid of ticks and dashes is only
+   scannable if the eye can follow a row and a column, which a borderless table
+   does not give you. */
+.perm-table {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+.perm-table thead th {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.perm-table th + th,
+.perm-table td + td {
+  border-left: 1px solid var(--border);
+}
+
+.perm-table tbody tr + tr td {
+  border-top: 1px solid var(--border);
+}
+
+.perm-table td,
+.perm-table th {
+  padding: 7px 10px;
+}
+
+.perm-table th.perm-col,
+.perm-table td.perm-col {
+  text-align: center;
+  width: 74px;
+}
+
+.perm-module {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.perm-module > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.perm-module small {
+  font-size: 11px;
+}
+
+button.perm-module {
+  cursor: pointer;
+}
+
+.perm-allow {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.perm-none {
+  color: var(--border-strong);
+}
+
+.perm-inherited {
+  color: var(--accent);
+  cursor: help;
+}
+
+.perm-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.perm-legend b {
+  margin-right: 4px;
+}
+
+/* ---- add-role dialog ---- */
+
+.role-dialog {
+  width: min(1080px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.role-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.role-dialog-head h3 {
+  margin: 0;
+}
+
+.role-dialog-head p {
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+
+.role-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+
+.icon-button {
+  margin: 0 0 0 auto;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--muted);
+  padding: 0 4px;
+}
+
+.icon-button:hover {
+  color: var(--text);
+}
+
+.role-dialog-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 18px;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.role-dialog-col {
+  min-width: 0;
+}
+
+.role-dialog-perm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.role-dialog-perm-head p {
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+
+/* Same reason as `.head-action`: these sit in a row beside other content, so
+   they size to their labels rather than filling it. */
+.role-dialog-perm-head .dialog-actions {
+  margin-top: 0;
+}
+
+.role-dialog-perm-head .dialog-actions button,
+.role-dialog-foot button {
+  width: auto;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+
+.role-dialog-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+}
+
+.role-dialog-foot {
+  justify-content: flex-end;
+  padding: 13px 18px;
+  border-top: 1px solid var(--border);
+  margin-top: 0;
+}
+
+/* ---- form bits ---- */
+
+.field {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field > span {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.field .text-input,
+.field select,
+.field textarea {
+  width: 100%;
+}
+
+.field .count {
+  display: block;
+  text-align: right;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.req {
+  color: var(--alert);
+  font-style: normal;
+}
+
+.radio-row {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.role-box {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 13px 13px;
+  margin: 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.role-box legend {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 0 5px;
+}
+
+.area-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.switch-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.badge-low {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.badge-medium {
+  background: #fdf1dc;
+  color: var(--warn);
+}
+
+.badge-high {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+@media (max-width: 980px) {
+  .role-dialog-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

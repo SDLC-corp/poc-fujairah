@@ -10,6 +10,7 @@ import authReducer from '../features/auth/authSlice'
 import spotsReducer from '../features/spots/spotsSlice'
 import playbackReducer from '../features/playback/playbackSlice'
 import incidentsReducer from '../features/incidents/incidentsSlice'
+import rolesReducer from '../features/roles/rolesSlice'
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     spots: spotsReducer,
     playback: playbackReducer,
     incidents: incidentsReducer,
+    roles: rolesReducer,
   },
   middleware: (getDefaultMiddleware) =>
     // GeoJSON collections are large and immutable in practice; the deep

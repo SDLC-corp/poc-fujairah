@@ -21,6 +21,7 @@ import OccupancyScreen from './components/screens/OccupancyScreen'
 import AssignmentScreen from './components/screens/AssignmentScreen'
 import VesselDetailsScreen from './components/screens/VesselDetailsScreen'
 import ReportsScreen from './components/screens/ReportsScreen'
+import RolesScreen from './components/screens/RolesScreen'
 import SettingsScreen from './components/screens/SettingsScreen'
 import HelpScreen from './components/screens/HelpScreen'
 import './App.css'
@@ -33,6 +34,7 @@ const SCREENS = {
   assignment: AssignmentScreen,
   vessel: VesselDetailsScreen,
   reports: ReportsScreen,
+  roles: RolesScreen,
   settings: SettingsScreen,
   help: HelpScreen,
 }
