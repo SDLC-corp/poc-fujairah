@@ -35,21 +35,76 @@ export type ModuleId =
   | 'settings'
 
 export const MODULES: { id: ModuleId; label: string; blurb: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', blurb: 'Access to overview dashboards', icon: 'dashboard' },
-  { id: 'liveAnchorage', label: 'Live Anchorage', blurb: 'View live vessel positions', icon: 'anchor' },
-  { id: 'vesselRequests', label: 'Vessel Requests', blurb: 'Manage anchoring requests', icon: 'reports' },
-  { id: 'assignment', label: 'Assignment', blurb: 'Assign and manage vessel spots', icon: 'assignment' },
-  { id: 'vesselTracking', label: 'Vessel Tracking', blurb: 'Real-time vessel tracking', icon: 'tracking' },
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    blurb: 'Access to overview dashboards',
+    icon: 'dashboard',
+  },
+  {
+    id: 'liveAnchorage',
+    label: 'Live Anchorage',
+    blurb: 'View live vessel positions',
+    icon: 'anchor',
+  },
+  {
+    id: 'vesselRequests',
+    label: 'Vessel Requests',
+    blurb: 'Manage anchoring requests',
+    icon: 'reports',
+  },
+  {
+    id: 'assignment',
+    label: 'Assignment',
+    blurb: 'Assign and manage vessel spots',
+    icon: 'assignment',
+  },
+  {
+    id: 'vesselTracking',
+    label: 'Vessel Tracking',
+    blurb: 'Real-time vessel tracking',
+    icon: 'tracking',
+  },
   { id: 'playback', label: 'Playback', blurb: 'Historical data playback', icon: 'playback' },
   { id: 'alerts', label: 'Alerts', blurb: 'Manage system alerts', icon: 'alert' },
   { id: 'reports', label: 'Reports', blurb: 'Access analytics and reports', icon: 'reports' },
   { id: 'users', label: 'Users', blurb: 'Manage system users', icon: 'crew' },
-  { id: 'roles', label: 'Roles & Permissions', blurb: 'Manage roles and permissions', icon: 'roles' },
+  {
+    id: 'roles',
+    label: 'Roles & Permissions',
+    blurb: 'Manage roles and permissions',
+    icon: 'roles',
+  },
   { id: 'settings', label: 'Settings', blurb: 'System configuration', icon: 'settings' },
 ]
 
 /** `inherited` defers to the parent role; the other two are set on this role. */
 export type PermissionValue = 'allow' | 'none' | 'inherited'
+
+/**
+ * Grants that are not module actions. They belong to the workflow rather than
+ * to a screen — a role may be able to see the assignment module without being
+ * the one who commits an assignment — so they sit beside the matrix, not in it.
+ */
+export type RoleSettingKey = 'canAssignSpots' | 'canApproveRequests' | 'receivesAlerts'
+
+export const ROLE_SETTINGS: { key: RoleSettingKey; label: string; blurb: string }[] = [
+  {
+    key: 'canAssignSpots',
+    label: 'Can assign spots',
+    blurb: 'Commit a vessel to an anchorage spot',
+  },
+  {
+    key: 'canApproveRequests',
+    label: 'Can approve vessel requests',
+    blurb: 'Accept or refuse an anchoring request',
+  },
+  {
+    key: 'receivesAlerts',
+    label: 'Receive system alerts',
+    blurb: 'Incidents and incursions are routed to this role',
+  },
+]
 
 export type PermissionMatrix = Record<ModuleId, Record<PermissionAction, PermissionValue>>
 
@@ -98,7 +153,14 @@ const READ_ONLY = matrix('none', {
   reports: { view: 'allow', export: 'allow' },
 })
 
-const ADMIN_INHERITED = { view: 'none', add: 'inherited', edit: 'inherited', delete: 'inherited', approve: 'inherited', export: 'inherited' } as const
+const ADMIN_INHERITED = {
+  view: 'none',
+  add: 'inherited',
+  edit: 'inherited',
+  delete: 'inherited',
+  approve: 'inherited',
+  export: 'inherited',
+} as const
 
 const initialRoles: Role[] = [
   {
@@ -175,9 +237,30 @@ const initialRoles: Role[] = [
     // read-only on tracking and playback, and the admin modules left to the
     // parent rather than granted here.
     permissions: matrix('none', {
-      dashboard: { view: 'allow', add: 'allow', edit: 'allow', delete: 'allow', approve: 'allow', export: 'allow' },
-      liveAnchorage: { view: 'allow', add: 'allow', edit: 'allow', delete: 'allow', approve: 'allow', export: 'allow' },
-      vesselRequests: { view: 'allow', add: 'allow', edit: 'allow', delete: 'allow', approve: 'allow', export: 'allow' },
+      dashboard: {
+        view: 'allow',
+        add: 'allow',
+        edit: 'allow',
+        delete: 'allow',
+        approve: 'allow',
+        export: 'allow',
+      },
+      liveAnchorage: {
+        view: 'allow',
+        add: 'allow',
+        edit: 'allow',
+        delete: 'allow',
+        approve: 'allow',
+        export: 'allow',
+      },
+      vesselRequests: {
+        view: 'allow',
+        add: 'allow',
+        edit: 'allow',
+        delete: 'allow',
+        approve: 'allow',
+        export: 'allow',
+      },
       assignment: { view: 'allow', add: 'allow', edit: 'allow', delete: 'allow', export: 'allow' },
       vesselTracking: { view: 'allow', export: 'allow' },
       playback: { view: 'allow' },
@@ -276,10 +359,34 @@ export interface AuditEntry {
 }
 
 const initialAudit: AuditEntry[] = [
-  { id: 'A-1', roleId: 'anchorage-officer', at: '2024-05-15T14:20:00Z', who: 'John Doe', what: 'Granted Export on Reports' },
-  { id: 'A-2', roleId: 'anchorage-officer', at: '2024-05-14T10:05:00Z', who: 'John Doe', what: 'Revoked Approve on Assignment' },
-  { id: 'A-3', roleId: 'anchorage-officer', at: '2024-05-12T08:40:00Z', who: 'A. Rahman', what: 'Added 2 users to role' },
-  { id: 'A-4', roleId: 'anchorage-officer', at: '2024-05-10T09:30:00Z', who: 'System', what: 'Role created' },
+  {
+    id: 'A-1',
+    roleId: 'anchorage-officer',
+    at: '2024-05-15T14:20:00Z',
+    who: 'John Doe',
+    what: 'Granted Export on Reports',
+  },
+  {
+    id: 'A-2',
+    roleId: 'anchorage-officer',
+    at: '2024-05-14T10:05:00Z',
+    who: 'John Doe',
+    what: 'Revoked Approve on Assignment',
+  },
+  {
+    id: 'A-3',
+    roleId: 'anchorage-officer',
+    at: '2024-05-12T08:40:00Z',
+    who: 'A. Rahman',
+    what: 'Added 2 users to role',
+  },
+  {
+    id: 'A-4',
+    roleId: 'anchorage-officer',
+    at: '2024-05-10T09:30:00Z',
+    who: 'System',
+    what: 'Role created',
+  },
 ]
 
 interface RolesState {
@@ -318,7 +425,10 @@ const rolesSlice = createSlice({
     },
     addRole(state, action: PayloadAction<NewRole>) {
       const now = new Date().toISOString()
-      const id = slugify(action.payload.name, state.roles.map((r) => r.id))
+      const id = slugify(
+        action.payload.name,
+        state.roles.map((r) => r.id),
+      )
       state.roles.push({ ...action.payload, id, users: 0, createdAt: now, updatedAt: now })
       state.selectedId = id
       state.audit.unshift({
@@ -331,7 +441,12 @@ const rolesSlice = createSlice({
     },
     setPermission(
       state,
-      action: PayloadAction<{ roleId: string; module: ModuleId; action: PermissionAction; value: PermissionValue }>,
+      action: PayloadAction<{
+        roleId: string
+        module: ModuleId
+        action: PermissionAction
+        value: PermissionValue
+      }>,
     ) {
       const role = state.roles.find((r) => r.id === action.payload.roleId)
       if (!role) return
@@ -349,6 +464,27 @@ const rolesSlice = createSlice({
         what: `${action.payload.value === 'allow' ? 'Granted' : 'Revoked'} ${actionLabel} on ${moduleLabel}`,
       })
     },
+    /**
+     * The three grants that sit outside the module matrix. They are set on the
+     * Add Role dialog, so they have to be changeable afterwards too — a setting
+     * you can only choose at creation is a setting you cannot correct.
+     */
+    setRoleSetting(
+      state,
+      action: PayloadAction<{ roleId: string; key: RoleSettingKey; value: boolean }>,
+    ) {
+      const role = state.roles.find((r) => r.id === action.payload.roleId)
+      if (!role || role[action.payload.key] === action.payload.value) return
+      role[action.payload.key] = action.payload.value
+      role.updatedAt = new Date().toISOString()
+      state.audit.unshift({
+        id: `A-${state.audit.length + 1}`,
+        roleId: role.id,
+        at: role.updatedAt,
+        who: 'John Doe',
+        what: `${action.payload.value ? 'Granted' : 'Revoked'} ${ROLE_SETTINGS.find((s) => s.key === action.payload.key)?.label}`,
+      })
+    },
     setRoleActive(state, action: PayloadAction<{ roleId: string; active: boolean }>) {
       const role = state.roles.find((r) => r.id === action.payload.roleId)
       if (!role) return
@@ -358,5 +494,6 @@ const rolesSlice = createSlice({
   },
 })
 
-export const { selectRole, addRole, setPermission, setRoleActive } = rolesSlice.actions
+export const { selectRole, addRole, setPermission, setRoleSetting, setRoleActive } =
+  rolesSlice.actions
 export default rolesSlice.reducer

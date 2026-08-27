@@ -3,9 +3,11 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   MODULES,
   PERMISSION_ACTIONS,
+  ROLE_SETTINGS,
   selectRole,
   setPermission,
   setRoleActive,
+  setRoleSetting,
 } from '../../features/roles/rolesSlice'
 import { formatDateTime } from '../../utils/format'
 import AddRoleDialog from '../AddRoleDialog'
@@ -195,19 +197,38 @@ export default function RolesScreen() {
                       : `Areas ${active.areas.join(', ') || '—'}`}
                   </dd>
                 </div>
-                <div>
-                  <dt>Also Granted</dt>
-                  <dd>
-                    {[
-                      active.canAssignSpots && 'assign spots',
-                      active.canApproveRequests && 'approve vessel requests',
-                      active.receivesAlerts && 'receive system alerts',
-                    ]
-                      .filter(Boolean)
-                      .join(', ') || 'Nothing beyond the module permissions'}
-                  </dd>
-                </div>
               </dl>
+
+              {/* The Add Role dialog sets these, so they have to be changeable
+                  here too — otherwise they can be chosen once and never
+                  corrected. Each writes its own audit entry, as a permission
+                  change does. */}
+              <h3 className="sub-head">Additional Settings</h3>
+              <ul className="role-settings">
+                {ROLE_SETTINGS.map((s) => (
+                  <li key={s.key}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={active[s.key]}
+                        onChange={(e) =>
+                          dispatch(
+                            setRoleSetting({
+                              roleId: active.id,
+                              key: s.key,
+                              value: e.target.checked,
+                            }),
+                          )
+                        }
+                      />
+                      <span>
+                        <strong>{s.label}</strong>
+                        <small className="muted">{s.blurb}</small>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             {/* ---------- the matrix ---------- */}

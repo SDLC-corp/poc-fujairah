@@ -5371,6 +5371,40 @@ input[type='range'] {
   background: var(--alert);
 }
 
+/* The grants that sit outside the matrix. Checkbox left, name and a line of
+   what it actually means beside it — "can assign spots" is not self-evident. */
+.role-settings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.role-settings label {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.role-settings label > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.role-settings small {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.role-settings input {
+  margin-top: 2px;
+  flex: none;
+}
+
 .role-perm-head {
   display: flex;
   align-items: center;
