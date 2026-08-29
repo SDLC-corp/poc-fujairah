@@ -4,22 +4,32 @@ import type { PayloadAction } from '@reduxjs/toolkit'
 /**
  * Role-based access control for the console.
  *
- * Roles form a tree: a child inherits everything its parent grants and may
- * narrow but not widen it. That is why a permission has three states rather
- * than a checkbox — `inherited` means "whatever the parent says", and is what
- * keeps a hierarchy editable without restating the whole matrix on every role.
+ * A module grants access in three layers rather than as a row of identical
+ * checkboxes:
+ *
+ *   - **Access level** — the default scope for the module as a whole. Not every
+ *     module offers every level: Dashboard and Audit Log are read-only by
+ *     nature, so offering "Read & Write" on them would be a promise the system
+ *     cannot keep.
+ *   - **Capabilities** — the specific things this module can do. They are not
+ *     uniform: "Reassign Vessel" means something on Assignment and nothing on
+ *     Reports, which is why a shared Add/Edit/Delete grid flattens the real
+ *     permissions into columns that do not apply.
+ *   - **Scope** — where a module acts on a set of things, how wide that set is.
  */
 
-export type PermissionAction = 'view' | 'add' | 'edit' | 'delete' | 'approve' | 'export'
+export type AccessLevel = 'none' | 'view' | 'readwrite'
 
-export const PERMISSION_ACTIONS: { id: PermissionAction; label: string }[] = [
-  { id: 'view', label: 'View' },
-  { id: 'add', label: 'Add' },
-  { id: 'edit', label: 'Edit' },
-  { id: 'delete', label: 'Delete' },
-  { id: 'approve', label: 'Approve' },
-  { id: 'export', label: 'Export' },
+export const ACCESS_LEVELS: { id: AccessLevel; label: string }[] = [
+  { id: 'none', label: 'No Access' },
+  { id: 'view', label: 'View Only' },
+  { id: 'readwrite', label: 'Read & Write' },
 ]
+
+/** What a module offers when it does not narrow the list itself. */
+const READ_WRITE: AccessLevel[] = ['none', 'view', 'readwrite']
+/** Modules that can only ever be looked at. */
+const READ_ONLY: AccessLevel[] = ['none', 'view']
 
 export type ModuleId =
   | 'dashboard'
@@ -32,81 +42,217 @@ export type ModuleId =
   | 'reports'
   | 'users'
   | 'roles'
+  | 'audit'
   | 'settings'
 
-export const MODULES: { id: ModuleId; label: string; blurb: string; icon: string }[] = [
+export interface Capability {
+  id: string
+  label: string
+  /** Shown behind an info marker where the label alone is ambiguous. */
+  hint?: string
+}
+
+export interface ModuleDef {
+  id: ModuleId
+  label: string
+  blurb: string
+  /** The access levels this module offers. */
+  levels: AccessLevel[]
+  capabilities: Capability[]
+  /** Modules that act on a set of things declare how wide that set is. */
+  scope?: { label: string; options: string[] }
+}
+
+export const MODULES: ModuleDef[] = [
   {
     id: 'dashboard',
     label: 'Dashboard',
-    blurb: 'Access to overview dashboards',
-    icon: 'dashboard',
+    blurb: 'Access to overview dashboards and key analytics.',
+    levels: READ_ONLY,
+    capabilities: [{ id: 'viewDashboard', label: 'View Dashboard' }],
   },
   {
     id: 'liveAnchorage',
     label: 'Live Anchorage',
-    blurb: 'View live vessel positions',
-    icon: 'anchor',
+    blurb: 'View live vessel positions and anchorage status.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewVesselDetails', label: 'View Vessel Details' },
+      { id: 'trackVessel', label: 'Track Vessel' },
+      { id: 'viewAnchorageStatus', label: 'View Anchorage Status' },
+      { id: 'viewVesselMovement', label: 'View Vessel Movement' },
+    ],
   },
   {
     id: 'vesselRequests',
     label: 'Vessel Requests',
-    blurb: 'Manage anchoring requests',
-    icon: 'reports',
+    blurb: 'Manage anchoring requests and related workflow.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'createRequest', label: 'Create Request' },
+      { id: 'editRequest', label: 'Edit Request' },
+      { id: 'approveRequest', label: 'Approve Request' },
+      { id: 'rejectRequest', label: 'Reject Request' },
+      { id: 'exportRequests', label: 'Export Requests' },
+    ],
   },
   {
     id: 'assignment',
     label: 'Assignment',
-    blurb: 'Assign and manage vessel spots',
-    icon: 'assignment',
+    blurb: 'Assign and manage vessel spots and schedules.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'assignSpot', label: 'Assign Anchorage Spot' },
+      {
+        id: 'changeSpot',
+        label: 'Change Anchorage Spot',
+        hint: 'Move a spot to different coordinates after it has been generated.',
+      },
+      {
+        id: 'reassignVessel',
+        label: 'Reassign Vessel',
+        hint: 'Move an already-anchored vessel to a different spot.',
+      },
+      {
+        id: 'manageSpotStatus',
+        label: 'Manage Spot Status',
+        hint: 'Reserve, release or block a spot without a vessel movement.',
+      },
+      { id: 'viewAssignmentHistory', label: 'View Assignment History' },
+      { id: 'shareAssignment', label: 'Share Assignment' },
+    ],
+    scope: {
+      label: 'Default Assignment Access',
+      options: ['Assigned Only', 'Assigned & Shared', 'All Assignments'],
+    },
   },
   {
     id: 'vesselTracking',
     label: 'Vessel Tracking',
-    blurb: 'Real-time vessel tracking',
-    icon: 'tracking',
+    blurb: 'Real-time vessel tracking and movement history.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewLiveLocation', label: 'View Live Location' },
+      { id: 'viewTrackHistory', label: 'View Track History' },
+      { id: 'viewVesselMovement', label: 'View Vessel Movement' },
+      { id: 'downloadTrack', label: 'Download Track' },
+    ],
   },
-  { id: 'playback', label: 'Playback', blurb: 'Historical data playback', icon: 'playback' },
-  { id: 'alerts', label: 'Alerts', blurb: 'Manage system alerts', icon: 'alert' },
-  { id: 'reports', label: 'Reports', blurb: 'Access analytics and reports', icon: 'reports' },
-  { id: 'users', label: 'Users', blurb: 'Manage system users', icon: 'crew' },
+  {
+    id: 'playback',
+    label: 'Playback',
+    blurb: 'Historical data playback of vessel movements and events.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewPlayback', label: 'View Playback' },
+      { id: 'viewHistoricalEvents', label: 'View Historical Events' },
+      { id: 'downloadPlayback', label: 'Download Playback' },
+    ],
+  },
+  {
+    id: 'alerts',
+    label: 'Alerts',
+    blurb: 'View and manage system alerts and notifications.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewAlerts', label: 'View Alerts' },
+      { id: 'acknowledgeAlert', label: 'Acknowledge Alert' },
+      { id: 'assignAlert', label: 'Assign Alert' },
+      { id: 'commentAlert', label: 'Comment on Alert' },
+      { id: 'resolveAlert', label: 'Resolve Alert' },
+      { id: 'notifyStakeholders', label: 'Notify Stakeholders' },
+    ],
+    scope: {
+      label: 'Default Alert Access',
+      options: ['My Alerts', 'Area Alerts', 'All Alerts'],
+    },
+  },
+  {
+    id: 'reports',
+    label: 'Reports',
+    blurb: 'View, generate and export system and operational reports.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewReports', label: 'View Reports' },
+      { id: 'generateReports', label: 'Generate Reports' },
+      { id: 'scheduleReports', label: 'Schedule Reports' },
+      { id: 'exportReports', label: 'Export Reports' },
+      { id: 'shareReports', label: 'Share Reports' },
+    ],
+  },
+  {
+    id: 'users',
+    label: 'Users',
+    blurb: 'Manage users and their roles within the system.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewUsers', label: 'View Users' },
+      { id: 'addUser', label: 'Add User' },
+      { id: 'editUser', label: 'Edit User' },
+      { id: 'deactivateUser', label: 'Deactivate User' },
+      { id: 'assignRole', label: 'Assign Role' },
+      {
+        id: 'resetAccess',
+        label: 'Reset Access',
+        hint: 'Force a password reset and revoke the user’s active sessions.',
+      },
+    ],
+  },
   {
     id: 'roles',
     label: 'Roles & Permissions',
-    blurb: 'Manage roles and permissions',
-    icon: 'roles',
+    blurb: 'Create roles and define what each one can reach.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewRoles', label: 'View Roles' },
+      { id: 'createRole', label: 'Create Role' },
+      { id: 'editRole', label: 'Edit Role' },
+      { id: 'assignPermissions', label: 'Assign Permissions' },
+      { id: 'duplicateRole', label: 'Duplicate Role' },
+      {
+        id: 'deactivateRole',
+        label: 'Deactivate Role',
+        hint: 'Users keep the role but it grants nothing until it is reactivated.',
+      },
+    ],
   },
-  { id: 'settings', label: 'Settings', blurb: 'System configuration', icon: 'settings' },
+  {
+    id: 'audit',
+    label: 'Audit Log',
+    blurb: 'Who changed what, and when. Read-only by design.',
+    // An audit trail you can write to is not an audit trail.
+    levels: READ_ONLY,
+    capabilities: [
+      { id: 'viewActivity', label: 'View Activity' },
+      { id: 'filterActivity', label: 'Filter Activity' },
+      { id: 'viewDetails', label: 'View Details' },
+      { id: 'exportAuditLog', label: 'Export Audit Log' },
+    ],
+  },
+  {
+    id: 'settings',
+    label: 'Settings / Configuration',
+    blurb: 'System configuration, parameters and reference data.',
+    levels: READ_WRITE,
+    capabilities: [
+      { id: 'viewSettings', label: 'View Settings' },
+      { id: 'updateConfiguration', label: 'Update Configuration' },
+      {
+        id: 'manageReferenceData',
+        label: 'Manage Reference Data',
+        hint: 'Anchorage areas, vessel types, depth data and the swing parameters.',
+      },
+    ],
+  },
 ]
 
-/** `inherited` defers to the parent role; the other two are set on this role. */
-export type PermissionValue = 'allow' | 'none' | 'inherited'
+export interface ModulePermission {
+  level: AccessLevel
+  capabilities: Record<string, boolean>
+  scope?: string
+}
 
-/**
- * Grants that are not module actions. They belong to the workflow rather than
- * to a screen — a role may be able to see the assignment module without being
- * the one who commits an assignment — so they sit beside the matrix, not in it.
- */
-export type RoleSettingKey = 'canAssignSpots' | 'canApproveRequests' | 'receivesAlerts'
-
-export const ROLE_SETTINGS: { key: RoleSettingKey; label: string; blurb: string }[] = [
-  {
-    key: 'canAssignSpots',
-    label: 'Can assign spots',
-    blurb: 'Commit a vessel to an anchorage spot',
-  },
-  {
-    key: 'canApproveRequests',
-    label: 'Can approve vessel requests',
-    blurb: 'Accept or refuse an anchoring request',
-  },
-  {
-    key: 'receivesAlerts',
-    label: 'Receive system alerts',
-    blurb: 'Incidents and incursions are routed to this role',
-  },
-]
-
-export type PermissionMatrix = Record<ModuleId, Record<PermissionAction, PermissionValue>>
+export type PermissionMatrix = Record<ModuleId, ModulePermission>
 
 export interface Role {
   id: string
@@ -121,52 +267,55 @@ export interface Role {
   /** Port-wide, or restricted to named anchorage areas. */
   scope: 'port' | 'areas'
   areas: string[]
-  canAssignSpots: boolean
-  canApproveRequests: boolean
-  receivesAlerts: boolean
   permissions: PermissionMatrix
 }
 
-/** Builds a full matrix from a sparse description, defaulting the rest. */
-function matrix(
-  fallback: PermissionValue,
-  overrides: Partial<Record<ModuleId, Partial<Record<PermissionAction, PermissionValue>>>> = {},
+type ModuleSpec = { level: AccessLevel; on?: string[] | 'all'; scope?: string }
+
+/**
+ * Builds a full matrix from a sparse description, defaulting the rest to no
+ * access. A level a module does not offer is clamped to the closest it does,
+ * so a spec can never produce a permission the module cannot honour.
+ */
+export function buildPermissions(
+  spec: Partial<Record<ModuleId, ModuleSpec>> = {},
 ): PermissionMatrix {
   const out = {} as PermissionMatrix
   for (const m of MODULES) {
-    out[m.id] = {} as Record<PermissionAction, PermissionValue>
-    for (const a of PERMISSION_ACTIONS) {
-      out[m.id][a.id] = overrides[m.id]?.[a.id] ?? fallback
+    const s = spec[m.id]
+    const wanted = s?.level ?? 'none'
+    const level = m.levels.includes(wanted) ? wanted : m.levels[m.levels.length - 1]
+    const on = s?.on === 'all' ? m.capabilities.map((c) => c.id) : (s?.on ?? [])
+    out[m.id] = {
+      level,
+      capabilities: Object.fromEntries(m.capabilities.map((c) => [c.id, on.includes(c.id)])),
+      ...(m.scope ? { scope: s?.scope ?? m.scope.options[0] } : {}),
     }
   }
   return out
 }
 
-const ALL = matrix('allow')
-
-/** The read-only shape: look at everything, change nothing. */
-const READ_ONLY = matrix('none', {
-  dashboard: { view: 'allow', export: 'allow' },
-  liveAnchorage: { view: 'allow' },
-  vesselTracking: { view: 'allow' },
-  playback: { view: 'allow' },
-  reports: { view: 'allow', export: 'allow' },
-})
-
-const ADMIN_INHERITED = {
-  view: 'none',
-  add: 'inherited',
-  edit: 'inherited',
-  delete: 'inherited',
-  approve: 'inherited',
-  export: 'inherited',
-} as const
+/** Everything a module offers — the shape a root administrator has. */
+function allAccess(): PermissionMatrix {
+  return buildPermissions(
+    Object.fromEntries(
+      MODULES.map((m) => [
+        m.id,
+        {
+          level: m.levels[m.levels.length - 1],
+          on: 'all' as const,
+          ...(m.scope ? { scope: m.scope.options[m.scope.options.length - 1] } : {}),
+        },
+      ]),
+    ),
+  )
+}
 
 const initialRoles: Role[] = [
   {
-    id: 'harbour-master',
-    name: 'Harbour Master',
-    description: 'Full access to all modules and settings',
+    id: 'super-admin',
+    name: 'Super Admin',
+    description: 'Unrestricted access, including roles and system configuration',
     parentId: null,
     users: 3,
     active: true,
@@ -174,10 +323,46 @@ const initialRoles: Role[] = [
     updatedAt: '2024-05-15T14:20:00Z',
     scope: 'port',
     areas: [],
-    canAssignSpots: true,
-    canApproveRequests: true,
-    receivesAlerts: true,
-    permissions: ALL,
+    permissions: allAccess(),
+  },
+  {
+    id: 'admin',
+    name: 'Admin',
+    description: 'Full operational access; cannot change roles or configuration',
+    parentId: 'super-admin',
+    users: 3,
+    active: true,
+    createdAt: '2024-05-10T09:31:00Z',
+    updatedAt: '2024-05-15T14:20:00Z',
+    scope: 'port',
+    areas: [],
+    permissions: buildPermissions({
+      dashboard: { level: 'view', on: 'all' },
+      liveAnchorage: { level: 'readwrite', on: 'all' },
+      vesselRequests: { level: 'readwrite', on: 'all' },
+      assignment: { level: 'readwrite', on: 'all', scope: 'All Assignments' },
+      vesselTracking: { level: 'readwrite', on: 'all' },
+      playback: { level: 'readwrite', on: 'all' },
+      alerts: { level: 'readwrite', on: 'all', scope: 'All Alerts' },
+      reports: { level: 'readwrite', on: 'all' },
+      users: { level: 'readwrite', on: 'all' },
+      roles: { level: 'view', on: ['viewRoles'] },
+      audit: { level: 'view', on: ['viewActivity', 'filterActivity', 'viewDetails'] },
+      settings: { level: 'view', on: ['viewSettings'] },
+    }),
+  },
+  {
+    id: 'harbour-master',
+    name: 'Harbour Master',
+    description: 'Full access to all modules and settings',
+    parentId: 'admin',
+    users: 3,
+    active: true,
+    createdAt: '2024-05-10T09:32:00Z',
+    updatedAt: '2024-05-15T14:20:00Z',
+    scope: 'port',
+    areas: [],
+    permissions: allAccess(),
   },
   {
     id: 'deputy-harbour-master',
@@ -190,10 +375,28 @@ const initialRoles: Role[] = [
     updatedAt: '2024-05-14T11:05:00Z',
     scope: 'port',
     areas: [],
-    canAssignSpots: true,
-    canApproveRequests: true,
-    receivesAlerts: true,
-    permissions: matrix('allow', { settings: ADMIN_INHERITED, roles: ADMIN_INHERITED }),
+    permissions: buildPermissions({
+      dashboard: { level: 'view', on: 'all' },
+      liveAnchorage: { level: 'readwrite', on: 'all' },
+      vesselRequests: { level: 'readwrite', on: 'all' },
+      assignment: { level: 'readwrite', on: 'all', scope: 'All Assignments' },
+      vesselTracking: { level: 'view', on: ['viewLiveLocation', 'viewTrackHistory'] },
+      playback: { level: 'view', on: ['viewPlayback', 'viewHistoricalEvents'] },
+      alerts: {
+        level: 'readwrite',
+        on: [
+          'viewAlerts',
+          'acknowledgeAlert',
+          'commentAlert',
+          'resolveAlert',
+          'notifyStakeholders',
+        ],
+        scope: 'All Alerts',
+      },
+      reports: { level: 'readwrite', on: ['viewReports', 'generateReports', 'exportReports'] },
+      users: { level: 'view', on: ['viewUsers'] },
+      audit: { level: 'view', on: ['viewActivity', 'filterActivity', 'viewDetails'] },
+    }),
   },
   {
     id: 'port-control-operator',
@@ -206,17 +409,22 @@ const initialRoles: Role[] = [
     updatedAt: '2024-05-13T08:15:00Z',
     scope: 'port',
     areas: [],
-    canAssignSpots: false,
-    canApproveRequests: false,
-    receivesAlerts: true,
-    permissions: matrix('none', {
-      dashboard: { view: 'allow', export: 'allow' },
-      liveAnchorage: { view: 'allow', edit: 'allow' },
-      vesselRequests: { view: 'allow', add: 'allow', edit: 'allow' },
-      vesselTracking: { view: 'allow', export: 'allow' },
-      playback: { view: 'allow' },
-      alerts: { view: 'allow', approve: 'allow' },
-      reports: { view: 'allow', export: 'allow' },
+    permissions: buildPermissions({
+      dashboard: { level: 'view', on: 'all' },
+      liveAnchorage: { level: 'readwrite', on: 'all' },
+      vesselRequests: {
+        level: 'readwrite',
+        on: ['createRequest', 'editRequest', 'exportRequests'],
+      },
+      assignment: { level: 'view', on: ['viewAssignmentHistory'], scope: 'Assigned & Shared' },
+      vesselTracking: { level: 'view', on: 'all' },
+      playback: { level: 'view', on: ['viewPlayback', 'viewHistoricalEvents'] },
+      alerts: {
+        level: 'readwrite',
+        on: ['viewAlerts', 'acknowledgeAlert', 'commentAlert'],
+        scope: 'Area Alerts',
+      },
+      reports: { level: 'view', on: ['viewReports', 'exportReports'] },
     }),
   },
   {
@@ -230,45 +438,20 @@ const initialRoles: Role[] = [
     updatedAt: '2024-05-15T14:20:00Z',
     scope: 'port',
     areas: [],
-    canAssignSpots: true,
-    canApproveRequests: true,
-    receivesAlerts: false,
-    // The matrix drawn on the design: full control of the anchorage workflow,
-    // read-only on tracking and playback, and the admin modules left to the
-    // parent rather than granted here.
-    permissions: matrix('none', {
-      dashboard: {
-        view: 'allow',
-        add: 'allow',
-        edit: 'allow',
-        delete: 'allow',
-        approve: 'allow',
-        export: 'allow',
+    permissions: buildPermissions({
+      dashboard: { level: 'view', on: 'all' },
+      liveAnchorage: { level: 'readwrite', on: 'all' },
+      vesselRequests: { level: 'readwrite', on: 'all' },
+      assignment: { level: 'readwrite', on: 'all', scope: 'Assigned & Shared' },
+      vesselTracking: { level: 'view', on: ['viewLiveLocation', 'viewTrackHistory'] },
+      playback: { level: 'view', on: ['viewPlayback'] },
+      alerts: {
+        level: 'readwrite',
+        on: ['viewAlerts', 'acknowledgeAlert', 'commentAlert', 'notifyStakeholders'],
+        scope: 'All Alerts',
       },
-      liveAnchorage: {
-        view: 'allow',
-        add: 'allow',
-        edit: 'allow',
-        delete: 'allow',
-        approve: 'allow',
-        export: 'allow',
-      },
-      vesselRequests: {
-        view: 'allow',
-        add: 'allow',
-        edit: 'allow',
-        delete: 'allow',
-        approve: 'allow',
-        export: 'allow',
-      },
-      assignment: { view: 'allow', add: 'allow', edit: 'allow', delete: 'allow', export: 'allow' },
-      vesselTracking: { view: 'allow', export: 'allow' },
-      playback: { view: 'allow' },
-      alerts: { view: 'allow', approve: 'allow' },
-      reports: { view: 'allow', export: 'allow' },
-      users: ADMIN_INHERITED,
-      roles: ADMIN_INHERITED,
-      settings: ADMIN_INHERITED,
+      reports: { level: 'view', on: ['viewReports', 'exportReports'] },
+      audit: { level: 'view', on: ['viewActivity', 'filterActivity'] },
     }),
   },
   {
@@ -282,15 +465,12 @@ const initialRoles: Role[] = [
     updatedAt: '2024-05-12T16:40:00Z',
     scope: 'areas',
     areas: ['T', 'BN'],
-    canAssignSpots: false,
-    canApproveRequests: false,
-    receivesAlerts: true,
-    permissions: matrix('none', {
-      dashboard: { view: 'allow' },
-      liveAnchorage: { view: 'allow' },
-      assignment: { view: 'allow' },
-      vesselTracking: { view: 'allow' },
-      alerts: { view: 'allow' },
+    permissions: buildPermissions({
+      dashboard: { level: 'view', on: 'all' },
+      liveAnchorage: { level: 'view', on: ['viewVesselDetails', 'viewAnchorageStatus'] },
+      assignment: { level: 'view', on: ['viewAssignmentHistory'], scope: 'Assigned Only' },
+      vesselTracking: { level: 'view', on: ['viewLiveLocation'] },
+      alerts: { level: 'view', on: ['viewAlerts', 'acknowledgeAlert'], scope: 'Area Alerts' },
     }),
   },
   {
@@ -304,34 +484,20 @@ const initialRoles: Role[] = [
     updatedAt: '2024-05-15T09:55:00Z',
     scope: 'port',
     areas: [],
-    canAssignSpots: false,
-    canApproveRequests: false,
-    receivesAlerts: true,
-    permissions: matrix('none', {
-      dashboard: { view: 'allow' },
-      liveAnchorage: { view: 'allow', edit: 'allow' },
-      vesselTracking: { view: 'allow', edit: 'allow', export: 'allow' },
-      playback: { view: 'allow', export: 'allow' },
-      alerts: { view: 'allow', add: 'allow', approve: 'allow' },
-      reports: { view: 'allow', export: 'allow' },
+    permissions: buildPermissions({
+      dashboard: { level: 'view', on: 'all' },
+      liveAnchorage: { level: 'readwrite', on: 'all' },
+      vesselTracking: { level: 'readwrite', on: 'all' },
+      playback: { level: 'readwrite', on: 'all' },
+      alerts: {
+        level: 'readwrite',
+        on: ['viewAlerts', 'acknowledgeAlert', 'assignAlert', 'notifyStakeholders'],
+        scope: 'All Alerts',
+      },
+      reports: { level: 'view', on: ['viewReports', 'exportReports'] },
     }),
   },
-  {
-    id: 'read-only',
-    name: 'Read Only',
-    description: 'View access to dashboards and reports',
-    parentId: null,
-    users: 10,
-    active: true,
-    createdAt: '2024-05-10T10:15:00Z',
-    updatedAt: '2024-05-10T10:15:00Z',
-    scope: 'port',
-    areas: [],
-    canAssignSpots: false,
-    canApproveRequests: false,
-    receivesAlerts: false,
-    permissions: READ_ONLY,
-  },
+
   {
     id: 'external-stakeholder',
     name: 'External Stakeholder',
@@ -343,10 +509,10 @@ const initialRoles: Role[] = [
     updatedAt: '2024-05-11T13:45:00Z',
     scope: 'areas',
     areas: ['A'],
-    canAssignSpots: false,
-    canApproveRequests: false,
-    receivesAlerts: false,
-    permissions: matrix('none', { dashboard: { view: 'allow' }, reports: { view: 'allow' } }),
+    permissions: buildPermissions({
+      dashboard: { level: 'view', on: ['viewDashboard'] },
+      reports: { level: 'view', on: ['viewReports'] },
+    }),
   },
 ]
 
@@ -364,14 +530,14 @@ const initialAudit: AuditEntry[] = [
     roleId: 'anchorage-officer',
     at: '2024-05-15T14:20:00Z',
     who: 'John Doe',
-    what: 'Granted Export on Reports',
+    what: 'Granted Export Reports on Reports',
   },
   {
     id: 'A-2',
     roleId: 'anchorage-officer',
     at: '2024-05-14T10:05:00Z',
     who: 'John Doe',
-    what: 'Revoked Approve on Assignment',
+    what: 'Assignment access level set to Read & Write',
   },
   {
     id: 'A-3',
@@ -416,6 +582,9 @@ function slugify(name: string, taken: string[]): string {
 
 export type NewRole = Omit<Role, 'id' | 'users' | 'createdAt' | 'updatedAt'>
 
+const label = (id: ModuleId) => MODULES.find((m) => m.id === id)?.label ?? id
+const levelLabel = (id: AccessLevel) => ACCESS_LEVELS.find((l) => l.id === id)?.label ?? id
+
 const rolesSlice = createSlice({
   name: 'roles',
   initialState,
@@ -439,61 +608,76 @@ const rolesSlice = createSlice({
         what: 'Role created',
       })
     },
-    setPermission(
+    setAccessLevel(
+      state,
+      action: PayloadAction<{ roleId: string; module: ModuleId; level: AccessLevel }>,
+    ) {
+      const role = state.roles.find((r) => r.id === action.payload.roleId)
+      if (!role || role.permissions[action.payload.module].level === action.payload.level) return
+      role.permissions[action.payload.module].level = action.payload.level
+      touch(
+        state,
+        role,
+        `${label(action.payload.module)} access level set to ${levelLabel(action.payload.level)}`,
+      )
+    },
+    setCapability(
       state,
       action: PayloadAction<{
         roleId: string
         module: ModuleId
-        action: PermissionAction
-        value: PermissionValue
+        capability: string
+        value: boolean
       }>,
     ) {
       const role = state.roles.find((r) => r.id === action.payload.roleId)
       if (!role) return
-      const previous = role.permissions[action.payload.module][action.payload.action]
-      if (previous === action.payload.value) return
-      role.permissions[action.payload.module][action.payload.action] = action.payload.value
-      role.updatedAt = new Date().toISOString()
-      const moduleLabel = MODULES.find((m) => m.id === action.payload.module)?.label
-      const actionLabel = PERMISSION_ACTIONS.find((a) => a.id === action.payload.action)?.label
-      state.audit.unshift({
-        id: `A-${state.audit.length + 1}`,
-        roleId: role.id,
-        at: role.updatedAt,
-        who: 'John Doe',
-        what: `${action.payload.value === 'allow' ? 'Granted' : 'Revoked'} ${actionLabel} on ${moduleLabel}`,
-      })
+      const perm = role.permissions[action.payload.module]
+      if (perm.capabilities[action.payload.capability] === action.payload.value) return
+      perm.capabilities[action.payload.capability] = action.payload.value
+      const cap = MODULES.find((m) => m.id === action.payload.module)?.capabilities.find(
+        (c) => c.id === action.payload.capability,
+      )
+      touch(
+        state,
+        role,
+        `${action.payload.value ? 'Granted' : 'Revoked'} ${cap?.label} on ${label(action.payload.module)}`,
+      )
     },
-    /**
-     * The three grants that sit outside the module matrix. They are set on the
-     * Add Role dialog, so they have to be changeable afterwards too — a setting
-     * you can only choose at creation is a setting you cannot correct.
-     */
-    setRoleSetting(
+    setModuleScope(
       state,
-      action: PayloadAction<{ roleId: string; key: RoleSettingKey; value: boolean }>,
+      action: PayloadAction<{ roleId: string; module: ModuleId; scope: string }>,
     ) {
       const role = state.roles.find((r) => r.id === action.payload.roleId)
-      if (!role || role[action.payload.key] === action.payload.value) return
-      role[action.payload.key] = action.payload.value
-      role.updatedAt = new Date().toISOString()
-      state.audit.unshift({
-        id: `A-${state.audit.length + 1}`,
-        roleId: role.id,
-        at: role.updatedAt,
-        who: 'John Doe',
-        what: `${action.payload.value ? 'Granted' : 'Revoked'} ${ROLE_SETTINGS.find((s) => s.key === action.payload.key)?.label}`,
-      })
+      if (!role) return
+      role.permissions[action.payload.module].scope = action.payload.scope
+      touch(
+        state,
+        role,
+        `${label(action.payload.module)} default scope set to ${action.payload.scope}`,
+      )
     },
     setRoleActive(state, action: PayloadAction<{ roleId: string; active: boolean }>) {
       const role = state.roles.find((r) => r.id === action.payload.roleId)
       if (!role) return
       role.active = action.payload.active
-      role.updatedAt = new Date().toISOString()
+      touch(state, role, `Role ${action.payload.active ? 'activated' : 'deactivated'}`)
     },
   },
 })
 
-export const { selectRole, addRole, setPermission, setRoleSetting, setRoleActive } =
+/** Stamps the role and records what changed — every edit here is auditable. */
+function touch(state: RolesState, role: Role, what: string) {
+  role.updatedAt = new Date().toISOString()
+  state.audit.unshift({
+    id: `A-${state.audit.length + 1}`,
+    roleId: role.id,
+    at: role.updatedAt,
+    who: 'John Doe',
+    what,
+  })
+}
+
+export const { selectRole, addRole, setAccessLevel, setCapability, setModuleScope, setRoleActive } =
   rolesSlice.actions
 export default rolesSlice.reducer

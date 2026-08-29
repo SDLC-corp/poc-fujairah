@@ -36,6 +36,10 @@ const PATHS: Record<string, string> = {
   playback: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10 8.5l6 3.5-6 3.5z',
   // Roles & permissions — a shield, since the screen is about what is allowed.
   roles: 'M12 3.2 19.5 6v6c0 4.2-3 7.6-7.5 8.8C7.5 19.6 4.5 16.2 4.5 12V6zM9 12.2l2.2 2.2L15.5 10',
+  // Access levels: see / change / shut out.
+  eye: 'M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM12 14.6a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2',
+  pencil: 'M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17zM14.5 6.5l3 3',
+  lock: 'M5.5 10.5h13V20h-13zM8.5 10.5V7.5a3.5 3.5 0 1 1 7 0v3M12 14v2.5',
 }
 
 export default function Icon({ name, size = 18 }: { name: string; size?: number }) {

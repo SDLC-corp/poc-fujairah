@@ -1,17 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
-import {
-  MODULES,
-  PERMISSION_ACTIONS,
-  ROLE_SETTINGS,
-  selectRole,
-  setPermission,
-  setRoleActive,
-  setRoleSetting,
-} from '../../features/roles/rolesSlice'
+import { MODULES, selectRole, setRoleActive } from '../../features/roles/rolesSlice'
 import { formatDateTime } from '../../utils/format'
 import AddRoleDialog from '../AddRoleDialog'
-import Icon from '../Icon'
+import { FiEdit2, FiPlus, FiUser } from 'react-icons/fi'
+import PermissionRows from '../PermissionRows'
 import RawJson from '../RawJson'
 
 type DetailTab = 'details' | 'users' | 'audit'
@@ -38,6 +31,22 @@ export default function RolesScreen() {
   const [tab, setTab] = useState<DetailTab>('details')
   const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
+
+  /**
+   * Edit mode belongs to the role it was opened on, so picking a different one
+   * closes it. Leaving it open would carry an armed editor onto a role the
+   * operator only meant to look at — and every control in it writes an audit
+   * entry the moment it is touched.
+   *
+   * Adjusted during render rather than in an effect: the reset has to happen
+   * before the new role is drawn, and it has to cover being moved by the store
+   * as well as by a click, which `addRole` does when it selects what it made.
+   */
+  const [editingFor, setEditingFor] = useState(selectedId)
+  if (editingFor !== selectedId) {
+    setEditingFor(selectedId)
+    setEditing(false)
+  }
 
   const byId = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles])
   const active = byId.get(selectedId) ?? roles[0]
@@ -75,7 +84,7 @@ export default function RolesScreen() {
             className="primary-button head-action"
             onClick={() => setAdding(true)}
           >
-            + Add Role
+            <FiPlus size={15} /> Add Role
           </button>
         </h2>
         <p className="muted">Create and manage user roles and their access.</p>
@@ -93,9 +102,9 @@ export default function RolesScreen() {
           </thead>
           <tbody>
             {roles.map((role) => {
-              const granted = MODULES.filter((m) =>
-                PERMISSION_ACTIONS.some((a) => role.permissions[m.id][a.id] === 'allow'),
-              ).length
+              // A module counts as reachable once its access level is anything
+              // other than No Access — the capabilities beneath it are refinements.
+              const granted = MODULES.filter((m) => role.permissions[m.id].level !== 'none').length
               return (
                 <tr
                   key={role.id}
@@ -198,37 +207,6 @@ export default function RolesScreen() {
                   </dd>
                 </div>
               </dl>
-
-              {/* The Add Role dialog sets these, so they have to be changeable
-                  here too — otherwise they can be chosen once and never
-                  corrected. Each writes its own audit entry, as a permission
-                  change does. */}
-              <h3 className="sub-head">Additional Settings</h3>
-              <ul className="role-settings">
-                {ROLE_SETTINGS.map((s) => (
-                  <li key={s.key}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={active[s.key]}
-                        onChange={(e) =>
-                          dispatch(
-                            setRoleSetting({
-                              roleId: active.id,
-                              key: s.key,
-                              value: e.target.checked,
-                            }),
-                          )
-                        }
-                      />
-                      <span>
-                        <strong>{s.label}</strong>
-                        <small className="muted">{s.blurb}</small>
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
             </div>
 
             {/* ---------- the matrix ---------- */}
@@ -240,70 +218,21 @@ export default function RolesScreen() {
                   className={`ghost-button head-action${editing ? ' active' : ''}`}
                   onClick={() => setEditing((v) => !v)}
                 >
-                  {editing ? 'Done' : 'Edit Permissions'}
+                  {editing ? (
+                    'Done'
+                  ) : (
+                    <>
+                      <FiEdit2 size={14} /> Edit Permissions
+                    </>
+                  )}
                 </button>
               </div>
 
-              <div className="perm-scroll">
-                <table className="data-table perm-table">
-                  <thead>
-                    <tr>
-                      <th>Module / feature</th>
-                      {PERMISSION_ACTIONS.map((a) => (
-                        <th key={a.id} className="perm-col">
-                          {a.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {MODULES.map((m) => (
-                      <tr key={m.id}>
-                        <td>
-                          <span className="perm-module">
-                            <Icon name={m.icon} size={16} />
-                            <span>
-                              <strong>{m.label}</strong>
-                              <small className="muted">{m.blurb}</small>
-                            </span>
-                          </span>
-                        </td>
-                        {PERMISSION_ACTIONS.map((a) => (
-                          <td key={a.id} className="perm-col">
-                            <PermissionCell
-                              value={active.permissions[m.id][a.id]}
-                              editable={editing}
-                              label={`${a.label} ${m.label}`}
-                              onChange={(value) =>
-                                dispatch(
-                                  setPermission({
-                                    roleId: active.id,
-                                    module: m.id,
-                                    action: a.id,
-                                    value,
-                                  }),
-                                )
-                              }
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <p className="perm-legend">
-                <span>
-                  <b className="perm-allow">✓</b> Allow
-                </span>
-                <span>
-                  <b className="perm-none">—</b> No Access
-                </span>
-                <span>
-                  <b className="perm-inherited">⊕</b> Permission inherited
-                </span>
-              </p>
+              <PermissionRows
+                roleId={active.id}
+                permissions={active.permissions}
+                editable={editing}
+              />
             </div>
           </div>
         )}
@@ -312,7 +241,7 @@ export default function RolesScreen() {
           <ul className="role-users">
             {Array.from({ length: active.users }, (_, i) => (
               <li key={i}>
-                <Icon name="crew" size={16} />
+                <FiUser size={16} />
                 <span>
                   <strong>{HOLDERS[i % HOLDERS.length]}</strong>
                   <small className="muted">{active.name}</small>
@@ -341,46 +270,5 @@ export default function RolesScreen() {
 
       {adding && <AddRoleDialog onClose={() => setAdding(false)} />}
     </>
-  )
-}
-
-/**
- * One square of the matrix. Read-only it is a glyph, so a 66-cell grid stays
- * scannable; under Edit permissions it becomes a checkbox. An inherited cell
- * is left alone by the checkbox — clearing it would silently convert "ask the
- * parent" into "denied here", which is a different and stickier decision.
- */
-function PermissionCell({
-  value,
-  editable,
-  label,
-  onChange,
-}: {
-  value: 'allow' | 'none' | 'inherited'
-  editable: boolean
-  label: string
-  onChange: (value: 'allow' | 'none') => void
-}) {
-  if (value === 'inherited') {
-    return (
-      <span className="perm-inherited" title="Inherited from the parent role">
-        ⊕
-      </span>
-    )
-  }
-  if (!editable) {
-    return (
-      <span className={value === 'allow' ? 'perm-allow' : 'perm-none'}>
-        {value === 'allow' ? '✓' : '—'}
-      </span>
-    )
-  }
-  return (
-    <input
-      type="checkbox"
-      aria-label={label}
-      checked={value === 'allow'}
-      onChange={(e) => onChange(e.target.checked ? 'allow' : 'none')}
-    />
   )
 }

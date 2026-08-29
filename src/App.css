@@ -2014,13 +2014,13 @@ input[type='range'] {
 }
 
 .faq summary::before {
-  content: '＋';
+  content: 'ï¼‹';
   margin-right: 7px;
   color: var(--accent);
 }
 
 .faq[open] summary::before {
-  content: '－';
+  content: 'ï¼';
 }
 
 .faq p {
@@ -5371,40 +5371,6 @@ input[type='range'] {
   background: var(--alert);
 }
 
-/* The grants that sit outside the matrix. Checkbox left, name and a line of
-   what it actually means beside it — "can assign spots" is not self-evident. */
-.role-settings {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-
-.role-settings label {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.role-settings label > span {
-  display: flex;
-  flex-direction: column;
-}
-
-.role-settings small {
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.role-settings input {
-  margin-top: 2px;
-  flex: none;
-}
-
 .role-perm-head {
   display: flex;
   align-items: center;
@@ -5864,4 +5830,240 @@ button.perm-module {
   .role-dialog-body {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ---- permission rows (module-per-row editor) ---- */
+
+.perm-rows {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Identity | access level | capabilities | scope | chevron. The capability
+   column takes the slack, since it is the one that varies most between
+   modules — some have one checkbox, some have four. */
+.perm-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.05fr) 190px minmax(0, 1.5fr) auto;
+  gap: 16px;
+  align-items: start;
+  padding: 13px 14px;
+  font-size: 13px;
+}
+
+.perm-row + .perm-row {
+  border-top: 1px solid var(--border);
+}
+
+.perm-row.expanded {
+  background: var(--surface-2);
+}
+
+.perm-row-id {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  min-width: 0;
+}
+
+.perm-row-id > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.perm-row-id small {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.perm-row-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+
+.perm-row-level,
+.perm-row-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.perm-row-level > span:first-child,
+.perm-row-scope > span:first-child {
+  font-size: 11px;
+}
+
+/* The level icon sits inside the control, so the chosen scope is legible
+   without reading the words — an eye, a pencil or a padlock. */
+.perm-select {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.perm-select select {
+  border: 0;
+  background: transparent;
+  padding: 7px 0;
+  width: 100%;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.perm-row-scope select {
+  padding: 7px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+  width: 100%;
+}
+
+.perm-row select:disabled {
+  color: var(--text);
+  opacity: 1;
+  cursor: default;
+}
+
+.perm-caps-head {
+  margin: 0 0 7px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.perm-caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 18px;
+}
+
+.perm-cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+}
+
+.perm-cap input:disabled {
+  cursor: default;
+}
+
+.perm-hint {
+  color: var(--muted);
+  cursor: help;
+  font-size: 12px;
+}
+
+.perm-row-toggle {
+  margin: 0;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  align-self: center;
+  transition: transform 0.15s ease;
+}
+
+.perm-row-toggle svg {
+  transform: rotate(90deg);
+}
+
+.perm-row-toggle.open svg {
+  transform: rotate(-90deg);
+}
+
+.perm-footnote {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 11px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--accent-soft);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.perm-footnote b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.perm-footnote svg {
+  color: var(--accent);
+  flex: none;
+}
+
+/* In the dialog there is no room for a scope column or a chevron. */
+.perm-rows.compact .perm-row {
+  grid-template-columns: minmax(150px, 1fr) 160px minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 11px 12px;
+}
+
+@media (max-width: 1320px) {
+  .perm-row {
+    grid-template-columns: minmax(170px, 1fr) 170px minmax(0, 1.1fr) auto;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .perm-row,
+  .perm-rows.compact .perm-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 10px;
+  }
+
+  .perm-row-id {
+    grid-column: 1;
+  }
+
+  .perm-row-level,
+  .perm-row-caps,
+  .perm-row-scope {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Buttons and labels that carry an icon beside their text. react-icons render
+   as real SVG elements rather than glyphs, so they need aligning rather than
+   relying on the text baseline. */
+.head-action,
+.role-dialog-foot .primary-button,
+.perm-cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.head-action svg,
+.role-dialog-foot .primary-button svg,
+.role-dialog-icon svg,
+.perm-select svg,
+.perm-row-icon svg,
+.perm-footnote svg,
+.role-users svg,
+.icon-button svg {
+  flex: none;
+}
+
+.perm-hint {
+  display: inline-flex;
+  align-items: center;
 }

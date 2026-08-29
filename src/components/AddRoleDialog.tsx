@@ -2,26 +2,24 @@ import { useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { selectAreas } from '../features/analysis/selectors'
 import {
+  ACCESS_LEVELS,
   addRole,
+  buildPermissions,
   MODULES,
-  PERMISSION_ACTIONS,
+  type AccessLevel,
   type ModuleId,
-  type PermissionAction,
   type PermissionMatrix,
-  type PermissionValue,
 } from '../features/roles/rolesSlice'
-import Icon from './Icon'
+import { FiInfo, FiPlus, FiUserPlus, FiX } from 'react-icons/fi'
+import { LEVEL_ICONS, MODULE_ICONS } from './roleIcons'
 
-/** The five a new role can be given directly; `export` follows `view`. */
-const DIALOG_ACTIONS = PERMISSION_ACTIONS.filter((a) => a.id !== 'export')
-
-function emptyMatrix(): PermissionMatrix {
-  const out = {} as PermissionMatrix
-  for (const m of MODULES) {
-    out[m.id] = {} as Record<PermissionAction, PermissionValue>
-    for (const a of PERMISSION_ACTIONS) out[m.id][a.id] = 'none'
-  }
-  return out
+/** Everything on, for the Select All shortcut — each module at the most it offers. */
+function fullMatrix(): PermissionMatrix {
+  return buildPermissions(
+    Object.fromEntries(
+      MODULES.map((m) => [m.id, { level: m.levels[m.levels.length - 1], on: 'all' as const }]),
+    ),
+  )
 }
 
 /**
@@ -46,32 +44,31 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
   const [active, setActive] = useState(true)
   const [scope, setScope] = useState<'port' | 'areas'>('port')
   const [scopeAreas, setScopeAreas] = useState<string[]>([])
-  const [canAssignSpots, setCanAssignSpots] = useState(true)
-  const [canApproveRequests, setCanApproveRequests] = useState(true)
-  const [receivesAlerts, setReceivesAlerts] = useState(false)
-  const [permissions, setPermissions] = useState<PermissionMatrix>(emptyMatrix)
-  const [expanded, setExpanded] = useState<ModuleId | null>(null)
+  const [permissions, setPermissions] = useState<PermissionMatrix>(() => buildPermissions())
 
   const anchorages = areas.filter((a) => a.properties.category === 'anchorage')
 
-  /** A module counts as reachable once any action on it is allowed. */
+  /** A module counts as reachable once its access level is not No Access. */
   const selectedModules = useMemo(
-    () => MODULES.filter((m) => PERMISSION_ACTIONS.some((a) => permissions[m.id][a.id] === 'allow')),
+    () => MODULES.filter((m) => permissions[m.id].level !== 'none'),
     [permissions],
   )
   const level = accessLevel(selectedModules.length)
   const valid = name.trim().length > 0 && description.trim().length > 0
 
-  const set = (module: ModuleId, action: PermissionAction, value: PermissionValue) =>
-    setPermissions((prev) => ({ ...prev, [module]: { ...prev[module], [action]: value } }))
+  const setLevel = (module: ModuleId, value: AccessLevel) =>
+    setPermissions((prev) => ({ ...prev, [module]: { ...prev[module], level: value } }))
 
-  const setAll = (value: PermissionValue) => {
-    const next = emptyMatrix()
-    if (value === 'allow') {
-      for (const m of MODULES) for (const a of PERMISSION_ACTIONS) next[m.id][a.id] = 'allow'
-    }
-    setPermissions(next)
-  }
+  const setCap = (module: ModuleId, capability: string, value: boolean) =>
+    setPermissions((prev) => ({
+      ...prev,
+      [module]: {
+        ...prev[module],
+        capabilities: { ...prev[module].capabilities, [capability]: value },
+      },
+    }))
+
+  const setAll = (on: boolean) => setPermissions(on ? fullMatrix() : buildPermissions())
 
   function submit() {
     if (!valid) return
@@ -83,9 +80,6 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
         active,
         scope,
         areas: scope === 'areas' ? scopeAreas : [],
-        canAssignSpots,
-        canApproveRequests,
-        receivesAlerts,
         permissions,
       }),
     )
@@ -97,14 +91,14 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
       <div className="dialog-card role-dialog">
         <header className="role-dialog-head">
           <span className="role-dialog-icon">
-            <Icon name="crew" size={19} />
+            <FiUserPlus size={19} />
           </span>
           <div>
             <h3>Add Role</h3>
             <p className="muted">Create a new role and define its access permissions</p>
           </div>
           <button type="button" className="icon-button" aria-label="Close" onClick={onClose}>
-            ×
+            <FiX size={19} />
           </button>
         </header>
 
@@ -165,7 +159,8 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
                   <input type="radio" checked={active} onChange={() => setActive(true)} /> Active
                 </label>
                 <label>
-                  <input type="radio" checked={!active} onChange={() => setActive(false)} /> Inactive
+                  <input type="radio" checked={!active} onChange={() => setActive(false)} />{' '}
+                  Inactive
                 </label>
               </div>
             </div>
@@ -173,11 +168,7 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
             <fieldset className="role-box">
               <legend>Access Scope</legend>
               <label>
-                <input
-                  type="radio"
-                  checked={scope === 'port'}
-                  onChange={() => setScope('port')}
-                />{' '}
+                <input type="radio" checked={scope === 'port'} onChange={() => setScope('port')} />{' '}
                 <strong>Port Wide</strong> <span className="muted">(All Anchorage Areas)</span>
               </label>
               <label>
@@ -211,34 +202,6 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
                 </div>
               )}
             </fieldset>
-
-            <fieldset className="role-box">
-              <legend>Additional Settings</legend>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={canAssignSpots}
-                  onChange={(e) => setCanAssignSpots(e.target.checked)}
-                />{' '}
-                Can assign spots
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={canApproveRequests}
-                  onChange={(e) => setCanApproveRequests(e.target.checked)}
-                />{' '}
-                Can approve vessel requests
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={receivesAlerts}
-                  onChange={(e) => setReceivesAlerts(e.target.checked)}
-                />{' '}
-                Receive system alerts for this role
-              </label>
-            </fieldset>
           </section>
 
           {/* ---------- right: what the role can do ---------- */}
@@ -249,57 +212,75 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
                 <p className="muted">Select modules and actions this role can access</p>
               </div>
               <div className="dialog-actions">
-                <button type="button" className="ghost-button" onClick={() => setAll('allow')}>
+                <button type="button" className="ghost-button" onClick={() => setAll(true)}>
                   Select All
                 </button>
-                <button type="button" className="ghost-button" onClick={() => setAll('none')}>
+                <button type="button" className="ghost-button" onClick={() => setAll(false)}>
                   Clear All
                 </button>
               </div>
             </div>
 
-            <table className="data-table perm-table">
-              <thead>
-                <tr>
-                  <th>Module</th>
-                  {DIALOG_ACTIONS.map((a) => (
-                    <th key={a.id} className="perm-col">
-                      {a.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {MODULES.map((m) => (
-                  <tr key={m.id}>
-                    <td>
-                      <button
-                        type="button"
-                        className="perm-module"
-                        aria-expanded={expanded === m.id}
-                        onClick={() => setExpanded(expanded === m.id ? null : m.id)}
-                      >
-                        <Icon name={m.icon} size={16} />
-                        <span>
-                          <strong>{m.label}</strong>
-                          {expanded === m.id && <small className="muted">{m.blurb}</small>}
-                        </span>
-                      </button>
-                    </td>
-                    {DIALOG_ACTIONS.map((a) => (
-                      <td key={a.id} className="perm-col">
-                        <input
-                          type="checkbox"
-                          aria-label={`${a.label} ${m.label}`}
-                          checked={permissions[m.id][a.id] === 'allow'}
-                          onChange={(e) => set(m.id, a.id, e.target.checked ? 'allow' : 'none')}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* The same shape as the detail screen, compressed: a level per
+                module and its own capabilities beneath, rather than a grid of
+                verbs that half the modules do not have. */}
+            <div className="perm-rows compact">
+              {MODULES.map((m) => {
+                const ModuleIcon = MODULE_ICONS[m.id]
+                const LevelIcon = LEVEL_ICONS[permissions[m.id].level]
+                return (
+                  <div key={m.id} className="perm-row">
+                    <div className="perm-row-id">
+                      <span className="perm-row-icon">
+                        <ModuleIcon size={17} />
+                      </span>
+                      <span>
+                        <strong>{m.label}</strong>
+                        <small className="muted">{m.blurb}</small>
+                      </span>
+                    </div>
+
+                    <label className="perm-row-level">
+                      <span className="perm-select">
+                        <LevelIcon size={15} />
+
+                        <select
+                          aria-label={`${m.label} access level`}
+                          value={permissions[m.id].level}
+                          onChange={(e) => setLevel(m.id, e.target.value as AccessLevel)}
+                        >
+                          {ACCESS_LEVELS.filter((l) => m.levels.includes(l.id)).map((l) => (
+                            <option key={l.id} value={l.id}>
+                              {l.label}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                    </label>
+
+                    <div className="perm-row-caps">
+                      <div className="perm-caps">
+                        {m.capabilities.map((c) => (
+                          <label key={c.id} className="perm-cap">
+                            <input
+                              type="checkbox"
+                              checked={permissions[m.id].capabilities[c.id] ?? false}
+                              onChange={(e) => setCap(m.id, c.id, e.target.checked)}
+                            />
+                            {c.label}
+                            {c.hint && (
+                              <span className="perm-hint" title={c.hint} aria-label={c.hint}>
+                                <FiInfo size={13} />
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
 
             <p className="role-dialog-summary">
               <strong>
@@ -323,7 +304,7 @@ export default function AddRoleDialog({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button type="button" className="primary-button" disabled={!valid} onClick={submit}>
-            + Create Role
+            <FiPlus size={15} /> Create Role
           </button>
         </footer>
       </div>
