@@ -1,11 +1,21 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { signIn, clearAuthError,  } from '../features/auth/authSlice'
+import { signIn, clearAuthError, DEMO_ACCOUNTS } from '../features/auth/authSlice'
+
+/**
+ * Role names for the sample-account list. Read from the store rather than
+ * hard-coded, so a renamed role renames itself here too.
+ */
+function useRoleNames(): Record<string, string> {
+  const roles = useAppSelector((s) => s.roles.roles)
+  return Object.fromEntries(roles.map((r) => [r.id, r.name]))
+}
 
 export default function LoginScreen() {
   const dispatch = useAppDispatch()
   const error = useAppSelector((s) => s.auth.error)
+  const ROLE_NAMES = useRoleNames()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -15,8 +25,6 @@ export default function LoginScreen() {
     e.preventDefault()
     dispatch(signIn({ email, password }))
   }
-
- 
 
   return (
     <div className="login">
@@ -93,10 +101,27 @@ export default function LoginScreen() {
             Sign in
           </button>
 
-          <div className="login-demo">
-            
-           
-          </div>
+          {/* One account per role, so the walkthrough can show what each one
+              actually sees. Picking a row fills the form rather than signing
+              straight in — the password still has to be entered, which keeps
+              the gate honest about being a gate. */}
+          <details className="login-demo">
+            <summary>Sample accounts</summary>
+            <p className="muted">
+              All use the same password. Each signs in with a different role, and the rail only
+              carries the screens that role is granted.
+            </p>
+            <ul>
+              {DEMO_ACCOUNTS.map((a) => (
+                <li key={a.email}>
+                  <button type="button" onClick={() => setEmail(a.email)}>
+                    <span>{a.email}</span>
+                    <small className="muted">{ROLE_NAMES[a.roleId] ?? a.roleId}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
         </form>
       </div>
     </div>

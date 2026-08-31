@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit'
 import type { PayloadAction } from '@reduxjs/toolkit'
+import type { TabId } from '../ui/uiSlice'
 
 /**
  * Role-based access control for the console.
@@ -33,6 +34,7 @@ const READ_ONLY: AccessLevel[] = ['none', 'view']
 
 export type ModuleId =
   | 'dashboard'
+  | 'occupancy'
   | 'liveAnchorage'
   | 'vesselRequests'
   | 'assignment'
@@ -61,18 +63,41 @@ export interface ModuleDef {
   capabilities: Capability[]
   /** Modules that act on a set of things declare how wide that set is. */
   scope?: { label: string; options: string[] }
+  /**
+   * The screen in the nav rail this module gates. A role with No Access here
+   * does not see that tab at all.
+   *
+   * Not every module has one: Vessel Requests, Alerts, Users and the Audit Log
+   * are permissions the port asked for that have no screen yet. They are left
+   * unlinked rather than pointed at an approximate tab, so the day a screen is
+   * built the permission is already there and already assigned.
+   */
+  tab?: TabId
 }
 
 export const MODULES: ModuleDef[] = [
   {
     id: 'dashboard',
+    tab: 'dashboard',
     label: 'Dashboard',
     blurb: 'Access to overview dashboards and key analytics.',
     levels: READ_ONLY,
     capabilities: [{ id: 'viewDashboard', label: 'View Dashboard' }],
   },
   {
+    id: 'occupancy',
+    tab: 'occupancy',
+    label: 'Occupancy',
+    blurb: 'Utilisation per area, and how it trends through the day.',
+    levels: READ_ONLY,
+    capabilities: [
+      { id: 'viewOccupancy', label: 'View Occupancy' },
+      { id: 'exportOccupancy', label: 'Export Occupancy' },
+    ],
+  },
+  {
     id: 'liveAnchorage',
+    tab: 'vessel',
     label: 'Live Anchorage',
     blurb: 'View live vessel positions and anchorage status.',
     levels: READ_WRITE,
@@ -98,6 +123,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'assignment',
+    tab: 'assignment',
     label: 'Assignment',
     blurb: 'Assign and manage vessel spots and schedules.',
     levels: READ_WRITE,
@@ -128,6 +154,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'vesselTracking',
+    tab: 'tracking',
     label: 'Vessel Tracking',
     blurb: 'Real-time vessel tracking and movement history.',
     levels: READ_WRITE,
@@ -140,6 +167,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'playback',
+    tab: 'playback',
     label: 'Playback',
     blurb: 'Historical data playback of vessel movements and events.',
     levels: READ_WRITE,
@@ -169,6 +197,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'reports',
+    tab: 'reports',
     label: 'Reports',
     blurb: 'View, generate and export system and operational reports.',
     levels: READ_WRITE,
@@ -200,6 +229,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'roles',
+    tab: 'roles',
     label: 'Roles & Permissions',
     blurb: 'Create roles and define what each one can reach.',
     levels: READ_WRITE,
@@ -231,6 +261,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'settings',
+    tab: 'settings',
     label: 'Settings / Configuration',
     blurb: 'System configuration, parameters and reference data.',
     levels: READ_WRITE,
@@ -338,6 +369,7 @@ const initialRoles: Role[] = [
     areas: [],
     permissions: buildPermissions({
       dashboard: { level: 'view', on: 'all' },
+      occupancy: { level: 'view', on: 'all' },
       liveAnchorage: { level: 'readwrite', on: 'all' },
       vesselRequests: { level: 'readwrite', on: 'all' },
       assignment: { level: 'readwrite', on: 'all', scope: 'All Assignments' },
@@ -377,6 +409,7 @@ const initialRoles: Role[] = [
     areas: [],
     permissions: buildPermissions({
       dashboard: { level: 'view', on: 'all' },
+      occupancy: { level: 'view', on: 'all' },
       liveAnchorage: { level: 'readwrite', on: 'all' },
       vesselRequests: { level: 'readwrite', on: 'all' },
       assignment: { level: 'readwrite', on: 'all', scope: 'All Assignments' },
@@ -411,6 +444,7 @@ const initialRoles: Role[] = [
     areas: [],
     permissions: buildPermissions({
       dashboard: { level: 'view', on: 'all' },
+      occupancy: { level: 'view', on: 'all' },
       liveAnchorage: { level: 'readwrite', on: 'all' },
       vesselRequests: {
         level: 'readwrite',
@@ -440,6 +474,7 @@ const initialRoles: Role[] = [
     areas: [],
     permissions: buildPermissions({
       dashboard: { level: 'view', on: 'all' },
+      occupancy: { level: 'view', on: 'all' },
       liveAnchorage: { level: 'readwrite', on: 'all' },
       vesselRequests: { level: 'readwrite', on: 'all' },
       assignment: { level: 'readwrite', on: 'all', scope: 'Assigned & Shared' },
@@ -486,6 +521,7 @@ const initialRoles: Role[] = [
     areas: [],
     permissions: buildPermissions({
       dashboard: { level: 'view', on: 'all' },
+      occupancy: { level: 'view', on: 'all' },
       liveAnchorage: { level: 'readwrite', on: 'all' },
       vesselTracking: { level: 'readwrite', on: 'all' },
       playback: { level: 'readwrite', on: 'all' },
@@ -504,7 +540,10 @@ const initialRoles: Role[] = [
     description: 'Limited access to shared information',
     parentId: null,
     users: 2,
-    active: false,
+    // Active, so the matching sign-in has something to show. Deactivating it
+    // from the Roles screen strips its users' rail back to Help on the spot —
+    // which is the point of the switch, and worth demonstrating live.
+    active: true,
     createdAt: '2024-05-11T13:45:00Z',
     updatedAt: '2024-05-11T13:45:00Z',
     scope: 'areas',
@@ -566,8 +605,6 @@ const initialState: RolesState = {
   audit: initialAudit,
   selectedId: 'anchorage-officer',
 }
-
-
 
 /** "Anchorage Supervisor" -> "anchorage-supervisor", uniquified on collision. */
 function slugify(name: string, taken: string[]): string {

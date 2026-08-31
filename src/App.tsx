@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { useAppDispatch, useAppSelector } from './app/hooks'
 import { loadPortData } from './features/portData/portDataSlice'
-import { toggleNav } from './features/ui/uiSlice'
+import { setTab, toggleNav } from './features/ui/uiSlice'
+import { selectAllowedTabs, selectCurrentRole } from './features/roles/selectors'
 import { signOut } from './features/auth/authSlice'
 import LoginScreen from './components/LoginScreen'
 import DashboardKpis from './components/DashboardKpis'
@@ -46,6 +47,8 @@ export default function App() {
   const navOpen = useAppSelector((s) => s.ui.navOpen)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
   const user = useAppSelector((s) => s.auth.user)
+  const allowedTabs = useAppSelector(selectAllowedTabs)
+  const currentRole = useAppSelector(selectCurrentRole)
 
   useEffect(() => {
     // Port data is only fetched once past the gate, so a signed-out visitor
@@ -53,7 +56,24 @@ export default function App() {
     if (user && status === 'idle') dispatch(loadPortData())
   }, [user, status, dispatch])
 
+  /**
+   * Land on something this role can actually open.
+   *
+   * Hiding the tab is not enough on its own: the store remembers the last
+   * screen, so signing out of an admin account and into a tug operator would
+   * otherwise leave Settings selected with its tab gone from the rail. Moving
+   * the selection is the other half of the same rule.
+   */
+  useEffect(() => {
+    if (!user || allowedTabs.has(activeTab)) return
+    const first = TABS.find((t) => !t.offRail && allowedTabs.has(t.id))
+    if (first) dispatch(setTab(first.id))
+  }, [user, activeTab, allowedTabs, dispatch])
+
   if (!user) return <LoginScreen />
+  // The redirect above lands next render; until then, draw nothing rather than
+  // a screen this role is not entitled to.
+  if (!allowedTabs.has(activeTab)) return null
 
   const Screen = SCREENS[activeTab]
   const tab = TABS.find((t) => t.id === activeTab)
@@ -89,6 +109,9 @@ export default function App() {
         <div className="app-user">
           <span className="app-user-name" title={user.email}>
             {user.name}
+            {/* The role, not just the person: which screens are on the rail
+                follows from it, so it has to be visible when they differ. */}
+            <small>{currentRole?.name ?? 'No role'}</small>
           </span>
           <button type="button" className="sign-out" onClick={() => dispatch(signOut())}>
             Sign out

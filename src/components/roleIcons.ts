@@ -11,6 +11,7 @@ import {
   FiList,
   FiLock,
   FiNavigation,
+  FiPieChart,
   FiPlayCircle,
   FiSettings,
   FiShield,
@@ -28,6 +29,7 @@ import type { AccessLevel, ModuleId } from '../features/roles/rolesSlice'
  */
 export const MODULE_ICONS: Record<ModuleId, IconType> = {
   dashboard: FiGrid,
+  occupancy: FiPieChart,
   liveAnchorage: FiAnchor,
   vesselRequests: FiFileText,
   assignment: FiClipboard,
