@@ -1,12 +1,24 @@
 import { createSelector } from '@reduxjs/toolkit'
 import type { RootState } from '../../app/store'
 import type { TabId } from '../ui/uiSlice'
+import { selectCurrentUser } from '../users/selectors'
 import { MODULES, type ModuleId, type Role } from './rolesSlice'
 
-/** The role the signed-in account carries, or null if nobody is signed in. */
+/**
+ * The role the signed-in account carries, or null if nobody is signed in.
+ *
+ * Resolved from the account rather than from the snapshot taken at sign-in, so
+ * an administrator who changes somebody's role — or their own — sees the rail
+ * follow immediately. An account deactivated mid-session grants nothing, on the
+ * same principle as a deactivated role.
+ */
 export const selectCurrentRole = createSelector(
-  [(s: RootState) => s.auth.user, (s: RootState) => s.roles.roles],
-  (user, roles): Role | null => roles.find((r) => r.id === user?.roleId) ?? null,
+  [selectCurrentUser, (s: RootState) => s.auth.user, (s: RootState) => s.roles.roles],
+  (account, session, roles): Role | null => {
+    if (!session) return null
+    if (account && !account.active) return null
+    return roles.find((r) => r.id === (account?.roleId ?? session.roleId)) ?? null
+  },
 )
 
 /**

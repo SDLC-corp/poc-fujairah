@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from './app/hooks'
 import { loadPortData } from './features/portData/portDataSlice'
 import { setTab, toggleNav } from './features/ui/uiSlice'
 import { selectAllowedTabs, selectCurrentRole } from './features/roles/selectors'
+import { selectCurrentUser } from './features/users/selectors'
 import { signOut } from './features/auth/authSlice'
 import LoginScreen from './components/LoginScreen'
 import DashboardKpis from './components/DashboardKpis'
@@ -22,6 +23,7 @@ import OccupancyScreen from './components/screens/OccupancyScreen'
 import AssignmentScreen from './components/screens/AssignmentScreen'
 import VesselDetailsScreen from './components/screens/VesselDetailsScreen'
 import ReportsScreen from './components/screens/ReportsScreen'
+import UsersScreen from './components/screens/UsersScreen'
 import RolesScreen from './components/screens/RolesScreen'
 import SettingsScreen from './components/screens/SettingsScreen'
 import HelpScreen from './components/screens/HelpScreen'
@@ -35,6 +37,7 @@ const SCREENS = {
   assignment: AssignmentScreen,
   vessel: VesselDetailsScreen,
   reports: ReportsScreen,
+  users: UsersScreen,
   roles: RolesScreen,
   settings: SettingsScreen,
   help: HelpScreen,
@@ -49,6 +52,9 @@ export default function App() {
   const user = useAppSelector((s) => s.auth.user)
   const allowedTabs = useAppSelector(selectAllowedTabs)
   const currentRole = useAppSelector(selectCurrentRole)
+  // The live account, so a rename on the Users screen shows here straight away
+  // rather than waiting for the next sign-in.
+  const account = useAppSelector(selectCurrentUser)
 
   useEffect(() => {
     // Port data is only fetched once past the gate, so a signed-out visitor
@@ -107,8 +113,8 @@ export default function App() {
         </span> */}
         <HeaderUtilisation />
         <div className="app-user">
-          <span className="app-user-name" title={user.email}>
-            {user.name}
+          <span className="app-user-name" title={account?.email ?? user.email}>
+            {account?.name ?? user.name}
             {/* The role, not just the person: which screens are on the rail
                 follows from it, so it has to be visible when they differ. */}
             <small>{currentRole?.name ?? 'No role'}</small>

@@ -9,6 +9,7 @@ export type TabId =
   | 'assignment'
   | 'vessel'
   | 'reports'
+  | 'users'
   | 'roles'
   | 'settings'
   | 'help'

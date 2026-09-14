@@ -34,6 +34,8 @@ const PATHS: Record<string, string> = {
   schedule: 'M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4',
   delay: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3.5 2M18.5 3.5 21 6',
   playback: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM10 8.5l6 3.5-6 3.5z',
+  // User administration — the people, where `roles` is what they are allowed.
+  users: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M2.5 20a6.5 6.5 0 0 1 13 0M16.5 4.7a3.5 3.5 0 0 1 0 6.6M17.5 13.6A6.5 6.5 0 0 1 21.5 20',
   // Roles & permissions — a shield, since the screen is about what is allowed.
   roles: 'M12 3.2 19.5 6v6c0 4.2-3 7.6-7.5 8.8C7.5 19.6 4.5 16.2 4.5 12V6zM9 12.2l2.2 2.2L15.5 10',
   // Access levels: see / change / shut out.

@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { signIn, clearAuthError, DEMO_ACCOUNTS } from '../features/auth/authSlice'
+import { signIn, clearAuthError } from '../features/auth/authSlice'
+import { DEMO_ACCOUNTS } from '../features/users/usersSlice'
 
 /**
  * Role names for the sample-account list. Read from the store rather than

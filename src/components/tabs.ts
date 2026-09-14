@@ -12,6 +12,7 @@ export const TABS: { id: TabId; label: string; icon: string; offRail?: boolean }
   { id: 'assignment', label: 'Assignment', icon: 'assignment' },
   { id: 'vessel', label: 'Vessel details', icon: 'vessel', offRail: true },
   { id: 'reports', label: 'Reports', icon: 'reports' },
+  { id: 'users', label: 'Users', icon: 'users' },
   { id: 'roles', label: 'Roles & permissions', icon: 'roles' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
   { id: 'help', label: 'Help & support', icon: 'help' },

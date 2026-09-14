@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import { MODULES, selectRole, setRoleActive } from '../../features/roles/rolesSlice'
+import { selectUsersByRole } from '../../features/users/selectors'
 import { formatDateTime } from '../../utils/format'
 import AddRoleDialog from '../AddRoleDialog'
 import { FiEdit2, FiPlus, FiUser } from 'react-icons/fi'
@@ -9,25 +10,14 @@ import RawJson from '../RawJson'
 
 type DetailTab = 'details' | 'users' | 'audit'
 
-/** Stand-in holders for a role, so the Users tab has something real to list. */
-const HOLDERS = [
-  'John Doe',
-  'A. Rahman',
-  'S. Menon',
-  'K. Al Blooshi',
-  'M. Farouk',
-  'L. Pereira',
-  'T. Nakamura',
-  'R. Osei',
-  'H. Al Zaabi',
-  'D. Kowalski',
-]
-
 export default function RolesScreen() {
   const dispatch = useAppDispatch()
   const roles = useAppSelector((s) => s.roles.roles)
   const audit = useAppSelector((s) => s.roles.audit)
   const selectedId = useAppSelector((s) => s.roles.selectedId)
+  // Who holds a role is read off the accounts rather than a number stored
+  // beside it, so this stays right as users are added and reassigned.
+  const usersByRole = useAppSelector(selectUsersByRole)
   const [tab, setTab] = useState<DetailTab>('details')
   const [editing, setEditing] = useState(false)
   const [adding, setAdding] = useState(false)
@@ -52,6 +42,7 @@ export default function RolesScreen() {
   const active = byId.get(selectedId) ?? roles[0]
 
   const roleAudit = audit.filter((a) => a.roleId === active?.id)
+  const roleUsers = usersByRole.get(active?.id ?? '') ?? []
 
   if (!active) return null
 
@@ -62,7 +53,7 @@ export default function RolesScreen() {
       id: active.id,
       name: active.name,
       parent: active.parentId,
-      users: active.users,
+      users: roleUsers.length,
       scope: active.scope,
       areas: active.areas,
       permissions: active.permissions,
@@ -116,7 +107,7 @@ export default function RolesScreen() {
                   </td>
                   <td className="muted">{role.description}</td>
                   <td className="muted">{role.parentId ? byId.get(role.parentId)?.name : '—'}</td>
-                  <td>{role.users}</td>
+                  <td>{(usersByRole.get(role.id) ?? []).length}</td>
                   <td>
                     <span className={`pill pill-${role.active ? 'anchored' : 'awaiting'}`}>
                       {role.active ? 'Active' : 'Inactive'}
@@ -144,7 +135,7 @@ export default function RolesScreen() {
           {(
             [
               ['details', 'Role Details'],
-              ['users', `Users (${active.users})`],
+              ['users', `Users (${roleUsers.length})`],
               ['audit', 'Audit Log'],
             ] as const
           ).map(([id, label]) => (
@@ -239,16 +230,17 @@ export default function RolesScreen() {
 
         {tab === 'users' && (
           <ul className="role-users">
-            {Array.from({ length: active.users }, (_, i) => (
-              <li key={i}>
+            {roleUsers.map((user) => (
+              <li key={user.id}>
                 <FiUser size={16} />
                 <span>
-                  <strong>{HOLDERS[i % HOLDERS.length]}</strong>
-                  <small className="muted">{active.name}</small>
+                  <strong>{user.name}</strong>
+                  <small className="muted">{user.email}</small>
                 </span>
+                {!user.active && <span className="pill pill-awaiting">Inactive</span>}
               </li>
             ))}
-            {active.users === 0 && <p className="muted">No users hold this role yet.</p>}
+            {roleUsers.length === 0 && <p className="muted">No users hold this role yet.</p>}
           </ul>
         )}
 

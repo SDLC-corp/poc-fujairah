@@ -67,8 +67,8 @@ export interface ModuleDef {
    * The screen in the nav rail this module gates. A role with No Access here
    * does not see that tab at all.
    *
-   * Not every module has one: Vessel Requests, Alerts, Users and the Audit Log
-   * are permissions the port asked for that have no screen yet. They are left
+   * Not every module has one: Vessel Requests, Alerts and the Audit Log are
+   * permissions the port asked for that have no screen yet. They are left
    * unlinked rather than pointed at an approximate tab, so the day a screen is
    * built the permission is already there and already assigned.
    */
@@ -211,6 +211,7 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'users',
+    tab: 'users',
     label: 'Users',
     blurb: 'Manage users and their roles within the system.',
     levels: READ_WRITE,
@@ -291,7 +292,11 @@ export interface Role {
   description: string
   /** Null for a root role. */
   parentId: string | null
-  users: number
+  /**
+   * How many accounts hold the role is not stored here — it is counted off the
+   * users slice, so adding or reassigning a user moves the figure by itself
+   * rather than leaving a headcount that has to be remembered separately.
+   */
   active: boolean
   createdAt: string
   updatedAt: string
@@ -348,7 +353,6 @@ const initialRoles: Role[] = [
     name: 'Super Admin',
     description: 'Unrestricted access, including roles and system configuration',
     parentId: null,
-    users: 3,
     active: true,
     createdAt: '2024-05-10T09:30:00Z',
     updatedAt: '2024-05-15T14:20:00Z',
@@ -361,7 +365,6 @@ const initialRoles: Role[] = [
     name: 'Admin',
     description: 'Full operational access; cannot change roles or configuration',
     parentId: 'super-admin',
-    users: 3,
     active: true,
     createdAt: '2024-05-10T09:31:00Z',
     updatedAt: '2024-05-15T14:20:00Z',
@@ -388,7 +391,6 @@ const initialRoles: Role[] = [
     name: 'Harbour Master',
     description: 'Full access to all modules and settings',
     parentId: 'admin',
-    users: 3,
     active: true,
     createdAt: '2024-05-10T09:32:00Z',
     updatedAt: '2024-05-15T14:20:00Z',
@@ -401,7 +403,6 @@ const initialRoles: Role[] = [
     name: 'Deputy Harbour Master',
     description: 'Access to operations and approvals',
     parentId: 'harbour-master',
-    users: 5,
     active: true,
     createdAt: '2024-05-10T09:34:00Z',
     updatedAt: '2024-05-14T11:05:00Z',
@@ -436,7 +437,6 @@ const initialRoles: Role[] = [
     name: 'Port Control Operator',
     description: 'Monitor and manage vessel operations',
     parentId: 'deputy-harbour-master',
-    users: 8,
     active: true,
     createdAt: '2024-05-10T09:40:00Z',
     updatedAt: '2024-05-13T08:15:00Z',
@@ -466,7 +466,6 @@ const initialRoles: Role[] = [
     name: 'Anchorage Officer',
     description: 'Manage anchorage assignments',
     parentId: 'deputy-harbour-master',
-    users: 6,
     active: true,
     createdAt: '2024-05-10T09:30:00Z',
     updatedAt: '2024-05-15T14:20:00Z',
@@ -494,7 +493,6 @@ const initialRoles: Role[] = [
     name: 'Tug Operator',
     description: 'View relevant operations and vessels',
     parentId: 'anchorage-officer',
-    users: 4,
     active: true,
     createdAt: '2024-05-11T07:12:00Z',
     updatedAt: '2024-05-12T16:40:00Z',
@@ -513,7 +511,6 @@ const initialRoles: Role[] = [
     name: 'VTS Operator',
     description: 'Vessel tracking and traffic monitoring',
     parentId: 'harbour-master',
-    users: 7,
     active: true,
     createdAt: '2024-05-10T10:02:00Z',
     updatedAt: '2024-05-15T09:55:00Z',
@@ -539,7 +536,6 @@ const initialRoles: Role[] = [
     name: 'External Stakeholder',
     description: 'Limited access to shared information',
     parentId: null,
-    users: 2,
     // Active, so the matching sign-in has something to show. Deactivating it
     // from the Roles screen strips its users' rail back to Help on the spot —
     // which is the point of the switch, and worth demonstrating live.
@@ -619,7 +615,7 @@ function slugify(name: string, taken: string[]): string {
   return `${base}-${n}`
 }
 
-export type NewRole = Omit<Role, 'id' | 'users' | 'createdAt' | 'updatedAt'>
+export type NewRole = Omit<Role, 'id' | 'createdAt' | 'updatedAt'>
 
 const label = (id: ModuleId) => MODULES.find((m) => m.id === id)?.label ?? id
 const levelLabel = (id: AccessLevel) => ACCESS_LEVELS.find((l) => l.id === id)?.label ?? id
@@ -637,7 +633,7 @@ const rolesSlice = createSlice({
         action.payload.name,
         state.roles.map((r) => r.id),
       )
-      state.roles.push({ ...action.payload, id, users: 0, createdAt: now, updatedAt: now })
+      state.roles.push({ ...action.payload, id, createdAt: now, updatedAt: now })
       state.selectedId = id
       state.audit.unshift({
         id: `A-${state.audit.length + 1}`,

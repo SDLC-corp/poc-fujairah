@@ -6151,3 +6151,123 @@ button.perm-module {
   color: var(--muted);
   font-weight: 400;
 }
+
+/* ---- users ---- */
+
+/* Search and the two filters on one line, wrapping onto their own rows on a
+   narrow screen rather than squeezing the search box away to nothing. */
+.user-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
+.user-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 240px;
+  min-width: 190px;
+  color: var(--muted);
+}
+
+.user-search svg {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+}
+
+.user-search .text-input {
+  width: 100%;
+  padding-left: 31px;
+}
+
+.user-toolbar > .text-input {
+  flex: 0 1 175px;
+}
+
+/* Rows here open an editor from their own button rather than being clickable
+   themselves, so they highlight without taking the pointer that would promise
+   the whole row does something. */
+.users-table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.users-table td {
+  vertical-align: middle;
+}
+
+.user-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Same override as `.head-action`: ghost buttons are sized for the foot of a
+   form card, so they have to shrink to their label to sit in a table cell. */
+.user-actions .ghost-button,
+.user-password .ghost-button {
+  width: auto;
+  margin-top: 0;
+  padding: 5px 11px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.user-actions .ghost-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Marks the row for the account currently signed in — which is also the row
+   whose Deactivate button is refused. */
+.user-you {
+  margin-left: 7px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---- add / edit user dialog ---- */
+
+/* Narrower than the role dialog: one column of short fields, where that one
+   carries a whole permission matrix beside them. */
+.user-dialog {
+  width: min(460px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.user-dialog-body {
+  padding: 16px 18px 4px;
+  overflow-y: auto;
+}
+
+.user-password {
+  display: flex;
+  gap: 6px;
+}
+
+.user-password .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Left-aligned, unlike `.count` — this is guidance about the field, not a
+   character tally that belongs against its right edge. */
+.field-note {
+  display: block;
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
