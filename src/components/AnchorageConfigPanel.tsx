@@ -79,7 +79,9 @@ export default function AnchorageConfigPanel() {
             </span>
           </label>
           <label className="field">
-            <span>Nautical mile</span>
+            {/* Named the same way as the shackle beside it — both fields answer
+                "how long is one of these", and only one of them said so. */}
+            <span>Length of 1 nautical mile</span>
             <span className="cfg-unit">
               <input
                 className="text-input"
@@ -96,6 +98,24 @@ export default function AnchorageConfigPanel() {
         <p className="cfg-example">
           1 shackle = <b>{cfg.shackleLengthM} m</b> · 1 nautical mile = <b>{cfg.nauticalMileM} m</b>
         </p>
+        <small className="muted field-note">
+          One nautical mile is 1852 m by international definition — a minute of latitude. It is
+          editable only because every other figure in this rule is, and the panel should not have
+          one number the operator cannot see the provenance of.
+          {cfg.nauticalMileM !== 1852 && (
+            <>
+              {' '}
+              <b>Currently {cfg.nauticalMileM} m</b>, which is not the standard figure.{' '}
+              <button
+                type="button"
+                className="link-cell"
+                onClick={() => set({ nauticalMileM: 1852 })}
+              >
+                Put it back to 1852
+              </button>
+            </>
+          )}
+        </small>
       </fieldset>
 
       {/* ---------- 2. shackles from depth ---------- */}

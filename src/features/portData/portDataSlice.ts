@@ -171,9 +171,26 @@ const portDataSlice = createSlice({
         vessel.properties.headingDeg = Math.round(action.payload.headingDeg)
       }
       vessel.properties.ata = new Date().toISOString()
+      vessel.properties.positionAt = vessel.properties.ata
       // Where she brought up, for the drag check to measure against.
       vessel.properties.anchoredAt = [...action.payload.coordinates]
       vessel.properties.anchoredHeadingDeg = vessel.properties.headingDeg
+    },
+
+    /**
+     * Revises the declared ETA and records when it was revised, so the figure
+     * can be read with its own age beside it. An ETA nobody has touched since
+     * the vessel was three days out is a different fact from one filed an hour
+     * ago, and the page should not show them identically.
+     */
+    setVesselEta(state, action: PayloadAction<{ vesselId: string; eta: string | null }>) {
+      const vessel = state.vessels?.features.find(
+        (f) => f.properties.id === action.payload.vesselId,
+      )
+      if (!vessel) return
+      if (action.payload.eta) vessel.properties.eta = action.payload.eta
+      else delete vessel.properties.eta
+      vessel.properties.etaUpdatedAt = new Date().toISOString()
     },
 
     /**
@@ -191,6 +208,7 @@ const portDataSlice = createSlice({
       )
       if (!vessel || !vessel.properties.anchoredAt) return
       vessel.geometry.coordinates = action.payload.coordinates
+      vessel.properties.positionAt = new Date().toISOString()
       // Making way over the ground while brought up is the other half of the
       // signature, so the readouts agree with the alarm.
       vessel.properties.speedKn = 0.6
@@ -251,8 +269,12 @@ const portDataSlice = createSlice({
         // taken to have brought up exactly where she is now. That is the only
         // honest starting point: with nothing to compare against, the correct
         // answer to "is she dragging?" is no, not unknown.
+        const landedAt = new Date().toISOString()
         for (const v of action.payload.vessels?.features ?? []) {
           const p = v.properties
+          // Every position is as old as the moment the console received it —
+          // the file carries no per-fix time of its own.
+          p.positionAt ??= landedAt
           if (p.status !== 'anchored' && p.status !== 'moored') continue
           p.anchoredAt ??= [...(v.geometry.coordinates as [number, number])]
           p.anchoredHeadingDeg ??= p.headingDeg
@@ -269,6 +291,12 @@ const portDataSlice = createSlice({
   },
 })
 
-export const { addVessel, anchorVessel, dragVessel, releaseSpot, setVesselStatus } =
-  portDataSlice.actions
+export const {
+  addVessel,
+  anchorVessel,
+  dragVessel,
+  releaseSpot,
+  setVesselEta,
+  setVesselStatus,
+} = portDataSlice.actions
 export default portDataSlice.reducer

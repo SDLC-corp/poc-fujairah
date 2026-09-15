@@ -144,8 +144,19 @@ export type VesselProps = {
    */
   anchoredAt?: [number, number] | null
   anchoredHeadingDeg?: number | null
+  /**
+   * When this position was last received.
+   *
+   * The snapshot carries no per-fix timestamp, so it is stamped when the data
+   * lands and again whenever the vessel moves. It says how old the *console's*
+   * copy is — which is the honest thing to show beside a position, and the
+   * field a real feed would fill from the AIS report itself.
+   */
+  positionAt?: string | null
   /** Estimated time of arrival, ISO 8601 — set on vessels awaiting assignment. */
   eta?: string
+  /** When the ETA was last revised, so the declared figure can carry its age. */
+  etaUpdatedAt?: string | null
   /** Actual time of arrival, ISO 8601. */
   ata?: string | null
   /** Estimated time of departure, ISO 8601. */

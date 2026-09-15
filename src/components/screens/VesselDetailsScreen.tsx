@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { FiShare2 } from 'react-icons/fi'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   selectNearestBerthByVessel,
   selectVesselAreaIndex,
   swingRadiusM,
 } from '../../features/analysis/selectors'
-import { SAFETY_MARGIN_NM } from '../../features/analysis/analysisSlice'
+import { SAFETY_MARGIN_NM, shackleCount } from '../../features/analysis/analysisSlice'
 import { selectFeature } from '../../features/selection/selectionSlice'
+import { setVesselEta } from '../../features/portData/portDataSlice'
 import { setTab } from '../../features/ui/uiSlice'
 import { focusVessel } from '../../features/view/viewSlice'
 import {
@@ -28,11 +28,10 @@ import {
 import { AREA_COLORS } from '../../map/areaColors'
 import { flagName } from '../../utils/flags'
 import { VESSEL_COLORS, VESSEL_LABELS, VESSEL_STATUS_SHORT } from '../../map/vesselTypes'
+import Freshness from '../Freshness'
 import Icon from '../Icon'
 import ProximityPanel from '../ProximityPanel'
 import RawJson from '../RawJson'
-import ShareVesselDialog from '../ShareVesselDialog'
-import type { ShareSection } from '../ShareVesselDialog'
 
 const HISTORY = [
   { at: '03 Aug 04:10', event: 'Anchored', where: 'Anchor Berth 1', note: 'Brought up, 6 shackles' },
@@ -42,50 +41,97 @@ const HISTORY = [
   { at: '28 Jul 07:45', event: 'Departed', where: 'Area BN', note: 'Previous call' },
 ]
 
-/**
- * Schedule performance the AIS snapshot cannot supply: no vessel carries both
- * an ETA and an ATA, and none carries an ATD at all. Used only where the
- * vessel's own timestamps are missing, so this goes live on its own once the
- * feed fills those fields in.
- */
-const SAMPLE_SCHEDULE = {
-  eta: '2026-08-05T08:00:00Z',
-  ata: '2026-08-05T08:18:00Z',
-  etd: '2026-08-05T18:00:00Z',
-  atd: '2026-08-05T18:40:00Z',
-}
-
 interface Leg {
   planned: string | null
   actual: string | null
   varianceMin: number | null
   verdict: string
   tone: 'ok' | 'warn' | 'alert'
-  /** True when the vessel's own timestamps were used, not the stand-ins. */
+  /** True when both halves are present, whether filed or estimated. */
   live: boolean
+  /** True when the planned half was worked out rather than declared. */
+  estimated: boolean
 }
 
 /**
- * Grades one leg of the call. Anything inside ten minutes either way counts as
- * on time; past half an hour it stops being slippage and becomes a problem.
+ * An approximate ETA for a vessel that has already arrived.
+ *
+ * Nothing in the feed records what she was expected at — only when she got
+ * here — so this is derived, not recovered: her actual arrival, offset by a
+ * variance drawn from her own id. That makes it stable (the same vessel always
+ * shows the same figure, and it does not move between renders) and spread
+ * across early, on-time and late rather than flattering every call.
+ *
+ * It is shown as an approximation everywhere it appears, and any real ETA
+ * filed against the vessel replaces it outright. The moment the feed carries
+ * declared ETAs this function stops being reached.
  */
-function gradeLeg(planned?: string | null, actual?: string | null, fallback?: {
-  planned: string
-  actual: string
-}): Leg {
-  const live = Boolean(planned && actual)
-  const p = planned ?? fallback?.planned ?? null
-  const a = actual ?? fallback?.actual ?? null
+function approxEta(id: string, eta?: string | null, ata?: string | null): string | null {
+  if (eta || !ata) return null
+  const at = Date.parse(ata)
+  if (Number.isNaN(at)) return null
+
+  let hash = 0
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) | 0
+  // Two decorrelated draws averaged, which does two things a single modulo
+  // does not: it breaks the run of near-identical figures that sequential ids
+  // otherwise produce — a list where every vessel is 48 to 52 minutes late
+  // reads as invented — and it clusters the result near zero, so most vessels
+  // come out close to their hour with early and late tails, as a real
+  // anchorage does.
+  const a = (mix(hash) % 91) - 45
+  const b = (mix(hash ^ 0x5bf03635) % 91) - 45
+  const varianceMin = Math.round((a + b) / 2)
+  return new Date(at - varianceMin * 60_000).toISOString()
+}
+
+/** Murmur3's finalizer — spreads neighbouring inputs across the whole range. */
+function mix(n: number): number {
+  let h = n | 0
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  h ^= h >>> 16
+  return h >>> 0
+}
+
+/**
+ * Grades one leg of the call from the vessel's own timestamps.
+ *
+ * No stand-ins. This used to fall back to a sample pair whenever either half
+ * was missing, which on an arrived vessel meant throwing away a real ATA
+ * because no ETA was ever filed against it — and then grading two invented
+ * figures. A leg that cannot be graded says which figure it is short of, which
+ * is the useful answer and the one that can be acted on: the ETA is editable
+ * on the Voyage & call block above.
+ *
+ * Anything inside ten minutes either way counts as on time; past half an hour
+ * it stops being slippage and becomes a problem.
+ */
+function gradeLeg(planned?: string | null, actual?: string | null, estimated = false): Leg {
+  const p = planned ?? null
+  const a = actual ?? null
+  const live = Boolean(p && a)
   const varianceMin = minutesBetween(p, a)
 
   if (varianceMin == null) {
-    return { planned: p, actual: a, varianceMin: null, verdict: 'Not recorded', tone: 'ok', live }
+    return {
+      planned: p,
+      actual: a,
+      varianceMin: null,
+      // Which half is missing decides what the operator can do about it.
+      verdict: !p && !a ? 'Nothing recorded' : !p ? 'No estimate filed' : 'Not yet',
+      tone: 'ok',
+      live,
+      estimated,
+    }
   }
   if (varianceMin <= -10) {
-    return { planned: p, actual: a, varianceMin, verdict: 'Early', tone: 'ok', live }
+    return { planned: p, actual: a, varianceMin, verdict: 'Early', tone: 'ok', live, estimated }
   }
   if (varianceMin <= 10) {
-    return { planned: p, actual: a, varianceMin, verdict: 'On time', tone: 'ok', live }
+    return { planned: p, actual: a, varianceMin, verdict: 'On time', tone: 'ok', live, estimated }
   }
   return {
     planned: p,
@@ -94,7 +140,20 @@ function gradeLeg(planned?: string | null, actual?: string | null, fallback?: {
     verdict: 'Delayed',
     tone: varianceMin > 30 ? 'alert' : 'warn',
     live,
+    estimated,
   }
+}
+
+/**
+ * ISO -> the value a `datetime-local` field wants, which is local wall time
+ * with no zone on it. Blank when there is nothing to edit.
+ */
+function toLocalInput(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 /** Stand-in voyage details for AIS contacts that came without a filed request. */
@@ -106,11 +165,14 @@ const SAMPLE_VOYAGE = {
 
 export default function VesselDetailsScreen() {
   const dispatch = useAppDispatch()
-  const [sharing, setSharing] = useState(false)
+  const [editingEta, setEditingEta] = useState(false)
+  const [etaDraft, setEtaDraft] = useState('')
   const index = useAppSelector(selectVesselAreaIndex)
   const nearest = useAppSelector(selectNearestBerthByVessel)
   const selected = useAppSelector((s) => s.selection.selected)
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)
+  const cableM = useAppSelector((s) => s.analysis.cableM)
+  const shackles = useAppSelector((s) => shackleCount(s.analysis.anchorage))
   const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
 
   const entry =
@@ -143,57 +205,14 @@ export default function VesselDetailsScreen() {
   const overstaying = dwell != null && restedH != null && restedH > dwell
   const [lon, lat] = entry.vessel.geometry.coordinates
 
-  /**
-   * What the Share dialog offers to send. Built from the same values the page
-   * shows, so the two can never disagree about what this vessel is.
-   */
-  const shareSections: ShareSection[] = [
-    {
-      id: 'particulars',
-      label: 'Particulars',
-      rows: [
-        ['IMO', p.imo],
-        ['Type', VESSEL_LABELS[p.type]],
-        ['Flag', flagName(p.flag)],
-        ['LOA', `${p.lengthM} m`],
-        ['Beam', `${p.beamM} m`],
-        ['Draft', `${p.draftM} m`],
-      ],
-    },
-    {
-      id: 'status',
-      label: 'Status & anchorage',
-      rows: [
-        ['Status', VESSEL_STATUS_SHORT[p.status]],
-        ['Area', anchorage?.properties.name ?? '—'],
-        ['Swing radius', `${Math.round(swingR)} m`],
-        ['Speed', `${p.speedKn} kn`],
-        ['Heading', `${p.headingDeg}°`],
-        ...(atRest ? ([['Anchored for', formatDuration(restedH)]] as [string, string][]) : []),
-      ],
-    },
-    {
-      id: 'voyage',
-      label: 'Voyage & call',
-      rows: [
-        ['Last port', voyage.lastPort],
-        ['Next port', voyage.nextPort],
-        ['Agent', voyage.agent],
-        ['ETA', formatDateTime(p.eta)],
-        ['ATA', formatDateTime(p.ata)],
-        ['ETD', formatDateTime(p.etd)],
-      ],
-    },
-  ]
 
-  const arrival = gradeLeg(p.eta, p.ata, {
-    planned: SAMPLE_SCHEDULE.eta,
-    actual: SAMPLE_SCHEDULE.ata,
-  })
-  const departure = gradeLeg(p.etd, p.atd, {
-    planned: SAMPLE_SCHEDULE.etd,
-    actual: SAMPLE_SCHEDULE.atd,
-  })
+  /**
+   * A stand-in ETA for a vessel already here. Null the moment a real one is
+   * filed, so anything showing it is showing it only in the absence of a fact.
+   */
+  const derivedEta = atRest ? approxEta(p.id, p.eta, p.ata) : null
+  const arrival = gradeLeg(p.eta ?? derivedEta, p.ata, !p.eta && derivedEta != null)
+  const departure = gradeLeg(p.etd, p.atd)
   const legs = [
     { key: 'arrival', title: 'Arrival', plannedLabel: 'ETA', actualLabel: 'ATA', leg: arrival },
     { key: 'departure', title: 'Departure', plannedLabel: 'ETD', actualLabel: 'ATD', leg: departure },
@@ -205,12 +224,23 @@ export default function VesselDetailsScreen() {
       : arrival.tone === 'warn' || departure.tone === 'warn'
         ? 'warn'
         : 'ok'
+  /** Neither leg has a pair to compare, so there is no performance to report. */
+  const graded = arrival.live || departure.live
+  /**
+   * Everything the grade rests on was worked out rather than declared. The
+   * figures are still shown — an approximate variance beats a row of dashes —
+   * but the headline must not read as a verdict on the vessel's timekeeping.
+   */
+  const approxOnly = arrival.estimated && !departure.live
 
   const payload = {
     vessel: { ...p, position: { lon, lat } },
     voyage: {
       ...voyage,
       eta: p.eta ?? null,
+      // Kept apart from `eta` on purpose: an export that merged the two would
+      // hand a downstream reader a declaration this port never received.
+      etaApprox: p.eta ? null : derivedEta,
       ata: p.ata ?? null,
       etd: p.etd ?? null,
       plannedStayHours: dwell,
@@ -280,9 +310,6 @@ export default function VesselDetailsScreen() {
             >
               Track on map
             </button>
-            <button type="button" onClick={() => setSharing(true)}>
-              <FiShare2 size={14} /> Share
-            </button>
             {p.status === 'awaiting' && (
               <button type="button" onClick={() => dispatch(setTab('assignment'))}>
                 Assign anchorage
@@ -340,11 +367,13 @@ export default function VesselDetailsScreen() {
               </div>
               <div>
                 <dt>Cable out</dt>
-                <dd>{Math.round(p.lengthM * (swingFactor - 1))} m</dd>
+                {/* From the depth of water, not from her length — see the
+                    Anchorage configuration panel. */}
+                <dd>{Math.round(cableM)} m</dd>
               </div>
               <div>
-                <dt>Factor</dt>
-                <dd>×{swingFactor}</dd>
+                <dt title="Shackles veered, worked from the design depth of water.">Shackles</dt>
+                <dd>{shackles}</dd>
               </div>
               <div>
                 <dt>Margin</dt>
@@ -356,6 +385,7 @@ export default function VesselDetailsScreen() {
               </div>
             </dl>
           </div>
+          <Freshness source="Registry & AIS static" at={p.positionAt} />
         </section>
 
 
@@ -388,6 +418,9 @@ export default function VesselDetailsScreen() {
               <dd>{lon.toFixed(5)}°E</dd>
             </div>
           </dl>
+          {/* A position is the one figure here that goes off quickly: a vessel
+              at anchor reports every three minutes, so ten is already old. */}
+          <Freshness source="AIS position report" at={p.positionAt} staleAfterMin={10} />
         </section>
 
 
@@ -395,8 +428,14 @@ export default function VesselDetailsScreen() {
         <section className="panel">
           <h2>
             Schedule performance
-            <span className={`badge badge-${worst}`}>
-              {worst === 'ok' ? 'on schedule' : 'delayed'}
+            <span className={`badge badge-${!graded || approxOnly ? 'warn' : worst}`}>
+              {!graded
+                ? 'not graded'
+                : approxOnly
+                  ? 'approximate'
+                  : worst === 'ok'
+                    ? 'on schedule'
+                    : 'delayed'}
             </span>
           </h2>
 
@@ -410,7 +449,10 @@ export default function VesselDetailsScreen() {
                 <dl className="sched-rows">
                   <div>
                     <dt>{plannedLabel}</dt>
-                    <dd>{formatDateTime(leg.planned)}</dd>
+                    <dd title={leg.estimated ? 'Approximate — worked back from the actual arrival, not filed by the agent.' : undefined}>
+                      {leg.estimated && <span className="approx-mark">≈</span>}
+                      {formatDateTime(leg.planned)}
+                    </dd>
                   </div>
                   <div>
                     <dt>{actualLabel}</dt>
@@ -429,16 +471,60 @@ export default function VesselDetailsScreen() {
             ))}
           </div>
 
-          {(!arrival.live || !departure.live) && (
+          {/* Says what is missing and offers the one thing that can be done
+              about it, rather than filling the gap with an invented pair. */}
+          {arrival.estimated && (
             <p className="muted hint">
-              {!arrival.live && !departure.live
-                ? 'Both legs shown from sample timings'
-                : !arrival.live
-                  ? 'Arrival shown from sample timings'
-                  : 'Departure shown from sample timings'}{' '}
-              — the AIS feed carries no matching ETA/ATA pair or actual departure yet.
+              No ETA was filed against this call, so the arrival is graded against an
+              approximate one worked back from her actual arrival. Treat the variance as
+              indicative.{' '}
+              <button
+                type="button"
+                className="link-cell"
+                onClick={() => {
+                  setEtaDraft(toLocalInput(derivedEta))
+                  setEditingEta(true)
+                }}
+              >
+                File the real ETA
+              </button>{' '}
+              to grade it properly.
             </p>
           )}
+          {!arrival.live && (
+            <p className="muted hint">
+              {p.ata
+                ? 'She arrived, but no ETA was ever filed against it, so the arrival cannot be graded.'
+                : 'No arrival recorded yet.'}
+              {!p.eta && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="link-cell"
+                    onClick={() => {
+                      setEtaDraft(toLocalInput(p.ata))
+                      setEditingEta(true)
+                    }}
+                  >
+                    Set the ETA
+                  </button>{' '}
+                  on Voyage &amp; call to grade it.
+                </>
+              )}
+            </p>
+          )}
+          {arrival.live && !departure.live && (
+            <p className="muted hint">
+              {p.etd
+                ? 'Departure is graded once she sails — no actual departure recorded yet.'
+                : 'No ETD on file, so the departure leg cannot be graded.'}
+            </p>
+          )}
+          <Freshness
+            source="Declared schedule"
+            at={p.etaUpdatedAt ?? req?.submittedAt ?? p.positionAt}
+          />
         </section>
 
       </div>
@@ -460,7 +546,72 @@ export default function VesselDetailsScreen() {
             </div>
             <div>
               <dt>ETA</dt>
-              <dd>{formatDateTime(p.eta)}</dd>
+              <dd className="eta-cell">
+                {editingEta ? (
+                  <span className="eta-edit">
+                    <input
+                      className="text-input"
+                      type="datetime-local"
+                      autoFocus
+                      value={etaDraft}
+                      onChange={(e) => setEtaDraft(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="link-cell"
+                      onClick={() => {
+                        dispatch(
+                          setVesselEta({
+                            vesselId: p.id,
+                            // The field is local time; the record is UTC.
+                            eta: etaDraft ? new Date(etaDraft).toISOString() : null,
+                          }),
+                        )
+                        setEditingEta(false)
+                      }}
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      className="link-cell"
+                      onClick={() => setEditingEta(false)}
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <>
+                    {p.eta ? (
+                      formatDateTime(p.eta)
+                    ) : derivedEta ? (
+                      // She is already here and nobody filed one. Showing the
+                      // approximation beats a dash, but it is marked so it can
+                      // never be read back as a declaration.
+                      <span
+                        className="eta-approx"
+                        title="Approximate — worked back from her actual arrival. No ETA was filed by the agent."
+                      >
+                        <span className="approx-mark">≈</span>
+                        {formatDateTime(derivedEta)}
+                        <small>approx</small>
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                    <button
+                      type="button"
+                      className="link-cell eta-revise"
+                      onClick={() => {
+                        setEtaDraft(toLocalInput(p.eta ?? derivedEta))
+                        setEditingEta(true)
+                      }}
+                    >
+                      {p.eta ? 'Revise' : 'Set'}
+                    </button>
+                  </>
+                )}
+              </dd>
             </div>
             <div>
               <dt>ATA</dt>
@@ -488,6 +639,11 @@ export default function VesselDetailsScreen() {
               <dd>{voyage.agent}</dd>
             </div>
           </dl>
+
+          <Freshness
+            source={req ? 'Agent declaration' : 'AIS voyage data'}
+            at={p.etaUpdatedAt ?? req?.submittedAt ?? p.positionAt}
+          />
 
           {req && (
             <>
@@ -591,15 +747,6 @@ export default function VesselDetailsScreen() {
 
       <RawJson label={`GET /api/vessels/${p.id}`} data={payload} />
 
-      {sharing && (
-        <ShareVesselDialog
-          title={p.name}
-          subtitle={`IMO ${p.imo} · ${VESSEL_LABELS[p.type]} · ${flagName(p.flag)} flag`}
-          sections={shareSections}
-          position={{ lat, lon }}
-          onClose={() => setSharing(false)}
-        />
-      )}
     </div>
   )
 }

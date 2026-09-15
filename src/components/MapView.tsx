@@ -12,7 +12,6 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { clearSelection, selectFeature } from '../features/selection/selectionSlice'
 import {
-  cableLengthM,
   checkSpotAt,
   selectAreas,
   selectBufferFeature,
@@ -26,7 +25,6 @@ import {
   selectDragOverlay,
 } from '../features/analysis/selectors'
 import type { FreeSpotProps } from '../features/analysis/selectors'
-import { setBearing, setPitch } from '../features/view/viewSlice'
 import { dismissArrival, finishTransit } from '../features/transit/transitSlice'
 import { anchorVessel } from '../features/portData/portDataSlice'
 import {
@@ -44,7 +42,7 @@ import { buildVesselHull } from '../map/vesselGeometry'
 import { buildGraticule } from '../map/graticule'
 import { registerAnchorIcon } from '../map/anchorIcon'
 import { registerVesselIcons } from '../map/vesselIcon'
-import { VESSEL_LABELS } from '../map/vesselTypes'
+import { VESSEL_COLORS, VESSEL_LABELS } from '../map/vesselTypes'
 import {
   along,
   bbox,
@@ -58,25 +56,26 @@ import '../map/workerSetup'
 import {
   BASEMAP_STYLES,
   SEA_INK,
+  FIXED_BEARING,
+  FIXED_PITCH,
   INITIAL_CENTER,
   INITIAL_ZOOM,
-  MAX_PITCH,
-  PITCHED_VIEW,
   PORT_BOUNDS,
 } from '../map/basemaps'
 import {
   addPortLayers,
   configureBuildingLayer,
   configureNameLayers,
+  configureThemeInk,
   configureWaterLayers,
-  EMPTY_FC,
   findBuildingLayer,
   FLAT_VESSEL_LAYERS,
+  THREE_D_VESSEL_LAYERS,
+  EMPTY_FC,
   INTERACTIVE_LAYERS,
   LAYER_GROUPS,
   SOURCE_IDS,
   SWING_INK,
-  THREE_D_VESSEL_LAYERS,
 } from '../map/layers'
 import type { LayerId, VesselCollection, VesselFeature, VesselProps, VesselType } from '../types/gis'
 
@@ -121,6 +120,8 @@ export default function MapView() {
   const buildingLayerRef = useRef<string | null>(null)
   const nameLayersRef = useRef<string[]>([])
   const framedTransitRef = useRef<number | null>(null)
+  /** Vessel whose let-go the camera has already closed in on. */
+  const framedArrivalRef = useRef<string | null>(null)
   /** Popup opened by an alert click; replaced or cleared on the next focus. */
   const focusPopupRef = useRef<Popup | null>(null)
   /**
@@ -147,6 +148,7 @@ export default function MapView() {
 
   const dispatch = useAppDispatch()
   const buildings3d = useAppSelector((s) => s.layers.buildings3d)
+  const vessels3d = useAppSelector((s) => s.layers.vessels3d)
   const mapNames = useAppSelector((s) => s.layers.mapNames)
   const visible = useAppSelector((s) => s.layers.visible)
   const selected = useAppSelector((s) => s.selection.selected)
@@ -164,14 +166,11 @@ export default function MapView() {
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)
   const bufferFeature = useAppSelector(selectBufferFeature)
   const nearest = useAppSelector(selectNearestBerthLine)
-  const vessels3d = useAppSelector((s) => s.layers.vessels3d)
   const hulls = useAppSelector(selectVesselHulls)
   const swingCircles = useAppSelector(selectSwingCircles)
   const freeSpots = useAppSelector(selectFreeSpots)
   const anchorMarks = useAppSelector(selectAnchorMarks)
   const labelPoints = useAppSelector(selectLabelPoints)
-  const pitch = useAppSelector((s) => s.view.pitch)
-  const bearing = useAppSelector((s) => s.view.bearing)
   const focusRequest = useAppSelector((s) => s.view.focusRequest)
   const transit = useAppSelector((s) => s.transit.active)
   const arrival = useAppSelector((s) => s.transit.arrived)
@@ -179,6 +178,7 @@ export default function MapView() {
   const relocating = useAppSelector((s) => s.spots.relocating)
   const pickingFor = useAppSelector((s) => s.spots.pickingFor)
   const playbackVesselId = useAppSelector((s) => s.playback.vesselId)
+  const playbackFollowIds = useAppSelector((s) => s.playback.followIds)
   const playbackProgress = useAppSelector((s) => s.playback.progress)
   const playbackData = useAppSelector((s) => s.playback.data)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
@@ -186,6 +186,7 @@ export default function MapView() {
   const movedSpots = useAppSelector((s) => s.spots.moved)
   const areas = useAppSelector(selectAreas)
   const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
+  const cableM = useAppSelector((s) => s.analysis.cableM)
 
   // Drag handlers are attached once but must validate against current state,
   // so everything they read goes through a ref rather than a stale closure.
@@ -219,6 +220,8 @@ export default function MapView() {
   swingFactorRef.current = swingFactor
   const safetyMarginRef = useRef(safetyMarginM)
   safetyMarginRef.current = safetyMarginM
+  const cableRef = useRef(cableM)
+  cableRef.current = cableM
   const movedSpotsRef = useRef(movedSpots)
   movedSpotsRef.current = movedSpots
 
@@ -277,22 +280,21 @@ export default function MapView() {
       style: BASEMAP_STYLES[theme],
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
-      pitch: vessels3d ? PITCHED_VIEW : 0,
-      maxPitch: MAX_PITCH,
+      pitch: FIXED_PITCH,
+      bearing: FIXED_BEARING,
+      // Not merely started flat — held flat. min and max pin it from both ends,
+      // so nothing in MapLibre or in our own code can tilt it later.
+      minPitch: FIXED_PITCH,
+      maxPitch: FIXED_PITCH,
+      dragRotate: false,
+      pitchWithRotate: false,
+      touchPitch: false,
       attributionControl: { compact: true },
     })
-    // Right-click / ctrl-drag rotation is on by default; mirror whatever the
-    // user does with it back into the store so the camera sliders stay honest.
-    const syncCamera = () => {
-      dispatch(setPitch(Number(map.getPitch().toFixed(1))))
-      dispatch(setBearing(Number(map.getBearing().toFixed(1))))
-    }
-    map.on('pitchend', syncCamera)
-    map.on('rotateend', syncCamera)
-    // Also while the drag is still running, so the compass rose turns with the
-    // map instead of snapping round when the gesture ends. The camera effect
-    // ignores a store value the map already holds, so this cannot fight it.
-    map.on('rotate', syncCamera)
+    // Two-finger and keyboard rotation are separate gestures from dragRotate
+    // and survive it being off, so they are shut down by hand as well.
+    map.touchZoomRotate.disableRotation()
+    map.keyboard.disableRotation()
     mapRef.current = map
 
     /**
@@ -312,7 +314,12 @@ export default function MapView() {
       ;(window as unknown as { __map?: MapLibreMap }).__map = map
     }
 
-    map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right')
+    // Zoom only: the compass would reset a bearing that cannot move, and the
+    // pitch visualiser has no pitch to show.
+    map.addControl(
+      new NavigationControl({ showCompass: false, visualizePitch: false }),
+      'top-right',
+    )
     map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left')
     // Both bars, because both units are in use here: swing circles and safety
     // margins are worked in metres, but a passage distance is read in miles —
@@ -453,6 +460,10 @@ export default function MapView() {
       map.setPaintProperty('swing-label', 'text-halo-color', theme === 'day' ? '#f8fafc' : '#061a33')
       map.setPaintProperty('swing-label', 'text-color', theme === 'day' ? '#b45309' : '#fbbf24')
     }
+
+    // Everything else that was inked against a white sheet — the anchor cable
+    // most of all, which is navy on navy water until this runs.
+    configureThemeInk(map, theme !== 'day')
   }, [styleEpoch, theme])
 
   /* 3D buildings come from the basemap's own extrusion layer. */
@@ -666,18 +677,37 @@ export default function MapView() {
 
     if (!arrival) {
       source()?.setData(EMPTY_FC)
+      framedArrivalRef.current = null
       return
     }
 
     const vessel = vessels?.features.find((v) => v.properties.id === arrival.vesselId)
     if (!vessel) return
 
-    const cableM = cableLengthM(vessel.properties.lengthM, swingFactor)
+    // The passage was framed end to end, which leaves the anchor going down a
+    // couple of hundred metres wide on a view kilometres across — the whole
+    // thing happens inside a few pixels. So close in on the spot as she lets
+    // go, and only ever inwards: an operator already looking closer than this
+    // is not pulled back out. Once per arrival, so panning away during the
+    // drop does not drag the camera back.
+    if (framedArrivalRef.current !== arrival.vesselId) {
+      framedArrivalRef.current = arrival.vesselId
+      map.easeTo({
+        center: arrival.at,
+        zoom: Math.max(map.getZoom(), 15.4),
+        duration: 900,
+      })
+    }
+
+    // The same scope the swing circle is centred from, so the anchor lands
+    // where the circle says it is.
     const seabed = destination(arrival.at, cableM / 1000, vessel.properties.headingDeg, {
       units: 'kilometers',
     }).geometry.coordinates as [number, number]
 
-    const DURATION = 1500
+    // Long enough to still be running once the camera has closed in on it —
+    // at 1.5 s most of the cable had paid out while the view was still moving.
+    const DURATION = 2200
     const started = Date.now()
     let frame = 0
 
@@ -728,7 +758,7 @@ export default function MapView() {
 
     frame = requestAnimationFrame(draw)
     return () => cancelAnimationFrame(frame)
-  }, [styleEpoch, arrival, vessels, swingFactor])
+  }, [styleEpoch, arrival, vessels, cableM])
 
   /* Confirm the arrival on the map itself. */
   useEffect(() => {
@@ -850,22 +880,14 @@ export default function MapView() {
     }
   }, [styleEpoch, focusRequest, anchorages, vessels, geofences])
 
-  /* Drive the camera from the store; map gestures push their result back. */
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map || !styleEpoch) return
-    const pitchOff = Math.abs(map.getPitch() - pitch) > 0.5
-    const bearingOff = Math.abs(map.getBearing() - bearing) > 0.5
-    if (!pitchOff && !bearingOff) return
-    map.easeTo({ pitch, bearing, duration: 500 })
-  }, [styleEpoch, pitch, bearing])
-
   /* Layer visibility toggles. */
   useEffect(() => {
     const map = mapRef.current
     if (!map || !styleEpoch) return
     for (const [layer, styleLayers] of Object.entries(LAYER_GROUPS)) {
       for (const id of styleLayers) {
+        // Flat dots and extruded hulls are two renderings of the same layer,
+        // so the 3D switch decides which half of the vessel group is drawn.
         // Flat dots and extruded hulls are two renderings of the same layer,
         // so the 3D switch decides which half of the vessel group is drawn.
         let on = visible[layer as LayerId]
@@ -982,6 +1004,7 @@ export default function MapView() {
         freeSpotsRef.current,
         swingFactorRef.current,
         safetyMarginRef.current,
+        cableRef.current,
       )
       dragSource()?.setData({
         type: 'FeatureCollection',
@@ -1155,9 +1178,13 @@ export default function MapView() {
   }, [styleEpoch, selectedSpotId, relocating, freeSpots, transit, dispatch])
 
   /**
-   * Trail behind the followed vessel only. Just the run already made — drawing
+   * A trail behind each followed vessel. Just the run already made — drawing
    * the rest of the route ahead reads as a course line the vessel is steering,
    * which is not what a replay is showing.
+   *
+   * Every trail is cut at the same playhead, which is the point of following
+   * more than one: where two lines end at the same instant is where the two
+   * ships were at the same instant.
    */
   useEffect(() => {
     const map = mapRef.current
@@ -1165,22 +1192,40 @@ export default function MapView() {
     const source = map.getSource(SOURCE_IDS.playback) as GeoJSONSource | undefined
     if (!source) return
 
-    const chosen = playbackData?.vessels.find((v) => v.id === playbackVesselId)
-    if (!playbackFleet || !chosen) {
+    if (!playbackFleet || !playbackData) {
       source.setData(EMPTY_FC)
       return
     }
 
-    const upto = indexAt(chosen.track, playbackProgress)
-    const run = trackLine(chosen).slice(0, upto + 1)
-    source.setData({
-      type: 'FeatureCollection',
-      features:
-        run.length > 1
-          ? [{ type: 'Feature', properties: { kind: 'done' }, geometry: { type: 'LineString', coordinates: run } }]
-          : [],
-    } as FeatureCollection)
-  }, [styleEpoch, playbackData, playbackFleet, playbackVesselId, playbackProgress])
+    const features: Feature[] = []
+    for (const id of playbackFollowIds) {
+      const chosen = playbackData.vessels.find((v) => v.id === id)
+      if (!chosen) continue
+      const upto = indexAt(chosen.track, playbackProgress)
+      const run = trackLine(chosen).slice(0, upto + 1)
+      if (run.length < 2) continue
+      features.push({
+        type: 'Feature',
+        properties: {
+          kind: 'done',
+          id: chosen.id,
+          name: chosen.name,
+          color: VESSEL_COLORS[chosen.type as VesselType] ?? '#1b56b5',
+          primary: chosen.id === playbackVesselId,
+        },
+        geometry: { type: 'LineString', coordinates: run },
+      })
+    }
+
+    source.setData({ type: 'FeatureCollection', features } as FeatureCollection)
+  }, [
+    styleEpoch,
+    playbackData,
+    playbackFleet,
+    playbackFollowIds,
+    playbackVesselId,
+    playbackProgress,
+  ])
 
   /**
    * Frame the day's movement once on arriving at the replay. Changing the

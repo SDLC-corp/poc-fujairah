@@ -87,12 +87,18 @@ export function shackleCount(config: AnchorageConfig): number {
  * the margin. Keeping the pair means every call site that already takes
  * (LOA, factor, margin) is untouched by the rule changing underneath it.
  */
-export function compileSwing(config: AnchorageConfig): { factor: number; marginM: number } {
+export function compileSwing(config: AnchorageConfig): {
+  factor: number
+  marginM: number
+  cableM: number
+} {
+  const cableM = shackleCount(config) * config.calcShackleLengthM
   return {
     factor: 1,
-    marginM:
-      shackleCount(config) * config.calcShackleLengthM +
-      config.extraMarginNm * config.nauticalMileM,
+    marginM: cableM + config.extraMarginNm * config.nauticalMileM,
+    // Carried separately as well as inside the margin: the margin sizes the
+    // circle, the cable says where its centre is.
+    cableM,
   }
 }
 
@@ -110,6 +116,8 @@ interface AnalysisState {
    */
   swingFactor: number
   safetyMarginM: number
+  /** Scope paid out, which is where the swing circle is centred from. */
+  cableM: number
 }
 
 const initialState: AnalysisState = {
@@ -127,6 +135,7 @@ const initialState: AnalysisState = {
   anchorage: DEFAULT_ANCHORAGE_CONFIG,
   swingFactor: compileSwing(DEFAULT_ANCHORAGE_CONFIG).factor,
   safetyMarginM: compileSwing(DEFAULT_ANCHORAGE_CONFIG).marginM,
+  cableM: compileSwing(DEFAULT_ANCHORAGE_CONFIG).cableM,
 }
 
 const analysisSlice = createSlice({
@@ -149,15 +158,17 @@ const analysisSlice = createSlice({
      */
     setAnchorageConfig(state, action: PayloadAction<Partial<AnchorageConfig>>) {
       state.anchorage = { ...state.anchorage, ...action.payload }
-      const { factor, marginM } = compileSwing(state.anchorage)
+      const { factor, marginM, cableM } = compileSwing(state.anchorage)
       state.swingFactor = factor
       state.safetyMarginM = marginM
+      state.cableM = cableM
     },
     resetAnchorageConfig(state) {
       state.anchorage = DEFAULT_ANCHORAGE_CONFIG
-      const { factor, marginM } = compileSwing(DEFAULT_ANCHORAGE_CONFIG)
+      const { factor, marginM, cableM } = compileSwing(DEFAULT_ANCHORAGE_CONFIG)
       state.swingFactor = factor
       state.safetyMarginM = marginM
+      state.cableM = cableM
     },
   },
 })

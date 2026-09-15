@@ -373,7 +373,7 @@
 }
 
 .badge-ok {
-  background: #e6f4ec;
+  background: var(--tint-green);
   color: var(--ok);
 }
 
@@ -523,7 +523,7 @@ input[type='range'] {
   background: #34d399;
 }
 .dot-tug {
-  background: #e2e8f0;
+  background: var(--tint-slate);
 }
 
 .chip {
@@ -979,7 +979,7 @@ input[type='range'] {
 .meter-track {
   height: 10px;
   border-radius: 999px;
-  background: #e4ebf4;
+  background: var(--track);
   overflow: hidden;
 }
 
@@ -1010,7 +1010,7 @@ input[type='range'] {
 }
 
 .meter-warn .meter-state {
-  background: #fdf3e2;
+  background: var(--tint-amber);
   color: var(--warn);
 }
 
@@ -1059,7 +1059,7 @@ input[type='range'] {
   flex: 1;
   height: 9px;
   border-radius: 3px;
-  background: #e4ebf4;
+  background: var(--track);
   overflow: hidden;
 }
 
@@ -1132,7 +1132,7 @@ input[type='range'] {
 }
 .feed-warn {
   border-left-color: var(--warn);
-  background: #fdf6ea;
+  background: var(--tint-amber);
 }
 .feed-info {
   border-left-color: var(--accent);
@@ -1441,11 +1441,11 @@ input[type='range'] {
 }
 
 .pill-moored {
-  background: #e6f4ec;
+  background: var(--tint-green);
   color: var(--ok);
 }
 .pill-anchored {
-  background: #fdf3e2;
+  background: var(--tint-amber);
   color: var(--warn);
 }
 .pill-underway {
@@ -1454,23 +1454,23 @@ input[type='range'] {
 }
 
 .pill-awaiting {
-  background: #ede9fe;
+  background: var(--tint-violet);
   color: #6d28d9;
 }
 
 /* The berthing half of the call — distinct hues from the anchorage states. */
 .pill-shifting {
-  background: #ccfbf1;
+  background: var(--tint-teal);
   color: #0f766e;
 }
 
 .pill-berthing {
-  background: #e0e7ff;
+  background: var(--tint-indigo);
   color: #4338ca;
 }
 
 .pill-sailed {
-  background: #e2e8f0;
+  background: var(--tint-slate);
   color: #475569;
 }
 
@@ -1814,7 +1814,7 @@ input[type='range'] {
 }
 
 .source-manual {
-  background: #ede9fe;
+  background: var(--tint-violet);
   color: #6d28d9;
 }
 
@@ -1855,7 +1855,7 @@ input[type='range'] {
 }
 
 .conf-high {
-  background: #e6f4ec;
+  background: var(--tint-green);
   color: var(--ok);
 }
 .conf-mid {
@@ -1863,7 +1863,7 @@ input[type='range'] {
   color: var(--accent);
 }
 .conf-low {
-  background: #fdf3e2;
+  background: var(--tint-amber);
   color: var(--warn);
 }
 
@@ -2067,13 +2067,13 @@ input[type='range'] {
 }
 
 .faq summary::before {
-  content: 'ï¼‹';
+  content: '＋';
   margin-right: 7px;
   color: var(--accent);
 }
 
 .faq[open] summary::before {
-  content: 'ï¼';
+  content: '－';
 }
 
 .faq p {
@@ -2160,7 +2160,7 @@ input[type='range'] {
   margin: 0 14px 14px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: #fff7ed;
+  background: var(--tint-amber);
   border: 1px solid rgba(180, 83, 9, 0.3);
 }
 
@@ -2614,13 +2614,13 @@ input[type='range'] {
 
 .kpi-ok .kpi-icon {
   color: var(--ok);
-  background: #e6f4ed;
+  background: var(--tint-green);
   box-shadow: inset 0 0 0 1px rgba(16, 121, 74, 0.16);
 }
 
 .kpi-warn .kpi-icon {
   color: var(--warn);
-  background: #fdf1de;
+  background: var(--tint-amber);
   box-shadow: inset 0 0 0 1px rgba(178, 106, 0, 0.18);
 }
 
@@ -3016,7 +3016,7 @@ input[type='range'] {
 
 /* Tone variants for the existing badge / stat primitives. */
 .badge-warn {
-  background: #fdf1de;
+  background: var(--tint-amber);
   color: var(--warn);
 }
 
@@ -4098,12 +4098,19 @@ input[type='range'] {
 
 .report-controls {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   align-items: end;
   gap: 10px;
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+}
+
+/* Four constraints and a button want more room than three did. */
+@media (max-width: 1240px) {
+  .report-controls {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
 }
 
 .report-controls label {
@@ -4447,7 +4454,7 @@ input[type='range'] {
 
 .spot-verdict.ok {
   color: #15803d;
-  background: #f0fdf4;
+  background: var(--tint-green);
   border: 1px solid rgba(22, 163, 74, 0.3);
 }
 
@@ -4646,12 +4653,12 @@ input[type='range'] {
 }
 
 .sched-pill-ok {
-  background: #e6f4ed;
+  background: var(--tint-green);
   color: var(--ok);
 }
 
 .sched-pill-warn {
-  background: #fdf1de;
+  background: var(--tint-amber);
   color: var(--warn);
 }
 
@@ -5067,6 +5074,169 @@ input[type='range'] {
   background: var(--alert-soft);
 }
 
+/* ---------------- playback: follow picker ---------------- */
+
+.pb-follow {
+  position: relative;
+}
+
+.pb-follow-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 190px;
+  max-width: 250px;
+  text-align: left;
+}
+
+.pb-follow-summary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* How many more are drawn besides the one named. */
+.pb-follow-count {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+/* Opens upwards: the bar it hangs off is at the foot of the screen. */
+.pb-follow-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 8;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.pb-follow-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: none;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.pb-follow-search svg {
+  position: absolute;
+  left: 20px;
+  pointer-events: none;
+}
+
+.pb-follow-search .text-input {
+  width: 100%;
+  padding-left: 30px;
+}
+
+.pb-follow-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.pb-follow-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+}
+
+.pb-follow-list li.is-primary {
+  background: var(--accent-soft);
+}
+
+.pb-follow-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+}
+
+.pb-follow-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.pb-follow-text strong {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-follow-text small {
+  font-size: 10.5px;
+}
+
+.pb-follow-tag {
+  flex: none;
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.pb-follow-empty {
+  padding: 10px;
+  font-size: 12px;
+}
+
+.pb-follow-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: none;
+  padding: 8px 11px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.pb-follow-bulk {
+  display: flex;
+  gap: 10px;
+}
+
+.pb-follow-bulk button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ---------------- playback: track timeline ----------------
  *
  * Full height down the right. It owns that side outright: the details card
@@ -5116,14 +5286,102 @@ input[type='range'] {
   text-overflow: ellipsis;
 }
 
-.pb-tl-date {
+/* Which of the followed vessels this column lists. */
+.pb-tl-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
   flex: none;
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pb-tl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  max-width: 100%;
+}
+
+.pb-tl-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  opacity: 0.4;
+}
+
+.pb-tl-chip.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.pb-tl-chip.active .dot {
+  opacity: 1;
+}
+
+.pb-tl-chip em {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.pb-tl-sub {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
+  padding: 7px 11px 7px 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pb-tl-modes {
+  display: flex;
+  gap: 3px;
+}
+
+.pb-tl-date {
   margin: 0;
-  padding: 7px 13px;
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
-  border-bottom: 1px solid var(--border);
+}
+
+/* Named on every row, because the column merges several vessels' days. */
+.pb-tl-vessel {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-tl-front {
+  font-style: normal;
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.pb-tl-empty {
+  padding: 14px 13px;
+  font-size: 12px;
 }
 
 .pb-tl {
@@ -5238,6 +5496,13 @@ input[type='range'] {
 .pb-tl-fix .pb-tl-what {
   color: var(--muted);
   font-weight: 400;
+}
+
+/* A plain fix carries its vessel's colour (set inline on the node); the events
+   below override it with their own meaning, which outranks whose they are. */
+.pb-tl-fix .pb-tl-node::after {
+  background: currentColor;
+  opacity: 0.55;
 }
 
 .pb-tl-underway .pb-tl-node::after {
@@ -5439,12 +5704,12 @@ input[type='range'] {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: #fdf3e2;
+  background: var(--tint-amber);
   color: var(--warn);
 }
 
 .incident-high .incident-icon {
-  background: #fdeaea;
+  background: var(--tint-red);
   color: var(--alert);
 }
 
@@ -6145,6 +6410,205 @@ button.perm-module {
   gap: 6px;
 }
 
+/* ---- anchor position notice ---- */
+
+/* Narrower than the share dialog on purpose: one address, one position, one
+   button. Nothing here should invite reading around. */
+.anchor-mail {
+  width: min(430px, 100%);
+  padding: 0;
+}
+
+.anchor-mail-body {
+  padding: 16px 18px 6px;
+}
+
+/* The coordinates are the message. Given the weight to match. */
+.anchor-mail-pos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.anchor-mail-pos strong {
+  font: 15px/1.4 ui-monospace, Consolas, monospace;
+  letter-spacing: -0.01em;
+  color: var(--ink-strong);
+}
+
+.anchor-mail-pos span {
+  font-size: 11.5px;
+}
+
+.anchor-mail-preview {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font: 11px/1.5 ui-monospace, Consolas, monospace;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.anchor-mail .role-dialog-foot .primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  padding: 9px 16px;
+}
+
+/* ---- the position being confirmed ---- */
+
+/* Boxed away from the sentence above it, because it is the figure that leaves
+   the console and goes onto somebody's chart. */
+.confirm-spot {
+  margin: 12px 0;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.confirm-spot dd strong {
+  font: 13.5px/1.4 ui-monospace, Consolas, monospace;
+  letter-spacing: -0.01em;
+}
+
+.confirm-spot dd small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.confirm-notify {
+  margin-top: 4px;
+}
+
+/* Sits under the full-width assign button, matching its block. */
+.notice-again {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ---- data freshness ---- */
+
+/* Sits at the foot of the block it describes, quiet enough to be ignored until
+   it is wanted — the figures above are the point, this is their provenance. */
+.freshness {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.freshness-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.freshness-source {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.freshness-age {
+  flex: none;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Past its expected interval. Amber rather than red: a late fix is a thing to
+   notice, not yet a thing to act on. */
+.freshness.is-stale {
+  color: var(--warn);
+}
+
+.freshness.is-stale .freshness-dot {
+  background: var(--warn);
+}
+
+/* ---- ETA, revised in place ---- */
+
+.eta-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Only offered once the row is hovered or focused, so the column of values
+   stays a column of values. */
+.eta-revise {
+  opacity: 0;
+  font-size: 11px;
+}
+
+.eta-cell:hover .eta-revise,
+.eta-revise:focus-visible {
+  opacity: 1;
+}
+
+.eta-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.eta-edit .text-input {
+  width: auto;
+  min-width: 0;
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+/* An ETA nobody filed, worked back from the actual arrival. Set apart from a
+   declared one deliberately — the whole point is that it must not be mistaken
+   for a fact the port was given. */
+.eta-approx {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.eta-approx small {
+  padding: 1px 5px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.approx-mark {
+  margin-right: 3px;
+  color: var(--muted);
+  font-style: normal;
+}
+
 /* ---- anchorage configuration ---- */
 
 /* Each step of the rule is boxed and numbered, because they run in order and
@@ -6288,6 +6752,244 @@ button.perm-module {
   font-size: 11px;
 }
 
+/* ---------------- flags ---------------- */
+
+/* A thin border and a soft corner, because a lot of ensigns are white at one
+   edge and would otherwise bleed into the row. */
+.flag-icon {
+  flex: none;
+  display: block;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+/* Stands in for the image when it cannot load — same footprint, so a column of
+   flags does not jump about as some resolve and others do not. */
+.flag-code {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  padding: 1px 3px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-2);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.flag-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ---- the flag-state dropdown ---- */
+
+.flag-filter {
+  position: relative;
+}
+
+/* Matches the selects beside it exactly — it is the same kind of control, and
+   a row of four inputs where one is visibly different reads as a mistake. */
+.flag-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+}
+
+.flag-trigger:hover {
+  border-color: var(--accent);
+}
+
+.flag-trigger[aria-expanded='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Laid out in a row with air between them rather than overlapped — stacked,
+   the ensigns hid most of each other and read as one smeared rectangle. */
+.flag-trigger-flags {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+}
+
+.flag-trigger-more {
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.flag-trigger-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flag-trigger svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.flag-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 8;
+  width: min(310px, 86vw);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.flag-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.flag-search .text-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 7px;
+  font-size: 12.5px;
+}
+
+.flag-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  max-height: 268px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.flag-list li.is-on {
+  background: var(--accent-soft);
+}
+
+/**
+ * Five fixed columns, not a flex row.
+ *
+ * Flexed, each row set its own widths from its own content — a long country
+ * name pushed that row's code and count further right than the row above,
+ * so nothing lined up down the list and the ensigns sat at a different
+ * distance from every name. As a grid the columns are the same width in every
+ * row: tick, ensign, country, code, count, each under the one above it.
+ */
+.flag-list label {
+  display: grid;
+  grid-template-columns: 14px 19px minmax(0, 1fr) auto 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* Sized and zeroed explicitly: a default checkbox carries its own margins and
+   its own idea of how tall it is, which is what knocked the ensign and the
+   name out of line with each other in the first place. */
+.flag-list input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  justify-self: center;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* The ensign holds its column whether it is an image or the code standing in
+   for one, so the names start at the same place either way. */
+.flag-list .flag-icon,
+.flag-list .flag-code {
+  justify-self: center;
+}
+
+.flag-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flag-abbr {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Tabular, so the column of counts lines up and can be compared down the list. */
+.flag-count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.flag-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.flag-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: none;
+  padding: 8px 11px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 11px;
+}
+
+.flag-bulk {
+  display: flex;
+  gap: 10px;
+}
+
+/* ---- what the dropdown chose ---- */
+
+.flag-selection {
+  margin: 2px 0 10px;
+}
+
+.flag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* The breakdown is a readout, not a control — same chip shape, no pointer. */
 .facet-breakdown {
   margin: 10px 0 12px;
@@ -6311,7 +7013,7 @@ button.perm-module {
 }
 
 .badge-medium {
-  background: #fdf1dc;
+  background: var(--tint-amber);
   color: var(--warn);
 }
 
@@ -6836,12 +7538,15 @@ button.perm-module {
 }
 
 /* The details card is pinned at different offsets per pane to clear that pane's
-   controls; expanded they are all the same pane, so it goes back to one place. */
+   controls; expanded they are all the same pane, so it goes back to one place.
+   Below the Exit control rather than beside it: both want the top right corner,
+   and the card losing that fight put its close button underneath the button
+   that leaves full screen — two different exits in the same few pixels. */
 .map-expanded .details-card {
-  top: 14px;
+  top: 49px;
   left: auto;
   right: 14px;
-  max-height: calc(100% - 28px);
+  max-height: calc(100% - 63px);
 }
 
 .map-expanded .map-focus {
@@ -6853,6 +7558,259 @@ button.perm-module {
    across the corner the rose sits in, so the rose drops below it. */
 .map-expanded .compass-rose {
   top: 50px;
+}
+
+/* ---- the dashboard expands differently ----
+ *
+ * Everywhere else the map covers the screen, because everywhere else the thing
+ * beside it is a form or a list you have finished with. The dashboard's KPI
+ * band and statistics column are the context that makes the chart worth
+ * reading — utilisation, the alert feed, what is arriving — so here full screen
+ * means "as much map as the screen allows", not "nothing but map".
+ *
+ * The map is already min(74vh, 700px), so simply filling the leftover height
+ * can be *smaller* on a laptop. The screen heading is given up to pay for it:
+ * the tab is named in the rail and the map's own Exit control is right there. */
+.screen-scroll:has(.dash-map.map-expanded) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 14px;
+}
+
+.screen:has(.dash-map.map-expanded) .screen-head {
+  display: none;
+}
+
+/* The rail and the control that opens it both stand down, so the chart has the
+   window's full width. There is no half state to get stuck in: Esc or the map's
+   own Exit control brings the whole frame back at once. */
+.app:has(.dash-map.map-expanded) .tab-rail,
+.app:has(.dash-map.map-expanded) .nav-toggle {
+  display: none;
+}
+
+/**
+ * One line of figures, whatever the count.
+ *
+ * The band is auto-fit at rest, which wraps to two and three rows as it
+ * narrows — fine on a scrolling page, wrong here, where every row it takes is a
+ * row off the chart. Expanded it becomes a single non-wrapping row, and the
+ * tiles are compacted to pay for it: the value and its label go side-by-side
+ * instead of stacked, and the chevron goes.
+ *
+ * Flex rather than equal grid columns, so each tile is as wide as its own label
+ * needs. When they no longer fit the row scrolls sideways — a figure whose
+ * label reads "Today's depa…" has stopped being a figure worth showing.
+ */
+.screen-scroll:has(.dash-map.map-expanded) .kpi-band {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 7px 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .kpi-band > * {
+  flex: 0 0 auto;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .kpi {
+  gap: 7px;
+  padding: 6px 9px;
+  border-radius: 9px;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .kpi-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .kpi-text {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .kpi-value {
+  font-size: 15px;
+  letter-spacing: -0.2px;
+}
+
+/* Held on one line and shown whole — the row scrolls rather than the label
+   being cut. */
+.screen-scroll:has(.dash-map.map-expanded) .kpi-label {
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .kpi-go {
+  display: none;
+}
+
+/* One block, not two columns: the chart takes the whole width and the
+   statistics come off the layout and float on top of it. */
+.screen-scroll:has(.dash-map.map-expanded) .dash-body {
+  position: relative;
+  display: block;
+  flex: 1;
+  min-height: 0;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .dash-map.map-expanded {
+  height: 100%;
+}
+
+/**
+ * The statistics, floating.
+ *
+ * Narrower than the column they came out of — the figures are read at a glance
+ * against the chart rather than studied, and every pixel the panel gives back
+ * is chart. It scrolls within itself so a long alert feed cannot push the
+ * bottom of it off the screen.
+ */
+.screen-scroll:has(.dash-map.map-expanded) .dash-panels {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  width: 290px;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* Floating over the chart rather than sitting on the page, so they take the
+   map-control ground and the blur that goes with it. */
+.screen-scroll:has(.dash-map.map-expanded) .dash-panels > .panel {
+  background: var(--map-control);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-md);
+}
+
+/**
+ * Fleet by class, stacked.
+ *
+ * Side by side the 132 px ring and its legend want about 330 px; the floating
+ * panel gives them 262. The legend was taking what was left and wrapping
+ * "Tankers & gas" onto two lines against the ring. Stacked, the ring is centred
+ * above a legend with the full width to itself, and every label fits on its own
+ * line — no wrapping, and nothing cut short to achieve it.
+ */
+.screen-scroll:has(.dash-map.map-expanded) .dash-panels .donut-wrap {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 11px;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .dash-panels .donut {
+  width: 108px;
+  height: 108px;
+  align-self: center;
+}
+
+.screen-scroll:has(.dash-map.map-expanded) .dash-panels .legend-name {
+  white-space: nowrap;
+}
+
+/* Everything the map pins to its own right edge steps left of the panel:
+   290 px of panel, its 12 px gutter, and 12 px between the two. */
+.dash-map.map-expanded .map-fs-btn {
+  right: 314px;
+}
+
+.dash-map.map-expanded .maplibregl-ctrl-top-right {
+  margin-right: 304px;
+}
+
+.dash-map.map-expanded .compass-rose {
+  right: 352px;
+}
+
+.dash-map.map-expanded .details-card {
+  right: 314px;
+}
+
+/* Back into its own column, rather than out of flow over the whole page. */
+.dash-map.map-expanded {
+  position: relative;
+  inset: auto;
+  z-index: 2;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+/* The statistics scroll on their own now the page does not. */
+.screen-scroll:has(.dash-map.map-expanded) .dash-panels {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* Stacked, there is no column beside the map to keep — so it takes the screen
+   the way it does everywhere else. */
+@media (max-width: 1100px) {
+  .screen-scroll:has(.dash-map.map-expanded) {
+    display: block;
+    overflow: hidden;
+  }
+
+  .screen:has(.dash-map.map-expanded) .screen-head {
+    display: flex;
+  }
+
+  /* The map covers the page outright at this width, so the band behind it is
+     not being read — and nine columns on a narrow screen would be unreadable
+     if it were. Back to the wrapping grid. */
+  .screen-scroll:has(.dash-map.map-expanded) .kpi-band {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-auto-flow: row;
+    overflow-x: visible;
+  }
+
+  .screen-scroll:has(.dash-map.map-expanded) .kpi-band > * {
+    flex: initial;
+  }
+
+  /* Nothing to float over once the map is covering the page, and no room to
+     float in — the statistics go back to being part of it. */
+  .screen-scroll:has(.dash-map.map-expanded) .dash-panels {
+    position: static;
+    width: auto;
+  }
+
+  .dash-map.map-expanded .map-fs-btn {
+    right: 10px;
+  }
+
+  .dash-map.map-expanded .maplibregl-ctrl-top-right {
+    margin-right: 0;
+  }
+
+  .dash-map.map-expanded {
+    position: fixed;
+    top: var(--app-header-h);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 5;
+    border: 0;
+    border-radius: 0;
+  }
 }
 
 /* Playback keeps its transport. The map going out of flow would otherwise
@@ -7029,4 +7987,27 @@ button.perm-module {
 [data-theme='dusk'] .template-card.selected .template-icon,
 [data-theme='night'] .template-card.selected .template-icon {
   background: var(--surface);
+}
+
+/* The "clear" verdict's text and border were fixed greens chosen against its
+   pale wash; the wash is a token now, so these follow it. */
+[data-theme='dusk'] .spot-verdict.ok,
+[data-theme='night'] .spot-verdict.ok {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+/* MapLibre popups float on the chart, so they take the map-control ground
+   rather than a panel surface — the arrow beneath them has to match. */
+[data-theme='dusk'] .maplibregl-popup-content,
+[data-theme='night'] .maplibregl-popup-content {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+[data-theme='dusk'] .maplibregl-popup-tip,
+[data-theme='night'] .maplibregl-popup-tip {
+  border-top-color: var(--surface);
+  border-bottom-color: var(--surface);
 }

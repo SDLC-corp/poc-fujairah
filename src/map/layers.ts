@@ -182,6 +182,58 @@ export function configureBuildingLayer(map: MapLibreMap, id: string) {
 }
 
 /**
+ * Ink that was chosen against a white sheet.
+ *
+ * Every one of these is a near-black line or a near-white halo — correct on the
+ * daylight chart, and on the dusk and night sheets either invisible or a glare.
+ * The chain is the worst of them: navy cable over navy water is simply not
+ * there, so a vessel appears to be lying with no ground tackle at all.
+ *
+ * Held as one table rather than scattered through the layer definitions so that
+ * adding a layer means adding a row, and so the dark set can be read as a set.
+ */
+const HALO_DAY = '#f8fafc'
+const HALO_DARK = '#04101f'
+const ALERT_HALO_DAY = '#fff7ed'
+const ALERT_HALO_DARK = '#2b1111'
+
+type InkProp = 'line-color' | 'text-color' | 'text-halo-color'
+
+const THEMED_INK: { id: string; prop: InkProp; day: string; dark: string }[] = [
+  // Ground tackle — the reported fault.
+  { id: 'vessels-chain', prop: 'line-color', day: '#0a2540', dark: '#93b4d8' },
+  { id: 'anchor-drop-chain', prop: 'line-color', day: '#0a2540', dark: '#93b4d8' },
+
+  // Labels: the ink itself, then the halo it is cut out of.
+  { id: 'vessels-label', prop: 'text-color', day: '#0f172a', dark: '#eaf2ff' },
+  { id: 'vessels-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+  { id: 'anchorages-point-label', prop: 'text-color', day: '#0f172a', dark: '#eaf2ff' },
+  { id: 'anchorages-point-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+  { id: 'anchorages-label', prop: 'text-color', day: '#0c4a6e', dark: '#bcd9f2' },
+  { id: 'anchorages-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+  { id: 'contours-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+  { id: 'graticule-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+  { id: 'soundings-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+  { id: 'playback-done-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+  { id: 'nearest-line-label', prop: 'text-color', day: '#b45309', dark: '#fbbf24' },
+  { id: 'nearest-line-label', prop: 'text-halo-color', day: HALO_DAY, dark: HALO_DARK },
+
+  // The red warnings keep their red, but on a dark ground rather than a cream one.
+  { id: 'geofence-label', prop: 'text-color', day: '#7f1d1d', dark: '#fca5a5' },
+  { id: 'geofence-label', prop: 'text-halo-color', day: ALERT_HALO_DAY, dark: ALERT_HALO_DARK },
+  { id: 'dragging-label', prop: 'text-color', day: '#7f1d1d', dark: '#fca5a5' },
+  { id: 'dragging-label', prop: 'text-halo-color', day: ALERT_HALO_DAY, dark: ALERT_HALO_DARK },
+]
+
+/** Repaints that table for the theme in force. Safe to call on any style. */
+export function configureThemeInk(map: MapLibreMap, dark: boolean): void {
+  for (const row of THEMED_INK) {
+    if (!map.getLayer(row.id)) continue
+    map.setPaintProperty(row.id, row.prop, dark ? row.dark : row.day)
+  }
+}
+
+/**
  * Repaints the basemap's own water fills in the port's sea colour.
  *
  * Done to the style rather than by laying our own polygon over it: the water
@@ -876,7 +928,35 @@ export function addPortLayers(map: MapLibreMap) {
     type: 'line',
     source: SOURCE_IDS.playback,
     filter: ['==', ['get', 'kind'], 'done'],
-    paint: { 'line-color': '#1b56b5', 'line-width': 3.2, 'line-opacity': 0.85 },
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      // Several tracks can be up at once, so each carries its own colour —
+      // the vessel's type colour, which is what she is drawn in on the chart.
+      'line-color': ['coalesce', ['get', 'color'], '#1b56b5'],
+      // The one in the foreground is drawn heavier: with six trails up, which
+      // is the subject has to be readable without consulting the transport.
+      'line-width': ['case', ['boolean', ['get', 'primary'], false], 3.4, 2],
+      'line-opacity': ['case', ['boolean', ['get', 'primary'], false], 0.9, 0.6],
+    },
+  })
+  add({
+    id: 'playback-done-label',
+    type: 'symbol',
+    source: SOURCE_IDS.playback,
+    filter: ['==', ['get', 'kind'], 'done'],
+    minzoom: 11,
+    layout: {
+      'text-field': ['get', 'name'],
+      'text-font': FONT_BOLD,
+      'text-size': 10.5,
+      'symbol-placement': 'line-center',
+      'text-offset': [0, -0.8],
+    },
+    paint: {
+      'text-color': ['coalesce', ['get', 'color'], '#1b56b5'],
+      'text-halo-color': '#f8fafc',
+      'text-halo-width': 1.8,
+    },
   })
   add({
     id: 'nearest-line',

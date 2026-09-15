@@ -11,11 +11,19 @@ import { startTransit } from '../../features/transit/transitSlice'
 import { releaseSpot, RELEASE_REASONS } from '../../features/portData/portDataSlice'
 import { cancelPicking, clearPick, startPicking } from '../../features/spots/spotsSlice'
 import { distance, pointOnFeature } from '@turf/turf'
-import { formatDateTime, formatDistance, formatDuration, hoursSince } from '../../utils/format'
+import {
+  formatDateTime,
+  formatDistance,
+  formatDuration,
+  formatLatLon,
+  hoursSince,
+} from '../../utils/format'
 import { buildRoute } from '../../map/route'
 import { VESSEL_LABELS } from '../../map/vesselTypes'
 import AddVesselForm from '../AddVesselForm'
 import RawJson from '../RawJson'
+import SendAnchorPositionDialog from '../SendAnchorPositionDialog'
+import type { AnchorNotice } from '../SendAnchorPositionDialog'
 
 /** Closer and roomier scores higher; both are read straight off the geometry. */
 function confidenceOf(option: SpotOption): number {
@@ -24,11 +32,53 @@ function confidenceOf(option: SpotOption): number {
   return Math.round((0.6 * proximity + 0.4 * roominess) * 100)
 }
 
+/** The spot as the ship needs it: which water, and exactly where. */
+function noticeFor(c: AssignmentCandidate, choice: SpotOption): AnchorNotice {
+  return {
+    vesselId: c.vessel.properties.id,
+    vesselName: c.vessel.properties.name,
+    areaCode: choice.areaCode,
+    spotId: choice.spotId,
+    coordinates: choice.coordinates,
+  }
+}
+
 export default function AssignmentScreen() {
   const dispatch = useAppDispatch()
   const queue = useAppSelector(selectAssignmentQueue)
   const passage = useAppSelector(selectPassageWay)
   const [confirming, setConfirming] = useState<AssignmentCandidate | null>(null)
+  /**
+   * Whether to draft the master's notice on confirming. On by default: the
+   * assignment is only useful once the ship has it, and the operator who does
+   * not want to send one has to say so rather than simply forget.
+   */
+  const [tellMaster, setTellMaster] = useState(true)
+  /**
+   * The confirmed assignment held open for the notice, snapshotted rather than
+   * looked up: by the time the mail is composed she is already under way to it.
+   */
+  const [notice, setNotice] = useState<AnchorNotice | null>(null)
+  /** Who the position went to, per vessel, so the panel can say it was sent. */
+  const [sentTo, setSentTo] = useState<Record<string, string>>({})
+  /**
+   * The move held back while the notice is on screen.
+   *
+   * She sails the moment the assignment is confirmed, which is right — but the
+   * passage down the Passage Way and the anchor going down are worth watching,
+   * and behind a modal nobody sees either. So the transit waits for the dialog
+   * to go, whether it went with the mail or without it.
+   */
+  const [pendingMove, setPendingMove] = useState<Parameters<typeof startTransit>[0] | null>(
+    null,
+  )
+
+  /** Lets go of the held move — called however the notice was dismissed. */
+  function sail() {
+    if (!pendingMove) return
+    dispatch(startTransit(pendingMove))
+    setPendingMove(null)
+  }
   const [picked, setPicked] = useState<Record<string, SpotOption>>({})
   const [manual, setManual] = useState<Record<string, SpotOption>>({})
   const [assigned, setAssigned] = useState<Record<string, SpotOption>>({})
@@ -366,6 +416,22 @@ export default function AssignmentScreen() {
                   ? `Assigned to Area ${choice.areaCode}`
                   : `Assign Area ${choice.areaCode}`}
             </button>
+            {/* Reachable after the fact too — a notice that went to the wrong
+                address, or was skipped at confirmation, still has to go. */}
+            {isAssigned && choice && (
+              <>
+                <button
+                  type="button"
+                  className="ghost-button notice-again"
+                  onClick={() => setNotice(noticeFor(c, choice))}
+                >
+                  {sentTo[p.id] ? 'Send position again' : 'Send position to master'}
+                </button>
+                {sentTo[p.id] && (
+                  <p className="muted hint">Position sent to {sentTo[p.id]}.</p>
+                )}
+              </>
+            )}
           </section>
         )
       })}
@@ -377,8 +443,53 @@ export default function AssignmentScreen() {
             <p>
               Assign <strong>{confirming.vessel.properties.name}</strong> to{' '}
               <strong>Area {choiceFor(confirming)?.areaCode}</strong> (spot{' '}
-              {choiceFor(confirming)?.spotId})? The master and the VTS operator are notified.
+              {choiceFor(confirming)?.spotId})?
             </p>
+
+            {/* The coordinates are shown before confirming, not after: this is
+                the figure that goes to the ship, and it is the last moment it
+                can be checked against the chart. */}
+            {(() => {
+              const choice = choiceFor(confirming)
+              if (!choice) return null
+              const [lon, lat] = choice.coordinates
+              return (
+                <dl className="kv kv-wide confirm-spot">
+                  <div className="kv-span">
+                    <dt>Anchor position</dt>
+                    <dd>
+                      <strong>{formatLatLon(lat, lon)}</strong>
+                      <small className="muted">
+                        {lat.toFixed(5)}°N, {lon.toFixed(5)}°E
+                      </small>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Swing radius</dt>
+                    <dd>{confirming.requiredRadiusM} m</dd>
+                  </div>
+                  <div>
+                    <dt>Distance to run</dt>
+                    <dd>{formatDistance(choice.distanceM)}</dd>
+                  </div>
+                </dl>
+              )
+            })()}
+
+            <label className="share-include confirm-notify">
+              <input
+                type="checkbox"
+                checked={tellMaster}
+                onChange={(e) => setTellMaster(e.target.checked)}
+              />
+              Email the position to the master
+            </label>
+            <p className="muted hint">
+              {tellMaster
+                ? 'Asks for the address, then sends her the coordinates above.'
+                : 'The spot is held for her, but nobody aboard is told where it is.'}
+            </p>
+
             <div className="dialog-actions">
               <button type="button" className="ghost-button" onClick={() => setConfirming(null)}>
                 Cancel
@@ -392,23 +503,29 @@ export default function AssignmentScreen() {
                     const p = confirming.vessel.properties
                     setAssigned((prev) => ({ ...prev, [p.id]: choice }))
                     // Walk the vessel to its spot on the map rather than teleporting it.
-                    dispatch(
-                      startTransit({
-                        vesselId: p.id,
-                        name: p.name,
-                        from: confirming.vessel.geometry.coordinates as [number, number],
-                        to: choice.coordinates,
-                        // Inbound traffic joins the Passage Way rather than
-                        // cutting across the occupied anchorages.
-                        path: buildRoute(
-                          confirming.vessel.geometry.coordinates,
-                          choice.coordinates,
-                          passage,
-                        ) as [number, number][],
-                        spotId: choice.spotId,
-                        areaCode: choice.areaCode,
-                      }),
-                    )
+                    const move = {
+                      vesselId: p.id,
+                      name: p.name,
+                      from: confirming.vessel.geometry.coordinates as [number, number],
+                      to: choice.coordinates,
+                      // Inbound traffic joins the Passage Way rather than
+                      // cutting across the occupied anchorages.
+                      path: buildRoute(
+                        confirming.vessel.geometry.coordinates,
+                        choice.coordinates,
+                        passage,
+                      ) as [number, number][],
+                      spotId: choice.spotId,
+                      areaCode: choice.areaCode,
+                    }
+                    if (tellMaster) {
+                      // Held until the notice is off the screen, so the passage
+                      // and the anchor going down are actually seen.
+                      setNotice(noticeFor(confirming, choice))
+                      setPendingMove(move)
+                    } else {
+                      dispatch(startTransit(move))
+                    }
                   }
                   setConfirming(null)
                 }}
@@ -418,6 +535,24 @@ export default function AssignmentScreen() {
             </div>
           </div>
         </div>
+      )}
+
+      {notice && (
+        <SendAnchorPositionDialog
+          notice={notice}
+          onSend={(to) => {
+            setSentTo((prev) => ({ ...prev, [notice.vesselId]: to }))
+            setNotice(null)
+            sail()
+          }}
+          onClose={() => {
+            setNotice(null)
+            // She sails whether or not the mail went — the spot is hers either
+            // way, and a vessel stuck in the queue because the operator closed
+            // a dialog would be a bug wearing a sensible face.
+            sail()
+          }}
+        />
       )}
 
       {releasing && occupant && (

@@ -6,8 +6,19 @@ export const PLAYBACK_SPEEDS = [2, 3, 4, 8, 16] as const
 export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number]
 
 interface PlaybackState {
-  /** Vessel whose approach is being replayed. */
+  /**
+   * The vessel in the foreground: the one the timeline lists, the camera frames
+   * and the transport steps by. Always a member of `followIds`.
+   */
   vesselId: string | null
+  /**
+   * Every vessel whose track is drawn. Several can be followed at once — the
+   * question a replay is usually asked is how two ships passed each other, and
+   * one track at a time cannot answer it. One of them is still the subject,
+   * because the clock has to step by somebody's fixes and the timeline has to
+   * be a list of one ship's day.
+   */
+  followIds: string[]
   playing: boolean
   /** Multiple of real time. */
   speed: PlaybackSpeed
@@ -33,6 +44,7 @@ export const PLAYBACK_DAY = '2026-08-03'
 
 const initialState: PlaybackState = {
   vesselId: null,
+  followIds: [],
   playing: false,
   speed: 4,
   progress: 0,
@@ -53,6 +65,37 @@ const playbackSlice = createSlice({
      */
     setPlaybackVessel(state, action: PayloadAction<string | null>) {
       state.vesselId = action.payload
+      // Bringing a vessel to the front necessarily follows her.
+      if (action.payload && !state.followIds.includes(action.payload)) {
+        state.followIds.push(action.payload)
+      }
+    },
+
+    /**
+     * Add or drop a vessel from the followed set.
+     *
+     * Dropping the one in front hands the foreground to whoever is left, rather
+     * than emptying the timeline — and the last vessel cannot be dropped at
+     * all, because a replay following nobody has no clock to run on.
+     */
+    toggleFollow(state, action: PayloadAction<string>) {
+      const id = action.payload
+      if (state.followIds.includes(id)) {
+        if (state.followIds.length === 1) return
+        state.followIds = state.followIds.filter((v) => v !== id)
+        if (state.vesselId === id) state.vesselId = state.followIds[0] ?? null
+      } else {
+        state.followIds.push(id)
+      }
+    },
+
+    setFollowIds(state, action: PayloadAction<string[]>) {
+      state.followIds = action.payload
+      if (!action.payload.length) {
+        state.vesselId = null
+      } else if (!state.vesselId || !action.payload.includes(state.vesselId)) {
+        state.vesselId = action.payload[0]
+      }
     },
     play(state) {
       // Pressing play at the end replays from the start rather than sitting there.
@@ -110,6 +153,7 @@ const playbackSlice = createSlice({
         state.date = action.payload.day
         // Default to the first recorded vessel so the screen opens populated.
         state.vesselId = state.vesselId ?? action.payload.vessels[0]?.id ?? null
+        if (!state.followIds.length && state.vesselId) state.followIds = [state.vesselId]
       })
       .addCase(loadPlayback.rejected, (state, action) => {
         state.status = 'failed'
@@ -120,6 +164,8 @@ const playbackSlice = createSlice({
 
 export const {
   setPlaybackVessel,
+  toggleFollow,
+  setFollowIds,
   play,
   pause,
   togglePlay,

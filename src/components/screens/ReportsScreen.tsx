@@ -9,6 +9,8 @@ import { VESSEL_LABELS, VESSEL_TYPES } from '../../map/vesselTypes'
 import { flagName } from '../../utils/flags'
 import { formatDateTime, formatDuration, hoursBetween } from '../../utils/format'
 import { utilisationLoad } from '../../utils/occupancyLoad'
+import FlagFilter from '../FlagFilter'
+import FlagIcon from '../FlagIcon'
 import Icon from '../Icon'
 import RawJson from '../RawJson'
 
@@ -147,9 +149,20 @@ export default function ReportsScreen() {
     [areas],
   )
 
+  /**
+   * Busiest registry first, ties broken by name. The count is the point: a
+   * flag with two vessels behind it and one with forty are not the same choice,
+   * and alphabetical order hides which is which.
+   */
   const flagsPresent = useMemo(() => {
-    const seen = new Set(fleet.map((v) => v.properties.flag).filter(Boolean))
-    return [...seen].sort().map((code) => ({ code, name: flagName(code) }))
+    const counts = new Map<string, number>()
+    for (const v of fleet) {
+      const code = v.properties.flag
+      if (code) counts.set(code, (counts.get(code) ?? 0) + 1)
+    }
+    return [...counts]
+      .map(([code, count]) => ({ code, name: flagName(code), count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   }, [fleet])
 
   const span = useMemo(
@@ -352,6 +365,12 @@ export default function ReportsScreen() {
               ))}
             </select>
           </label>
+          {/* Beside the other constraints rather than in a band of its own —
+              it is one filter among four, not a section. */}
+          <label className="control-flag">
+            Flag state
+            <FlagFilter options={flagsPresent} selected={flagSel} onChange={setFlagSel} />
+          </label>
           <label>
             Format
             <select value={format} onChange={(e) => setFormat(e.target.value)}>
@@ -392,32 +411,25 @@ export default function ReportsScreen() {
           </p>
         </fieldset>
 
-        <fieldset className="report-facet">
-          <legend>Flag states</legend>
-          <div className="area-chips">
-            {flagsPresent.map((f) => {
-              const on = flagSel.includes(f.code)
-              return (
-                <button
-                  key={f.code}
-                  type="button"
-                  className={`filter-chip chip-labelled${on ? ' active' : ''}`}
-                  aria-pressed={on}
-                  title={f.name}
-                  onClick={() => setFlagSel((prev) => toggle(prev, f.code))}
-                >
-                  {f.code}
-                </button>
-              )
-            })}
-            {flagsPresent.length === 0 && <span className="muted">No vessels loaded.</span>}
+        {/* What the dropdown chose, said plainly and removable one at a time —
+            a filter you cannot see is a filter you forget you set. */}
+        {flagSel.length > 0 && (
+          <div className="area-chips flag-selection">
+            {flagSel.map((code) => (
+              <button
+                key={code}
+                type="button"
+                className="filter-chip chip-labelled active flag-pill"
+                title={`Remove ${flagName(code)}`}
+                onClick={() => setFlagSel((prev) => toggle(prev, code))}
+              >
+                <FlagIcon code={code} size={12} />
+                {flagName(code)}
+                <span aria-hidden="true">×</span>
+              </button>
+            ))}
           </div>
-          <p className="facet-note muted">
-            {flagSel.length
-              ? flagSel.map((c) => flagName(c)).join(', ')
-              : `All ${flagsPresent.length} flags in the anchorage`}
-          </p>
-        </fieldset>
+        )}
 
         <p className="muted hint">
           {chosen?.name} · {rangeLabel}
@@ -505,7 +517,12 @@ export default function ReportsScreen() {
                       <strong>{p.name}</strong>
                     </td>
                     <td className="muted">{VESSEL_LABELS[p.type] ?? p.type}</td>
-                    <td title={flagName(p.flag)}>{p.flag}</td>
+                    <td>
+                      <span className="flag-cell">
+                        <FlagIcon code={p.flag} size={13} />
+                        {flagName(p.flag)}
+                      </span>
+                    </td>
                     <td>{p.area ?? '—'}</td>
                     <td className="muted">{formatDateTime(p.ata)}</td>
                     <td className="muted">

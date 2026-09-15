@@ -57,21 +57,26 @@ export const selectSelected = (s: RootState) => s.selection.selected
 export const selectBufferRadiusKm = (s: RootState) => s.analysis.bufferRadiusKm
 export const selectSwingFactor = (s: RootState) => s.analysis.swingFactor
 export const selectSafetyMarginM = (s: RootState) => s.analysis.safetyMarginM
+/**
+ * Cable paid out, in metres.
+ *
+ * Its own number rather than something read back out of the swing factor. Under
+ * the port's rule the scope is `shackles x shackle length`, which comes from the
+ * depth of water and has nothing to do with how long the ship is — so there is
+ * no factor that expresses both the radius and the cable at once. Deriving one
+ * from the other collapsed the anchor onto the vessel's own position, which is
+ * the wrong centre for every swing circle on the chart.
+ */
+export const selectCableM = (s: RootState) => s.analysis.cableM
 
 /**
  * Swing radius for one vessel, measured from the anchor: the cable paid out
  * plus the vessel's own length, plus the safety margin.
+ *
+ * `marginM` carries the cable, so radius = LOA x 1 + (cable + extra margin).
  */
 export function swingRadiusM(lengthM: number, factor: number, marginM: number): number {
   return lengthM * factor + marginM
-}
-
-/**
- * Cable paid out, derived from the swing factor so the two can never disagree:
- * radius = cable + LOA + margin, therefore cable = LOA x (factor - 1).
- */
-export function cableLengthM(lengthM: number, factor: number): number {
-  return Math.max(0, lengthM * (factor - 1))
 }
 
 /**
@@ -82,12 +87,10 @@ export function cableLengthM(lengthM: number, factor: number): number {
  */
 export function anchorPosition(
   coordinates: number[],
-  lengthM: number,
   headingDeg: number,
-  factor: number,
+  cableM: number,
 ): [number, number] {
-  const cableM = cableLengthM(lengthM, factor)
-  if (cableM === 0) return coordinates as [number, number]
+  if (cableM <= 0) return coordinates as [number, number]
   return destination(coordinates, cableM / 1000, headingDeg, {
     units: 'kilometers',
   }).geometry.coordinates as [number, number]
@@ -181,8 +184,8 @@ export interface SwingProps {
 }
 
 export const selectSwingCircles = createSelector(
-  [selectVessels, selectSwingFactor, selectSafetyMarginM],
-  (vessels, factor, marginM): FeatureCollection<Polygon | Point, SwingProps> => ({
+  [selectVessels, selectSwingFactor, selectSafetyMarginM, selectCableM],
+  (vessels, factor, marginM, cableM): FeatureCollection<Polygon | Point, SwingProps> => ({
     type: 'FeatureCollection',
     features: (vessels?.features ?? []).flatMap((vessel) => {
       const radiusM = swingRadiusM(vessel.properties.lengthM, factor, marginM)
@@ -190,9 +193,8 @@ export const selectSwingCircles = createSelector(
       // on its cable and sweeps this water as the tide and wind swing it round.
       const centre = anchorPosition(
         vessel.geometry.coordinates,
-        vessel.properties.lengthM,
         vessel.properties.headingDeg,
-        factor,
+        cableM,
       )
       // 36 steps keeps ~500 circles cheap while still reading as round.
       const ring = circle(centre, radiusM / 1000, {
@@ -288,8 +290,8 @@ export interface DraggingVessel {
  * anchorage.
  */
 export const selectDraggingVessels = createSelector(
-  [selectVessels, selectSwingFactor, selectSafetyMarginM],
-  (vessels, factor, marginM): DraggingVessel[] => {
+  [selectVessels, selectSwingFactor, selectSafetyMarginM, selectCableM],
+  (vessels, factor, marginM, cableM): DraggingVessel[] => {
     const out: DraggingVessel[] = []
 
     for (const vessel of vessels?.features ?? []) {
@@ -299,16 +301,10 @@ export const selectDraggingVessels = createSelector(
 
       const laidAt = anchorPosition(
         p.anchoredAt,
-        p.lengthM,
         p.anchoredHeadingDeg ?? p.headingDeg,
-        factor,
+        cableM,
       )
-      const anchorNow = anchorPosition(
-        vessel.geometry.coordinates,
-        p.lengthM,
-        p.headingDeg,
-        factor,
-      )
+      const anchorNow = anchorPosition(vessel.geometry.coordinates, p.headingDeg, cableM)
       const driftM = distance(laidAt, anchorNow, { units: 'kilometers' }) * 1000
       if (driftM <= DRAG_TOLERANCE_M) continue
 
@@ -375,8 +371,15 @@ const MAX_FREE_SPOTS = 1200
 export const selectMovedSpots = (s: RootState) => s.spots.moved
 
 export const selectFreeSpots = createSelector(
-  [selectAreas, selectVesselAreaIndex, selectSwingFactor, selectSafetyMarginM, selectMovedSpots],
-  (areas, index, factor, marginM, moved): FeatureCollection<Polygon, FreeSpotProps> => {
+  [
+    selectAreas,
+    selectVesselAreaIndex,
+    selectSwingFactor,
+    selectSafetyMarginM,
+    selectMovedSpots,
+    selectCableM,
+  ],
+  (areas, index, factor, marginM, moved, cableM): FeatureCollection<Polygon, FreeSpotProps> => {
     const byArea = new Map<string, VesselFeature[]>()
     for (const entry of index) {
       for (const a of entry.areas) {
@@ -399,9 +402,8 @@ export const selectFreeSpots = createSelector(
       .map((e) => ({
         anchor: anchorPosition(
           e.vessel.geometry.coordinates,
-          e.vessel.properties.lengthM,
           e.vessel.properties.headingDeg,
-          factor,
+          cableM,
         ),
         radiusM: swingRadiusM(e.vessel.properties.lengthM, factor, marginM),
       }))
@@ -520,6 +522,7 @@ export function checkSpotAt(
   otherSpots: Feature<Polygon, FreeSpotProps>[],
   factor: number,
   marginM: number,
+  cableM: number,
 ): SpotCheck {
   const problems: string[] = []
 
@@ -536,12 +539,7 @@ export function checkSpotAt(
     // Same presence rule the free-spot grid uses, so a spot the app offers and
     // a spot the operator drags are judged against the same set of vessels.
     if (!takesUpWater(v.properties.status)) continue
-    const theirAnchor = anchorPosition(
-      v.geometry.coordinates,
-      v.properties.lengthM,
-      v.properties.headingDeg,
-      factor,
-    )
+    const theirAnchor = anchorPosition(v.geometry.coordinates, v.properties.headingDeg, cableM)
     const need = radiusM + swingRadiusM(v.properties.lengthM, factor, marginM)
     const gap = distance(at, theirAnchor, { units: 'kilometers' }) * 1000
     if (gap < need) hits.push({ name: v.properties.name, shortM: Math.round(need - gap) })
@@ -707,19 +705,14 @@ export interface AnchorMarkProps {
  * bow. Drawn as the anchor itself plus the chain running back to the ship.
  */
 export const selectAnchorMarks = createSelector(
-  [selectVessels, selectSwingFactor],
-  (vessels, factor): FeatureCollection<Point | LineString, AnchorMarkProps> => {
+  [selectVessels, selectCableM],
+  (vessels, cableM): FeatureCollection<Point | LineString, AnchorMarkProps> => {
     const features: Feature<Point | LineString, AnchorMarkProps>[] = []
 
     for (const vessel of vessels?.features ?? []) {
       if (vessel.properties.status !== 'anchored') continue
       // Same anchor the swing circle is drawn about.
-      const drop = anchorPosition(
-        vessel.geometry.coordinates,
-        vessel.properties.lengthM,
-        vessel.properties.headingDeg,
-        factor,
-      )
+      const drop = anchorPosition(vessel.geometry.coordinates, vessel.properties.headingDeg, cableM)
       const id = vessel.properties.id
       features.push({
         type: 'Feature',

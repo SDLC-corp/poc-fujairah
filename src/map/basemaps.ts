@@ -46,7 +46,17 @@ export const PORT_BOUNDS: [[number, number], [number, number]] = [
   [56.3995, 25.2],
 ]
 
-/** Camera tilt used when 3D is switched on. */
-export const PITCHED_VIEW = 55
-/** MapLibre allows up to 85°; near-horizon views make the hulls read as models. */
-export const MAX_PITCH = 80
+/**
+ * The camera looks straight down, north up, and is held there.
+ *
+ * A chart is read north-up and in plan: the graticule, the compass rose and
+ * every bearing on it assume so, and an operator passing a position over the
+ * radio is reading a sheet, not a perspective view. Tilt and rotation only ever
+ * put the chart into a state somebody then had to undo.
+ *
+ * This locks the *camera*, not the drawing. The vessel hulls and the building
+ * footprints are still extruded geometry and still switchable — seen from
+ * directly above they read as plans, which is what a chart wants.
+ */
+export const FIXED_PITCH = 0
+export const FIXED_BEARING = 0

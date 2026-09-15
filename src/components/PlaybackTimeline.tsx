@@ -1,27 +1,47 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FiX } from 'react-icons/fi'
+import { VESSEL_COLORS, VESSEL_LABELS } from '../map/vesselTypes'
+import type { VesselType } from '../types/gis'
 import type { PlaybackSample, PlaybackVessel } from '../types/playback'
 
 /**
- * The followed vessel's recorded day, read down the page.
+ * The followed vessels' recorded day, read down the page.
  *
  * The scrubber says where the playhead is but not what is there; this is the
- * same track as a log — every fix with its time, heading and position, and the
- * moments she changed state called out rather than left to be spotted in a
- * column of identical rows. Clicking a fix moves the playhead to it, so the
- * timeline is a way of driving the replay as well as reading it.
+ * same tracks as a log. With more than one vessel followed the entries are
+ * merged into a single column in time order, which is the only arrangement that
+ * answers the question a multi-vessel replay is opened for — what was the other
+ * ship doing when this one did that. Every row therefore names its vessel and
+ * carries her colour; without that a merged column is unreadable.
+ *
+ * Clicking a row moves the playhead to that fix, so the timeline drives the
+ * replay as well as reading it.
  */
 
 interface Props {
-  vessel: PlaybackVessel
+  /** The followed vessels, in the order the picker holds them. */
+  vessels: PlaybackVessel[]
+  primaryId: string | null
   day: string
-  /** Index of the fix under the playhead. */
-  current: number
-  onPick: (index: number) => void
+  /** Timestamp under the playhead, used to mark and scroll to the current row. */
+  playheadAt: string | null
+  onPick: (vesselId: string, index: number) => void
   onClose: () => void
 }
 
-type Mark = { title: string; kind: 'start' | 'end' | 'underway' | 'anchored' | 'fix' }
+type MarkKind = 'start' | 'end' | 'underway' | 'anchored' | 'fix'
+type Mark = { title: string; kind: MarkKind }
+
+interface Row {
+  key: string
+  vesselId: string
+  name: string
+  color: string
+  index: number
+  lastIndex: number
+  fix: PlaybackSample
+  mark: Mark
+}
 
 /**
  * What happened at this fix, if anything. Only the ends of the record and the
@@ -57,30 +77,89 @@ function dayLabel(day: string): string {
 
 const clock = (iso: string) => new Date(iso).toISOString().slice(11, 16)
 
-export default function PlaybackTimeline({ vessel, day, current, onPick, onClose }: Props) {
+export default function PlaybackTimeline({
+  vessels,
+  primaryId,
+  day,
+  playheadAt,
+  onPick,
+  onClose,
+}: Props) {
   const listRef = useRef<HTMLOListElement | null>(null)
-  const seenRef = useRef(-1)
+  const seenRef = useRef('')
+
+  /** Which of the followed vessels are listed. Empty means all of them. */
+  const [hidden, setHidden] = useState<string[]>([])
+  /**
+   * null = decide from the number of vessels. One ship's day is 73 fixes and
+   * reads as a log; three ships' is 219 and reads as noise, so a merged
+   * timeline starts on events only until the operator asks for the rest.
+   */
+  const [mode, setMode] = useState<'events' | 'all' | null>(null)
+
+  const shown = vessels.filter((v) => !hidden.includes(v.id))
+  const effectiveMode = mode ?? (shown.length > 1 ? 'events' : 'all')
+
+  const rows = useMemo(() => {
+    const out: Row[] = []
+    for (const vessel of shown) {
+      const color = VESSEL_COLORS[vessel.type as VesselType] ?? '#94a3b8'
+      for (let i = 0; i < vessel.track.length; i++) {
+        const mark = markFor(vessel.track, i)
+        if (effectiveMode === 'events' && mark.kind === 'fix') continue
+        out.push({
+          key: `${vessel.id}:${i}`,
+          vesselId: vessel.id,
+          name: vessel.name,
+          color,
+          index: i,
+          lastIndex: vessel.track.length - 1,
+          fix: vessel.track[i],
+          mark,
+        })
+      }
+    }
+    // Time order, then by name so two vessels sharing an instant stay stable.
+    out.sort((a, b) => a.fix.at.localeCompare(b.fix.at) || a.name.localeCompare(b.name))
+    return out
+  }, [shown, effectiveMode])
+
+  /** The last row at or before the playhead — what the chart is showing now. */
+  const currentKey = useMemo(() => {
+    if (!playheadAt) return ''
+    let key = ''
+    for (const row of rows) {
+      if (row.fix.at > playheadAt) break
+      key = row.key
+    }
+    return key
+  }, [rows, playheadAt])
 
   /**
-   * Follow the playhead, but only when it actually moves to a different fix —
-   * during playback `progress` changes every frame while the index it maps to
+   * Follow the playhead, but only when it actually moves to a different row —
+   * during playback `progress` changes every frame while the row it maps to
    * holds for a hundred of them, and scrolling on each one fights the operator
    * the moment they try to read further down.
    */
   useEffect(() => {
-    if (current === seenRef.current) return
-    seenRef.current = current
-    const row = listRef.current?.children[current] as HTMLElement | undefined
+    if (!currentKey || currentKey === seenRef.current) return
+    seenRef.current = currentKey
+    const index = rows.findIndex((r) => r.key === currentKey)
+    const row = index >= 0 ? (listRef.current?.children[index] as HTMLElement | undefined) : undefined
     row?.scrollIntoView({ block: 'nearest' })
-  }, [current])
+  }, [currentKey, rows])
+
+  const toggleVessel = (id: string) =>
+    setHidden((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]))
 
   return (
-    <aside className="pb-tl-panel" aria-label={`Track timeline for ${vessel.name}`}>
+    <aside className="pb-tl-panel" aria-label="Event timeline">
       <header className="pb-tl-head">
         <div className="pb-tl-title">
           <strong>Event timeline</strong>
           <span className="muted">
-            {vessel.name} · {vessel.track.length} fixes
+            {rows.length} {effectiveMode === 'events' ? 'events' : 'fixes'} ·{' '}
+            {shown.length} of {vessels.length} vessels
           </span>
         </div>
         <button type="button" className="icon-button" aria-label="Hide timeline" onClick={onClose}>
@@ -88,34 +167,90 @@ export default function PlaybackTimeline({ vessel, day, current, onPick, onClose
         </button>
       </header>
 
-      <p className="pb-tl-date">{dayLabel(day)}</p>
+      {/* Filter: which of the followed vessels this column lists. */}
+      {vessels.length > 1 && (
+        <div className="pb-tl-filter">
+          {vessels.map((v) => {
+            const on = !hidden.includes(v.id)
+            const color = VESSEL_COLORS[v.type as VesselType] ?? '#94a3b8'
+            return (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={on}
+                className={`pb-tl-chip${on ? ' active' : ''}`}
+                style={on ? { borderColor: color } : undefined}
+                title={`${v.name} — ${VESSEL_LABELS[v.type as VesselType] ?? v.type}`}
+                onClick={() => toggleVessel(v.id)}
+              >
+                <span className="dot" style={{ background: color }} />
+                {v.name}
+                {v.id === primaryId && <em>front</em>}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="pb-tl-sub">
+        <span className="pb-tl-date">{dayLabel(day)}</span>
+        <span className="pb-tl-modes">
+          {(['events', 'all'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={effectiveMode === m}
+              className={`pb-tl-chip${effectiveMode === m ? ' active' : ''}`}
+              onClick={() => setMode(m)}
+            >
+              {m === 'events' ? 'Events' : 'All fixes'}
+            </button>
+          ))}
+        </span>
+      </div>
 
       <ol className="pb-tl" ref={listRef}>
-        {vessel.track.map((fix, i) => {
-          const mark = markFor(vessel.track, i)
-          const on = i === current
+        {rows.map((row) => {
+          const on = row.key === currentKey
           return (
             <li
-              key={fix.at}
-              className={`pb-tl-item pb-tl-${mark.kind}${on ? ' is-current' : ''}`}
+              key={row.key}
+              className={`pb-tl-item pb-tl-${row.mark.kind}${on ? ' is-current' : ''}`}
               aria-current={on ? 'true' : undefined}
             >
-              <button type="button" onClick={() => onPick(i)} title="Move the playhead here">
-                <span className="pb-tl-time">{clock(fix.at)}</span>
-                <span className="pb-tl-node" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => onPick(row.vesselId, row.index)}
+                title="Move the playhead here"
+              >
+                <span className="pb-tl-time">{clock(row.fix.at)}</span>
+                <span className="pb-tl-node" aria-hidden="true" style={{ color: row.color }} />
                 <span className="pb-tl-body">
-                  <span className="pb-tl-what">{mark.title}</span>
+                  {/* Named on every row: a merged column is unreadable without it. */}
+                  <span className="pb-tl-vessel" style={{ color: row.color }}>
+                    {row.name}
+                    {row.vesselId === primaryId && vessels.length > 1 && (
+                      <em className="pb-tl-front">front</em>
+                    )}
+                  </span>
+                  <span className="pb-tl-what">{row.mark.title}</span>
                   <span className="pb-tl-meta">
-                    {String(fix.headingDeg).padStart(3, '0')}° · {fix.speedKn.toFixed(1)} kn
+                    {String(row.fix.headingDeg).padStart(3, '0')}° ·{' '}
+                    {row.fix.speedKn.toFixed(1)} kn
                   </span>
                   <span className="pb-tl-pos">
-                    {fix.lat.toFixed(5)}°N, {fix.lon.toFixed(5)}°E
+                    {row.fix.lat.toFixed(5)}°N, {row.fix.lon.toFixed(5)}°E
                   </span>
                 </span>
               </button>
             </li>
           )
         })}
+        {rows.length === 0 && (
+          <li className="pb-tl-empty muted">
+            {vessels.length === 0 ? 'No vessel followed.' : 'Every followed vessel is filtered out.'}
+          </li>
+        )}
       </ol>
     </aside>
   )

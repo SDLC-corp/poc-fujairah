@@ -13,7 +13,7 @@ import {
   togglePlay,
 } from '../../features/playback/playbackSlice'
 import type { PlaybackSpeed } from '../../features/playback/playbackSlice'
-import { indexAt, sampleAt } from '../../utils/playbackTrack'
+import { sampleAt } from '../../utils/playbackTrack'
 import { clearSelection, selectFeature } from '../../features/selection/selectionSlice'
 import { flagName } from '../../utils/flags'
 import { VESSEL_COLORS, VESSEL_LABELS, VESSEL_STATUS_SHORT } from '../../map/vesselTypes'
@@ -23,15 +23,15 @@ import MapView from '../MapView'
 import MapFocusControl from '../MapFocusControl'
 import MapFullscreen from '../MapFullscreen'
 import PlaybackTimeline from '../PlaybackTimeline'
+import PlaybackFollowPicker from '../PlaybackFollowPicker'
 
 /** Wall-clock seconds one replayed hour takes at 1x. */
 const REAL_SECONDS_PER_HOUR = 60
 
 export default function PlaybackScreen() {
   const dispatch = useAppDispatch()
-  const { vesselId, playing, speed, progress, date, data, status, error } = useAppSelector(
-    (s) => s.playback,
-  )
+  const { vesselId, followIds, playing, speed, progress, date, data, status, error } =
+    useAppSelector((s) => s.playback)
   const [showRaw, setShowRaw] = useState(false)
   const [showTimeline, setShowTimeline] = useState(true)
   const selected = useAppSelector((s) => s.selection.selected)
@@ -43,6 +43,8 @@ export default function PlaybackScreen() {
 
   const fleet = data?.vessels ?? []
   const vessel = fleet.find((v) => v.id === vesselId) ?? fleet[0] ?? null
+  /** In the picker's order, so the timeline's filter chips match the dropdown. */
+  const followed = fleet.filter((v) => followIds.includes(v.id))
 
   /* Selecting the followed vessel lights the map's own halo and detail card. */
   const followId = vessel?.id
@@ -83,8 +85,6 @@ export default function PlaybackScreen() {
 
   /** One nudge = one recorded fix. */
   const STEP = vessel && vessel.track.length > 1 ? 1 / (vessel.track.length - 1) : 0.01
-  /** Which fix the playhead is sitting on, for the timeline to mark and follow. */
-  const hereIndex = vessel ? indexAt(vessel.track, progress) : 0
   const movingNow = fleet.filter((v) => sampleAt(v.track, progress)?.status === 'underway').length
 
   return (
@@ -104,14 +104,20 @@ export default function PlaybackScreen() {
         {status === 'loading' && <div className="pb-state">Loading recorded day…</div>}
         {status === 'failed' && <div className="pb-state pb-state-bad">{error}</div>}
 
-        {showTimeline && vessel && data && (
+        {showTimeline && followed.length > 0 && data && (
           <PlaybackTimeline
-            vessel={vessel}
+            vessels={followed}
+            primaryId={vessel?.id ?? null}
             day={data.day}
-            current={hereIndex}
+            playheadAt={here?.at ?? null}
             // A fix is a point on the track, so the playhead lands exactly on it
-            // rather than somewhere between two.
-            onPick={(i) => dispatch(scrub(i / Math.max(1, vessel.track.length - 1)))}
+            // rather than somewhere between two. Every vessel in the file shares
+            // one sampling grid, so a row's index maps straight to the clock.
+            onPick={(vesselId, i) => {
+              const target = followed.find((v) => v.id === vesselId)
+              if (!target) return
+              dispatch(scrub(i / Math.max(1, target.track.length - 1)))
+            }}
             onClose={() => setShowTimeline(false)}
           />
         )}
@@ -232,18 +238,7 @@ export default function PlaybackScreen() {
       {/* ---------- one control bar across the bottom ---------- */}
       <div className="pb-bar">
         <div className="pb-bar-group">
-          <select
-            className="pb-select"
-            aria-label="Vessel"
-            value={vessel?.id ?? ''}
-            onChange={(e) => dispatch(setPlaybackVessel(e.target.value))}
-          >
-            {fleet.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name} · {v.movement === 'arrival' ? '↓' : '↑'} {v.area}
-              </option>
-            ))}
-          </select>
+          <PlaybackFollowPicker fleet={fleet} />
           <input
             className="pb-select pb-date"
             type="date"
@@ -318,6 +313,7 @@ export default function PlaybackScreen() {
           <span className="pb-now">{clock(here?.at)}</span>
           <span className="muted">{here ? `${here.speedKn} kn · ${here.headingDeg}°` : '—'}</span>
           <span className="muted">
+            {followIds.length > 1 && `${followIds.length} followed · `}
             {movingNow}/{fleet.length} under way
           </span>
           <button

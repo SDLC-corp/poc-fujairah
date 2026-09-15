@@ -28,9 +28,29 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 
-/** Must match analysisSlice and gen-vessels.mjs — radius = LOA x factor + margin. */
-const SWING_FACTOR = 2
-const SAFETY_MARGIN_M = 10
+/**
+ * Must match `compileSwing` in src/features/analysis/analysisSlice.ts.
+ *
+ * The app works the port's own rule: shackles come off the depth of water, the
+ * cable is `shackles x shackle length` and the radius is `cable + LOA + extra
+ * margin`. Two numbers fall out of it, and both matter here — the radius sizes
+ * each disc, and the cable says how far ahead of the ship her anchor lies,
+ * which is the point the disc is centred on. Packing to a different cable
+ * lays every circle around the wrong centre.
+ */
+const DESIGN_DEPTH_M = 25
+const DEPTH_MULTIPLIER = 2
+const FIXED_ALLOWANCE_M = 90
+const DIVIDER = 27.5
+const SHACKLE_LENGTH_M = 27.5
+const EXTRA_MARGIN_NM = 0.02
+const NAUTICAL_MILE_M = 1852
+
+const SHACKLES = Math.round((DESIGN_DEPTH_M * DEPTH_MULTIPLIER + FIXED_ALLOWANCE_M) / DIVIDER)
+/** Scope paid out — the same for every vessel, since it comes from the depth. */
+const CABLE_M = SHACKLES * SHACKLE_LENGTH_M
+const SWING_FACTOR = 1
+const SAFETY_MARGIN_M = CABLE_M + EXTRA_MARGIN_NM * NAUTICAL_MILE_M
 /**
  * Tangency is exact in the arithmetic and a coin flip in floating point, and
  * `verify-data.mjs` counts a touching pair as fouled. Every placement is backed
@@ -108,7 +128,8 @@ const beamFor = (type, loa) =>
   SMALL_CRAFT.includes(type) ? Math.max(8, Math.round(loa / 3.5)) : Math.max(11, Math.round(loa / 6.2))
 const draftFor = (loa) => Number((loa / 19 + 2).toFixed(1))
 const radiusOf = (loa) => loa * SWING_FACTOR + SAFETY_MARGIN_M
-const cableOf = (loa) => Math.max(0, loa * (SWING_FACTOR - 1))
+// Set by the depth, not by the ship — see the note on CABLE_M above.
+const cableOf = () => CABLE_M
 
 const mulberry32 = (seed) => () => {
   seed = (seed + 0x6d2b79f5) | 0

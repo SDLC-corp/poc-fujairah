@@ -14,8 +14,15 @@ import {
 } from '@turf/turf'
 
 /** Must match the app defaults in analysisSlice. */
-const SWING_FACTOR = 2
-const SAFETY_MARGIN_M = 10
+/**
+ * Must match `compileSwing` in src/features/analysis/analysisSlice.ts — the
+ * port's rule: cable = shackles x shackle length, radius = cable + LOA + extra.
+ * The cable is set by the depth of water, so it is the same for every vessel.
+ */
+const SHACKLES = Math.round((25 * 2 + 90) / 27.5)
+const CABLE_M = SHACKLES * 27.5
+const SWING_FACTOR = 1
+const SAFETY_MARGIN_M = CABLE_M + 0.02 * 1852
 
 const load = async (name) =>
   JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url), 'utf8'))
@@ -62,7 +69,7 @@ console.log('\nSwing circles:')
 const swings = vessels.features.map((vessel) => {
   const { lengthM, headingDeg, name, status } = vessel.properties
   const radiusM = lengthM * SWING_FACTOR + SAFETY_MARGIN_M
-  const cableM = Math.max(0, lengthM * (SWING_FACTOR - 1))
+  const cableM = CABLE_M
   const anchor = cableM
     ? destination(vessel, cableM / 1000, headingDeg, { units: 'kilometers' }).geometry.coordinates
     : vessel.geometry.coordinates
@@ -94,7 +101,10 @@ for (const s of swings) {
   if (!booleanWithin(ring, host)) breaches.push({ s, host })
 }
 
-console.log(`  ${swings.length} circles checked, radius = LOA x ${SWING_FACTOR} + ${SAFETY_MARGIN_M} m`)
+console.log(
+  `  ${swings.length} circles checked, radius = LOA + ${SAFETY_MARGIN_M.toFixed(1)} m ` +
+    `(${SHACKLES} shackles = ${CABLE_M} m cable)`,
+)
 console.log(`  overlapping pairs:    ${fouls.length}`)
 for (const f of fouls) {
   console.log(`    ! ${f.a.name} x ${f.b.name} — ${f.short.toFixed(0)} m short of clear`)
