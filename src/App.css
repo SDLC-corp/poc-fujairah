@@ -1116,6 +1116,7 @@ input[type='range'] {
 
 .feed-item {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 9px 10px;
   border-radius: 9px;
@@ -4146,6 +4147,58 @@ input[type='range'] {
   border-radius: 6px;
 }
 
+/* Reporting the incident sits beside looking at it — the row offers both
+   things an operator does with an alert, and neither is the other's fallback.
+   Quiet until the row is hovered so a feed of ten does not read as twenty
+   buttons; always there on touch, and on focus for the keyboard. */
+.feed-mail {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  flex: none;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.feed-item:hover .feed-mail,
+.feed-mail:focus-visible {
+  opacity: 1;
+}
+
+.feed-mail:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Once it has gone, it stays visible: that the incident was reported is part
+   of the incident, not a hover state. */
+.feed-sent {
+  flex-basis: 100%;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ok);
+}
+
+.feed-item:has(.feed-sent) .feed-mail {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .feed-mail {
+    opacity: 1;
+  }
+}
+
 /* ---------------- alert focus popup ---------------- */
 
 .focus-popup .maplibregl-popup-content {
@@ -5974,6 +6027,7 @@ button.source-badge[aria-expanded='true'] {
   z-index: 60;
   width: min(360px, calc(100vw - 32px));
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 10px;
   padding: 12px 12px 12px 13px;
@@ -6751,6 +6805,24 @@ button.perm-module {
 
 .anchor-mail-pos span {
   font-size: 11.5px;
+}
+
+/* The drag report is an alarm, not a routine notice — its header mark says so. */
+.role-dialog-icon.is-alert {
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+/* Confirmation on the banner itself, so the watch can see at a glance that the
+   drag has been reported and does not need reporting twice. */
+.incident-sent {
+  flex-basis: 100%;
+  margin: 0;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ok);
 }
 
 .anchor-mail-preview {

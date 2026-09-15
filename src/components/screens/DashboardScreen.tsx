@@ -13,7 +13,11 @@ import type { LayerId } from '../../types/gis'
 import { AREA_COLORS } from '../../map/areaColors'
 import { buildOccupancySeries } from '../../utils/occupancyCurve'
 import { OCCUPANCY_ALERT_PCT } from '../../utils/occupancyLoad'
+import { useState } from 'react'
+import { FiMail } from 'react-icons/fi'
 import CollapsiblePanel from '../CollapsiblePanel'
+import SendIncidentMailDialog from '../SendIncidentMailDialog'
+import type { IncidentMail, IncidentSubject } from '../SendIncidentMailDialog'
 import FleetMixDonut from '../FleetMixDonut'
 import OccupancyWave from '../OccupancyWave'
 import PanelFolds from '../PanelFolds'
@@ -21,6 +25,44 @@ import RawJson from '../RawJson'
 
 /** The folding panels, in the order they appear — drives "collapse all". */
 const PANEL_IDS = ['dash-occupancy', 'dash-fleet', 'dash-alerts', 'dash-spots']
+
+/**
+ * What an operator is likely to be reporting, per kind of incident.
+ *
+ * Kept apart rather than pooled into one list, because the useful answers are
+ * not the same: a ship inside a prohibited area is a matter of orders given,
+ * while an anchorage at its limit is a matter of what is being done about the
+ * queue. A single list covering both would be mostly wrong on every screen.
+ */
+const REASONS: Record<string, string[]> = {
+  geofence: [
+    'Vessel ordered to leave the area',
+    'Entry permitted — working under escort',
+    'Awaiting master response',
+    'Cause not yet established',
+    'Other',
+  ],
+  restricted: [
+    'Vessel ordered to leave immediately',
+    'Vessel in distress — entry unavoidable',
+    'Awaiting master response',
+    'Reported to the Harbour Master',
+    'Other',
+  ],
+  occupancy: [
+    'Arrivals being diverted to another area',
+    'Spots being released',
+    'No action — short-lived peak',
+    'Escalated to the Harbour Master',
+    'Other',
+  ],
+  traffic: [
+    'Routine movement — no action',
+    'Speed advisory issued',
+    'Awaiting master response',
+    'Other',
+  ],
+}
 
 /**
  * Overview of the offshore anchorage: the live map sits beside these panels, and
@@ -69,6 +111,41 @@ export default function DashboardScreen() {
   function reveal(layer: LayerId, target: FocusTarget, id: string) {
     dispatch(highlightFeature({ layer, id }))
     dispatch(focusFeature({ target, id }))
+  }
+
+  /** The incident being reported, and what has been reported already. */
+  const [reporting, setReporting] = useState<{ key: string; subject: IncidentSubject } | null>(
+    null,
+  )
+  const [reported, setReported] = useState<Record<string, IncidentMail>>({})
+
+  /**
+   * The mail action every feed row carries.
+   *
+   * Keyed by the row's own id so the confirmation stays with the incident it
+   * belongs to — an operator who has reported the geofence breach should not
+   * see the occupancy warning claiming it was sent too.
+   */
+  function mailAction(key: string, subject: IncidentSubject) {
+    const sent = reported[key]
+    return (
+      <>
+        <button
+          type="button"
+          className="feed-mail"
+          title={sent ? `Reported to ${sent.to}` : 'Report this by mail'}
+          onClick={() => setReporting({ key, subject })}
+        >
+          <FiMail size={12} aria-hidden="true" />
+          {sent ? 'Report again' : 'Send mail'}
+        </button>
+        {sent && (
+          <span className="feed-sent">
+            Reported to {sent.to} — {sent.reason}
+          </span>
+        )}
+      </>
+    )
   }
 
   const payload = {
@@ -155,6 +232,15 @@ export default function DashboardScreen() {
                 {b.fence.properties.area})
                 <span className="feed-time">geofence · live — show on map</span>
               </button>
+              {mailAction(`fence-${b.fence.properties.id}`, {
+                title: `${b.vessels.length} ${b.vessels.length === 1 ? 'vessel' : 'vessels'} inside ${b.fence.properties.name}`,
+                subtitle: `${b.fence.properties.kind === 'exclusion' ? 'Exclusion zone' : 'Advisory zone'} · Area ${b.fence.properties.area} · ${b.fence.properties.cause}`,
+                lines: [
+                  `Vessels: ${b.vessels.map((v) => v.properties.name).join(', ')}`,
+                  `Rule: ${b.fence.properties.rule}`,
+                ],
+                reasons: REASONS.geofence,
+              })}
             </li>
           ))}
           {incursions.map((i) => (
@@ -169,6 +255,15 @@ export default function DashboardScreen() {
                 anchoring and steaming prohibited
                 <span className="feed-time">live — show on map</span>
               </button>
+              {mailAction(`restricted-${i.vessel.properties.id}`, {
+                title: `${i.vessel.properties.name} — inside ${i.area.properties.name}`,
+                subtitle: 'Anchoring and steaming prohibited',
+                lines: [
+                  `IMO ${i.vessel.properties.imo} · ${i.vessel.properties.lengthM} m LOA · making ${i.vessel.properties.speedKn} kn`,
+                  `Authority: ${i.area.properties.authority}`,
+                ],
+                reasons: REASONS.restricted,
+              })}
             </li>
           ))}
           {nearFull.map((r) => (
@@ -183,6 +278,15 @@ export default function DashboardScreen() {
                 {r.occupied} of {r.capacity} spots ({OCCUPANCY_ALERT_PCT}% limit)
                 <span className="feed-time">live — show on map</span>
               </button>
+              {mailAction(`occupancy-${r.area.properties.id}`, {
+                title: `Area ${r.area.properties.code} — occupancy threshold reached`,
+                subtitle: r.area.properties.name,
+                lines: [
+                  `${r.occupied} of ${r.capacity} spots taken, ${r.available} free.`,
+                  `Threshold is ${OCCUPANCY_ALERT_PCT}% of capacity.`,
+                ],
+                reasons: REASONS.occupancy,
+              })}
             </li>
           ))}
           {incoming.map(({ vessel, area }) => (
@@ -197,6 +301,15 @@ export default function DashboardScreen() {
                 in Area {area}
                 <span className="feed-time">live — show on map</span>
               </button>
+              {mailAction(`traffic-${vessel.properties.id}`, {
+                title: `${vessel.properties.name} — under way in the anchorage`,
+                subtitle: `Area ${area} · making ${vessel.properties.speedKn} kn`,
+                lines: [
+                  `IMO ${vessel.properties.imo} · ${vessel.properties.lengthM} m LOA`,
+                  `Heading ${vessel.properties.headingDeg}°.`,
+                ],
+                reasons: REASONS.traffic,
+              })}
             </li>
           ))}
           {breaches.length + incursions.length + nearFull.length + incoming.length === 0 && (
@@ -243,6 +356,17 @@ export default function DashboardScreen() {
           ))}
         </ul>
       </CollapsiblePanel>
+
+      {reporting && (
+        <SendIncidentMailDialog
+          subject={reporting.subject}
+          onSend={(mail) => {
+            setReported((prev) => ({ ...prev, [reporting.key]: mail }))
+            setReporting(null)
+          }}
+          onClose={() => setReporting(null)}
+        />
+      )}
 
       <RawJson label="GET /api/dashboard/summary" data={payload} />
     </>

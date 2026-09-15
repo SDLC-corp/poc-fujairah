@@ -8,6 +8,20 @@ import { focusVessel } from '../features/view/viewSlice'
 import { setTab } from '../features/ui/uiSlice'
 import { formatDistance } from '../utils/format'
 import Icon from './Icon'
+import SendIncidentMailDialog from './SendIncidentMailDialog'
+import type { IncidentMail } from './SendIncidentMailDialog'
+import { formatLatLon } from '../utils/format'
+
+/** Why a ship might be running, and what the port is doing about it. */
+const DRAG_REASONS = [
+  'Shamal — strong north-westerly',
+  'Insufficient cable veered',
+  'Poor holding ground',
+  'Heavy swell',
+  'Vessel manoeuvring on her anchor',
+  'Cause not yet established',
+  'Other',
+]
 
 /**
  * Anchor-drag watch.
@@ -59,6 +73,9 @@ export default function DragAlert() {
    * swallowed by a box the operator shut ten minutes ago.
    */
   const [dismissedId, setDismissedId] = useState<string | null>(null)
+  const [reporting, setReporting] = useState(false)
+  /** What was reported, so the banner can say it went and to whom. */
+  const [sent, setSent] = useState<IncidentMail | null>(null)
 
   /**
    * Pick a candidate once the data is in and nothing is dragging yet. Keyed on
@@ -139,6 +156,11 @@ export default function DragAlert() {
         <button type="button" className="incident-show" onClick={show}>
           Show on map
         </button>
+        {/* The alarm says she has moved; this is how the port says what is
+            being done about it, to the one person who can act on it. */}
+        <button type="button" className="incident-show" onClick={() => setReporting(true)}>
+          {sent ? 'Report again' : 'Send mail'}
+        </button>
         <button
           type="button"
           className="incident-dismiss"
@@ -148,6 +170,35 @@ export default function DragAlert() {
           ×
         </button>
       </div>
+
+      {sent && (
+        <p className="incident-sent">
+          Reported to {sent.to} — {sent.reason}
+          {sent.note ? `. ${sent.note}` : ''}
+        </p>
+      )}
+
+      {reporting && (
+        <SendIncidentMailDialog
+          subject={{
+            title: `${p.name} — anchor dragging`,
+            subtitle: p.area ? `Area ${p.area}` : 'Outside the declared areas',
+            lines: [
+              `Anchor has run ${formatDistance(worst.driftM)} from where it was let go,`,
+              `outside her ${worst.radiusM} m swing circle.`,
+              '',
+              `Let go at   ${formatLatLon(worst.laidAt[1], worst.laidAt[0])}`,
+              `Anchor now  ${formatLatLon(worst.anchorNow[1], worst.anchorNow[0])}`,
+            ],
+            reasons: DRAG_REASONS,
+          }}
+          onSend={(report) => {
+            setSent(report)
+            setReporting(false)
+          }}
+          onClose={() => setReporting(false)}
+        />
+      )}
     </div>
   )
 }
