@@ -23,9 +23,40 @@ interface PortData {
   soundings: SoundingCollection | null
 }
 
+/** Why a spot was given up, and who decided. */
+export const RELEASE_REASONS = [
+  'Vessel sailed',
+  'Shifted to berth',
+  'Reassigned to another area',
+  'Dragging anchor',
+  'Weather — shamal expected',
+  'Harbour Master order',
+  'Spot allocated in error',
+  'Other',
+] as const
+
+export interface SpotRelease {
+  id: string
+  vesselId: string
+  vesselName: string
+  /** Area the vessel was lying in when it was released. */
+  areaCode: string | null
+  reason: string
+  note: string | null
+  at: string
+  by: string
+}
+
 interface PortDataState extends PortData {
   status: 'idle' | 'loading' | 'ready' | 'failed'
   error: string | null
+  /**
+   * Spot releases, newest first. Kept because the reason is the point: an
+   * anchorage that empties with no record of why cannot be audited afterwards,
+   * and "who cleared this spot and on whose order" is the first question asked
+   * when a vessel turns up expecting to find one.
+   */
+  releases: SpotRelease[]
 }
 
 const initialState: PortDataState = {
@@ -36,6 +67,7 @@ const initialState: PortDataState = {
   soundings: null,
   status: 'idle',
   error: null,
+  releases: [],
 }
 
 async function fetchJson<T>(url: string): Promise<T> {
@@ -139,6 +171,71 @@ const portDataSlice = createSlice({
         vessel.properties.headingDeg = Math.round(action.payload.headingDeg)
       }
       vessel.properties.ata = new Date().toISOString()
+      // Where she brought up, for the drag check to measure against.
+      vessel.properties.anchoredAt = [...action.payload.coordinates]
+      vessel.properties.anchoredHeadingDeg = vessel.properties.headingDeg
+    },
+
+    /**
+     * Moves a vessel without touching where she brought up — which is exactly
+     * what dragging looks like in the data. Used by the drag watch to make the
+     * alarm demonstrable on a static dataset, the same way the incident timer
+     * makes a geofence breach happen rather than shipping one pre-broken.
+     */
+    dragVessel(
+      state,
+      action: PayloadAction<{ vesselId: string; coordinates: [number, number] }>,
+    ) {
+      const vessel = state.vessels?.features.find(
+        (f) => f.properties.id === action.payload.vesselId,
+      )
+      if (!vessel || !vessel.properties.anchoredAt) return
+      vessel.geometry.coordinates = action.payload.coordinates
+      // Making way over the ground while brought up is the other half of the
+      // signature, so the readouts agree with the alarm.
+      vessel.properties.speedKn = 0.6
+    },
+
+    /**
+     * Gives up the water a vessel is lying in.
+     *
+     * The vessel goes back to `awaiting` rather than `sailed`: releasing a spot
+     * is a decision about the anchorage, not about the call. She stops
+     * occupying an area — which frees the spot for the allocator immediately —
+     * and re-enters the assignment queue, so the operator can put her somewhere
+     * else. Sailing is a separate status the operator sets explicitly.
+     */
+    releaseSpot(
+      state,
+      action: PayloadAction<{ vesselId: string; reason: string; note?: string }>,
+    ) {
+      const vessel = state.vessels?.features.find(
+        (f) => f.properties.id === action.payload.vesselId,
+      )
+      if (!vessel) return
+      const p = vessel.properties
+      const at = new Date().toISOString()
+
+      state.releases.unshift({
+        id: `REL-${String(state.releases.length + 1).padStart(4, '0')}`,
+        vesselId: p.id,
+        vesselName: p.name,
+        areaCode: p.area ?? null,
+        reason: action.payload.reason,
+        note: action.payload.note?.trim() || null,
+        at,
+        by: 'Harbour Master',
+      })
+
+      p.status = 'awaiting'
+      p.area = null
+      p.speedKn = 0
+      // Cleared so the next anchoring stamps a fresh one — otherwise "anchored
+      // for" would go on counting from a stay that has already ended, and the
+      // drag check would go on measuring against a berth she has left.
+      p.ata = null
+      p.anchoredAt = null
+      p.anchoredHeadingDeg = null
     },
   },
   extraReducers: (builder) => {
@@ -150,6 +247,16 @@ const portDataSlice = createSlice({
       .addCase(loadPortData.fulfilled, (state, action) => {
         state.status = 'ready'
         state.anchorages = action.payload.anchorages
+        // The snapshot carries no history, so every vessel already at anchor is
+        // taken to have brought up exactly where she is now. That is the only
+        // honest starting point: with nothing to compare against, the correct
+        // answer to "is she dragging?" is no, not unknown.
+        for (const v of action.payload.vessels?.features ?? []) {
+          const p = v.properties
+          if (p.status !== 'anchored' && p.status !== 'moored') continue
+          p.anchoredAt ??= [...(v.geometry.coordinates as [number, number])]
+          p.anchoredHeadingDeg ??= p.headingDeg
+        }
         state.vessels = action.payload.vessels
         state.geofences = action.payload.geofences
         state.contours = action.payload.contours
@@ -162,5 +269,6 @@ const portDataSlice = createSlice({
   },
 })
 
-export const { addVessel, anchorVessel, setVesselStatus } = portDataSlice.actions
+export const { addVessel, anchorVessel, dragVessel, releaseSpot, setVesselStatus } =
+  portDataSlice.actions
 export default portDataSlice.reducer

@@ -1,4 +1,7 @@
 .app {
+  /* Read by the expanded map, which starts below the header rather than over
+     it — so the title bar and sign-out stay reachable. One number, two users. */
+  --app-header-h: 56px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -11,9 +14,9 @@
   align-items: center;
   gap: 14px;
   padding: 0 18px;
-  height: 56px;
+  height: var(--app-header-h);
   flex: none;
-  background: var(--navy-800);
+  background: var(--chrome);
   color: #fff;
   box-shadow: var(--shadow-sm);
   z-index: 3;
@@ -107,7 +110,7 @@
   align-items: stretch;
   gap: 2px;
   padding: 10px 8px;
-  background: var(--navy-800);
+  background: var(--chrome);
   overflow-y: auto;
   transition: width 0.2s ease;
 }
@@ -211,7 +214,7 @@
 
 .screen-head h2 {
   font-size: 14px;
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .mock-tag {
@@ -220,7 +223,7 @@
   letter-spacing: 0.07em;
   padding: 3px 8px;
   border-radius: 999px;
-  color: var(--navy-600);
+  color: var(--ink-accent);
   background: var(--accent-soft);
   border: 1px solid rgba(27, 86, 181, 0.25);
 }
@@ -326,7 +329,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.09em;
-  color: var(--navy-600);
+  color: var(--ink-accent);
   margin-bottom: 11px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -351,7 +354,7 @@
 
 .subject {
   font-weight: 600;
-  color: var(--navy-800);
+  color: var(--ink-strong);
   margin-bottom: 8px !important;
 }
 
@@ -560,7 +563,7 @@ input[type='range'] {
 }
 
 .slider strong {
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .slider input {
@@ -588,7 +591,7 @@ input[type='range'] {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   font-size: 12px;
-  color: var(--navy-600);
+  color: var(--ink-accent);
   font-weight: 500;
 }
 
@@ -655,7 +658,7 @@ input[type='range'] {
   justify-content: space-between;
   gap: 10px;
   padding: 13px 14px;
-  background: var(--navy-800);
+  background: var(--chrome);
   color: #fff;
   border-radius: 11px 11px 0 0;
 }
@@ -693,6 +696,40 @@ input[type='range'] {
   gap: 10px;
 }
 
+/* The name gives up width before the two controls beside it do — a long vessel
+   name must not push "Full details" off the corner it lives in. */
+.details-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.details-card .details-title h3 {
+  overflow-wrap: anywhere;
+}
+
+/* Top right of the card header, which is dark chrome in every theme — so it is
+   painted from white at low alpha like the sign-out button, not from the
+   surface tokens. Label shortened to fit a 306px card; the full wording is on
+   the tooltip and the accessible name. */
+.details-full {
+  flex: none;
+  margin-left: auto;
+  align-self: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.details-full:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
 .details-card dt {
   font-size: 10px;
   text-transform: uppercase;
@@ -728,7 +765,7 @@ input[type='range'] {
   gap: 6px;
   padding: 5px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--map-control);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
@@ -740,7 +777,7 @@ input[type='range'] {
   background: transparent;
   font-size: 12px;
   font-weight: 500;
-  color: var(--navy-700);
+  color: var(--map-control-ink);
 }
 
 .map-focus button:hover {
@@ -754,6 +791,10 @@ input[type='range'] {
    short pane rather than filling it: the panes are sized in vh, so vh stands
    in for the pane's own height well enough to keep the rose in proportion. */
 .compass-rose {
+  /* The ring, the ticks and the numbers all paint in currentColor; the numbers
+     take their halo from the rule below. Both are tokens, so the rose inverts
+     with the theme instead of disappearing into a night chart. */
+  color: var(--rose-ink);
   position: absolute;
   top: 10px;
   right: 48px;
@@ -782,7 +823,7 @@ input[type='range'] {
   z-index: 2;
   width: 208px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--map-control);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   overflow: hidden;
@@ -795,7 +836,7 @@ input[type='range'] {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--navy-700);
+  color: var(--ink-accent);
   list-style: none;
 }
 
@@ -906,7 +947,7 @@ input[type='range'] {
   font-weight: 650;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  color: var(--navy-900);
+  color: var(--ink-strong);
   line-height: 1.1;
 }
 
@@ -932,7 +973,7 @@ input[type='range'] {
 }
 
 .meter-head strong {
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .meter-track {
@@ -965,7 +1006,7 @@ input[type='range'] {
   padding: 1px 8px;
   border-radius: 999px;
   background: var(--accent-soft);
-  color: var(--navy-600);
+  color: var(--ink-accent);
 }
 
 .meter-warn .meter-state {
@@ -1002,7 +1043,7 @@ input[type='range'] {
   width: 30px;
   flex: none;
   font-weight: 600;
-  color: var(--navy-700);
+  color: var(--ink-accent);
 }
 
 /* Redundant cue only: it matches the map, while the code text carries identity. */
@@ -1109,7 +1150,7 @@ input[type='range'] {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface);
 }
 
 .feed-high .feed-tag {
@@ -1119,7 +1160,7 @@ input[type='range'] {
   color: var(--warn);
 }
 .feed-info .feed-tag {
-  color: var(--navy-600);
+  color: var(--ink-accent);
 }
 
 .feed-time {
@@ -1141,7 +1182,7 @@ input[type='range'] {
   background: var(--surface);
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--navy-700);
+  color: var(--ink-accent);
   transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
 }
 
@@ -1156,13 +1197,13 @@ input[type='range'] {
 
 .action-grid button.primary {
   background: var(--navy-700);
-  border-color: var(--navy-700);
+  border-color: var(--ink-accent);
   color: #fff;
 }
 
 .action-grid button.primary:hover {
   background: var(--navy-600);
-  border-color: var(--navy-600);
+  border-color: var(--ink-accent);
 }
 
 /* inputs */
@@ -1202,7 +1243,7 @@ input[type='range'] {
 
 .filter-chip.active {
   background: var(--navy-700);
-  border-color: var(--navy-700);
+  border-color: var(--ink-accent);
   color: #fff;
 }
 
@@ -1304,7 +1345,7 @@ input[type='range'] {
   font: inherit;
   font-size: 11.5px;
   font-weight: 600;
-  color: var(--navy-500);
+  color: var(--accent);
   white-space: nowrap;
 }
 
@@ -1409,7 +1450,7 @@ input[type='range'] {
 }
 .pill-underway {
   background: var(--accent-soft);
-  color: var(--navy-500);
+  color: var(--accent);
 }
 
 .pill-awaiting {
@@ -1515,7 +1556,7 @@ input[type='range'] {
 .chart-value {
   font-size: 10px;
   font-weight: 600;
-  color: var(--navy-600);
+  color: var(--ink-accent);
 }
 
 .table-scroll {
@@ -1566,7 +1607,7 @@ input[type='range'] {
 .wave-now {
   font-size: 11px;
   font-weight: 700;
-  fill: var(--navy-800);
+  fill: var(--ink-strong);
 }
 
 .wave-tick {
@@ -1595,7 +1636,7 @@ input[type='range'] {
 .donut-total {
   font-size: 24px;
   font-weight: 650;
-  fill: var(--navy-900);
+  fill: var(--ink-strong);
 }
 
 .donut-caption {
@@ -1627,7 +1668,7 @@ input[type='range'] {
   margin-left: auto;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .donut-pct {
@@ -1682,6 +1723,18 @@ input[type='range'] {
   font-weight: 500;
 }
 
+/* A figure that has run past its plan. The reason is spelled out beside it, so
+   the colour is reinforcement rather than the whole message. */
+.kv dd.is-alert {
+  color: var(--alert);
+}
+
+.kv dd.is-alert small {
+  margin-left: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
 .vessel-head {
   display: flex;
   align-items: center;
@@ -1734,7 +1787,7 @@ input[type='range'] {
 }
 
 .recommend-head strong {
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .recommend-head .muted {
@@ -1757,7 +1810,7 @@ input[type='range'] {
 
 .source-ai {
   background: var(--accent-soft);
-  color: var(--navy-600);
+  color: var(--ink-accent);
 }
 
 .source-manual {
@@ -1807,7 +1860,7 @@ input[type='range'] {
 }
 .conf-mid {
   background: var(--accent-soft);
-  color: var(--navy-500);
+  color: var(--accent);
 }
 .conf-low {
   background: #fdf3e2;
@@ -1834,7 +1887,7 @@ input[type='range'] {
 
 .dialog-card h3 {
   font-size: 15px;
-  color: var(--navy-800);
+  color: var(--ink-strong);
   margin-bottom: 8px;
 }
 
@@ -1879,7 +1932,7 @@ input[type='range'] {
   height: 9px;
   border-radius: 50%;
   background: var(--surface);
-  border: 2px solid var(--navy-500);
+  border: 2px solid var(--accent);
 }
 
 .timeline .muted {
@@ -2005,7 +2058,7 @@ input[type='range'] {
   cursor: pointer;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--navy-700);
+  color: var(--ink-accent);
   list-style: none;
 }
 
@@ -2158,7 +2211,7 @@ input[type='range'] {
 .arrival-popup strong {
   display: block;
   font-size: 13px;
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .arrival-popup span {
@@ -2442,7 +2495,7 @@ input[type='range'] {
 }
 
 .login-submit:focus-visible {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -2553,7 +2606,7 @@ input[type='range'] {
   height: 34px;
   flex: none;
   border-radius: 10px;
-  color: var(--navy-500);
+  color: var(--accent);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px rgba(27, 86, 181, 0.14);
   transition: transform 0.16s ease;
@@ -2590,7 +2643,7 @@ input[type='range'] {
   font-weight: 650;
   line-height: 1.15;
   letter-spacing: -0.4px;
-  color: var(--navy-800);
+  color: var(--ink-strong);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2647,7 +2700,7 @@ input[type='range'] {
 }
 
 .kpi-link:focus-visible {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -3027,7 +3080,7 @@ input[type='range'] {
 }
 
 .area-row:focus-visible {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
 
@@ -3244,12 +3297,12 @@ input[type='range'] {
 .drawer-foot .primary-button {
   color: #fff;
   background: var(--navy-500);
-  border-color: var(--navy-500);
+  border-color: var(--accent);
 }
 
 .drawer-foot .primary-button:hover {
   background: var(--navy-600);
-  border-color: var(--navy-600);
+  border-color: var(--ink-accent);
 }
 
 @media (max-width: 640px) {
@@ -3423,12 +3476,12 @@ input[type='range'] {
 .modal-foot .primary-button {
   color: #fff;
   background: var(--navy-500);
-  border-color: var(--navy-500);
+  border-color: var(--accent);
 }
 
 .modal-foot .primary-button:hover {
   background: var(--navy-600);
-  border-color: var(--navy-600);
+  border-color: var(--ink-accent);
 }
 
 /* ---------------- grouped form sections ---------------- */
@@ -3527,7 +3580,7 @@ input[type='range'] {
 
 .choice input {
   flex: none;
-  accent-color: var(--navy-500);
+  accent-color: var(--accent);
   margin: 0;
 }
 
@@ -3538,7 +3591,7 @@ input[type='range'] {
 }
 
 .choice:has(input:focus-visible) {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -3599,11 +3652,11 @@ input[type='range'] {
 .purpose-card input {
   flex: none;
   margin: 2px 0 0;
-  accent-color: var(--navy-500);
+  accent-color: var(--accent);
 }
 
 .purpose-card:has(input:focus-visible) {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -3673,7 +3726,7 @@ input[type='range'] {
   border-radius: 9px;
   font-size: 11.5px;
   line-height: 1.5;
-  color: var(--navy-700);
+  color: var(--ink-accent);
   background: var(--accent-soft);
   border: 1px solid rgba(27, 86, 181, 0.2);
 }
@@ -3805,11 +3858,11 @@ input[type='range'] {
 .service-tile input {
   flex: none;
   margin: 0;
-  accent-color: var(--navy-500);
+  accent-color: var(--accent);
 }
 
 .service-tile:has(input:focus-visible) {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -3827,7 +3880,7 @@ input[type='range'] {
 }
 
 .service-tile.selected .service-icon {
-  color: var(--navy-500);
+  color: var(--accent);
   background: #fff;
   border-color: var(--accent);
 }
@@ -3929,7 +3982,7 @@ input[type='range'] {
 }
 
 .feed-go:focus-visible {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 6px;
 }
@@ -3948,7 +4001,7 @@ input[type='range'] {
 .focus-popup strong {
   display: block;
   font-size: 13px;
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .focus-popup span {
@@ -4000,7 +4053,7 @@ input[type='range'] {
 }
 
 .template-card:focus-visible {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -4017,7 +4070,7 @@ input[type='range'] {
 }
 
 .template-card.selected .template-icon {
-  color: var(--navy-500);
+  color: var(--accent);
   background: #fff;
   border-color: var(--accent);
 }
@@ -4095,11 +4148,11 @@ input[type='range'] {
 
 .generate-button:hover {
   background: var(--navy-600);
-  border-color: var(--navy-600);
+  border-color: var(--ink-accent);
 }
 
 .generate-button:focus-visible {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -4164,7 +4217,7 @@ input[type='range'] {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.03em;
-  color: var(--navy-600);
+  color: var(--ink-accent);
   background: var(--accent-soft);
   border: 1px solid rgba(27, 86, 181, 0.2);
 }
@@ -4201,7 +4254,7 @@ input[type='range'] {
   height: 46px;
   flex: none;
   border-radius: 12px;
-  color: var(--navy-900);
+  color: var(--ink-strong);
   box-shadow: inset 0 0 0 1px rgba(10, 37, 64, 0.18);
 }
 
@@ -4272,12 +4325,12 @@ input[type='range'] {
 .vessel-hero-actions .primary-button {
   color: #fff;
   background: var(--navy-500);
-  border-color: var(--navy-500);
+  border-color: var(--accent);
 }
 
 .vessel-hero-actions .primary-button:hover {
   background: var(--navy-600);
-  border-color: var(--navy-600);
+  border-color: var(--ink-accent);
 }
 
 /* ---------------- purpose + services readout ---------------- */
@@ -4305,7 +4358,7 @@ input[type='range'] {
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 11.5px;
-  color: var(--navy-600);
+  color: var(--ink-accent);
   background: var(--accent-soft);
   border: 1px solid rgba(27, 86, 181, 0.2);
 }
@@ -4369,7 +4422,7 @@ input[type='range'] {
 
 .spot-popup strong {
   font-size: 13px;
-  color: var(--navy-800);
+  color: var(--ink-strong);
 }
 
 .spot-popup span {
@@ -4559,7 +4612,7 @@ input[type='range'] {
   border-radius: 11px;
   border: 1px solid var(--border);
   background: var(--surface-2);
-  border-left: 3px solid var(--navy-500);
+  border-left: 3px solid var(--accent);
 }
 
 .sched-ok {
@@ -4820,7 +4873,7 @@ input[type='range'] {
   scrollbar-width: thin;
   padding: 12px 13px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--map-control);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(6px);
@@ -4927,7 +4980,7 @@ input[type='range'] {
 }
 
 .pb-transport button:focus-visible {
-  outline: 2px solid var(--navy-500);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
@@ -4936,19 +4989,19 @@ input[type='range'] {
   font-size: 14px;
   color: #fff;
   background: var(--navy-500);
-  border-color: var(--navy-500);
+  border-color: var(--accent);
 }
 
 .pb-transport .pb-play:hover {
   background: var(--navy-600);
-  border-color: var(--navy-600);
+  border-color: var(--ink-accent);
 }
 
 .pb-scrub {
   flex: 1;
   min-width: 0;
   margin: 0;
-  accent-color: var(--navy-500);
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
@@ -5003,7 +5056,7 @@ input[type='range'] {
   padding: 7px 14px;
   border-radius: 999px;
   font-size: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--map-control);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
@@ -5014,18 +5067,252 @@ input[type='range'] {
   background: var(--alert-soft);
 }
 
-/* Details for whichever ship is selected — from the list or clicked on the map. */
-.pb-detail {
+/* ---------------- playback: track timeline ----------------
+ *
+ * Full height down the right. It owns that side outright: the details card
+ * moves to the left and the map's zoom and full-screen controls are pushed
+ * clear by `.has-timeline`, so nothing is left underneath it. */
+.pb-tl-panel {
   position: absolute;
   top: 12px;
   right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  width: 288px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--map-control);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.pb-tl-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex: none;
+  padding: 10px 10px 8px 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pb-tl-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.pb-tl-title strong {
+  font-size: 13px;
+}
+
+.pb-tl-title .muted {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pb-tl-date {
+  flex: none;
+  margin: 0;
+  padding: 7px 13px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.pb-tl {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.pb-tl-item > button {
+  display: grid;
+  /* time | node | detail — the node column carries both the dot and the rail. */
+  grid-template-columns: 40px 16px 1fr;
+  align-items: start;
+  gap: 9px;
+  width: 100%;
+  padding: 5px 12px 5px 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+}
+
+.pb-tl-item > button:hover {
+  background: var(--accent-soft);
+}
+
+/* The time, the dot and the event title all sit on the same 18px first line, so
+   the three columns line up across the row whatever their font sizes are. */
+.pb-tl-time {
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: right;
+}
+
+/**
+ * The node column stretches to the row's full height and draws the rail down
+ * its centre, so consecutive rows join into one unbroken line no matter how
+ * tall each row runs. The previous version hung a 100vh line off each dot,
+ * which both stacked the lines on top of one another and pushed the list's
+ * scroll height out by a screenful.
+ */
+.pb-tl-node {
+  position: relative;
+  display: block;
+  align-self: stretch;
+}
+
+.pb-tl-node::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  transform: translateX(-50%);
+  background: var(--border);
+}
+
+/* Centred on that same 18px line: (18 - 9) / 2. */
+.pb-tl-node::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4.5px;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+/* The rail starts and stops at the outer dots rather than running past them. */
+.pb-tl-item:first-child .pb-tl-node::before {
+  top: 9px;
+}
+
+.pb-tl-item:last-child .pb-tl-node::before {
+  bottom: auto;
+  height: 9px;
+}
+
+.pb-tl-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pb-tl-what {
+  font-size: 12.5px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.pb-tl-meta,
+.pb-tl-pos {
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Only the ends of the record and the changes of state get a colour — if every
+   fix were marked, none of them would be. */
+.pb-tl-fix .pb-tl-what {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.pb-tl-underway .pb-tl-node::after {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.pb-tl-anchored .pb-tl-node::after {
+  background: var(--ok);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.pb-tl-start .pb-tl-node::after,
+.pb-tl-end .pb-tl-node::after {
+  background: var(--warn);
+}
+
+.pb-tl-underway .pb-tl-what,
+.pb-tl-anchored .pb-tl-what,
+.pb-tl-start .pb-tl-what,
+.pb-tl-end .pb-tl-what {
+  font-weight: 600;
+}
+
+/* Where the playhead is. Marked by the bar as well as the tint, so it is still
+   findable when the row scrolls to the very edge of the list. */
+.pb-tl-item.is-current > button {
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.pb-tl-item.is-current .pb-tl-time,
+.pb-tl-item.is-current .pb-tl-what {
+  color: var(--accent);
+}
+
+/* The panel owns the right edge, so the map's own controls step aside for it —
+   288px of panel, its 12px gutter, and 12px between the two. */
+.playback-map.has-timeline .map-fs-btn {
+  right: 312px;
+}
+
+.playback-map.has-timeline .maplibregl-ctrl-top-right {
+  margin-right: 302px;
+}
+
+@media (max-width: 1000px) {
+  /* Not enough map left to be worth covering. */
+  .pb-tl-panel {
+    display: none;
+  }
+
+  /* ...so the controls come back to the edge. */
+  .playback-map.has-timeline .map-fs-btn {
+    right: 10px;
+  }
+
+  .playback-map.has-timeline .maplibregl-ctrl-top-right {
+    margin-right: 0;
+  }
+}
+
+/* Details for whichever ship is selected — from the list or clicked on the map.
+   Left side, below the extent presets: the timeline has the right. */
+.pb-detail {
+  position: absolute;
+  top: 56px;
+  left: 12px;
   z-index: 3;
   width: 292px;
   max-height: calc(100% - 24px);
   display: flex;
   flex-direction: column;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--map-control);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-md);
   backdrop-filter: blur(6px);
@@ -5082,7 +5369,7 @@ input[type='range'] {
   overflow: auto;
   font-size: 10.5px;
   line-height: 1.45;
-  color: var(--navy-800);
+  color: var(--ink-strong);
   font-variant-numeric: tabular-nums;
 }
 
@@ -5100,7 +5387,7 @@ input[type='range'] {
 .pb-now {
   font-size: 13px;
   font-weight: 650;
-  color: var(--navy-800);
+  color: var(--ink-strong);
   font-variant-numeric: tabular-nums;
 }
 
@@ -5291,7 +5578,7 @@ input[type='range'] {
 }
 
 .role-tab:hover {
-  color: var(--navy-700);
+  color: var(--ink-accent);
 }
 
 .role-tab.active {
@@ -5804,6 +6091,61 @@ button.perm-module {
   margin-top: 4px;
 }
 
+/* ---- occupied spot / release ---- */
+
+/* Marked down the edge because it appears and disappears with the map
+   selection: it belongs to whatever was just clicked, not to the queue below. */
+.occupied-panel {
+  border-left: 3px solid var(--accent);
+}
+
+.occupied-panel .spot-actions {
+  margin-top: 12px;
+}
+
+.release-note {
+  display: block;
+  font-size: 10.5px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+
+/* ---- report facets ---- */
+
+/* Each facet is a labelled group rather than a bare row of chips: "BN, D, S"
+   means nothing without the word "areas" over it, and the same chips are used
+   for flag codes directly underneath. */
+.report-facet {
+  margin: 0 0 10px;
+  padding: 9px 12px 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.report-facet legend {
+  padding: 0 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.facet-note {
+  margin: 7px 0 0;
+  font-size: 11px;
+}
+
+/* The breakdown is a readout, not a control — same chip shape, no pointer. */
+.facet-breakdown {
+  margin: 10px 0 12px;
+}
+
+.facet-breakdown .filter-chip {
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+}
+
 .switch-inline {
   display: inline-flex;
   align-items: center;
@@ -6080,7 +6422,7 @@ button.perm-module {
 .login-demo summary {
   cursor: pointer;
   font-weight: 600;
-  color: var(--navy-700);
+  color: var(--ink-accent);
   list-style: none;
 }
 
@@ -6270,4 +6612,269 @@ button.perm-module {
   margin-top: 3px;
   font-size: 10.5px;
   line-height: 1.35;
+}
+
+/* ---------------- full-screen map ---------------- */
+
+/* Top right corner of whichever pane the map is in. MapLibre's zoom and pitch
+   control lives in the same corner, so that group is pushed down to sit under
+   this rather than fight it for the spot. */
+.map-fs-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 29px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--map-control);
+  color: var(--map-control-ink);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+.map-fs-btn:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Expanded, it stops being an icon and says how to get back out — the way out
+   of something covering the screen has to name itself. */
+.map-fs-btn.is-on {
+  padding: 0 10px;
+}
+
+.map-fs-btn kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  font: inherit;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.map-canvas .maplibregl-ctrl-top-right {
+  margin-top: 38px;
+}
+
+/* Out of flow entirely, so the pane's own height, flex basis and rounded
+   corners stop applying — each of the four map panes is sized differently and
+   all of them have to end up as the same rectangle. */
+.map-expanded {
+  position: fixed;
+  top: var(--app-header-h);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 5;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+/* The details card is pinned at different offsets per pane to clear that pane's
+   controls; expanded they are all the same pane, so it goes back to one place. */
+.map-expanded .details-card {
+  top: 14px;
+  left: auto;
+  right: 14px;
+  max-height: calc(100% - 28px);
+}
+
+.map-expanded .map-focus {
+  top: 14px;
+  left: 14px;
+}
+
+/* Expanded, the toggle grows from an icon into a labelled button and reaches
+   across the corner the rose sits in, so the rose drops below it. */
+.map-expanded .compass-rose {
+  top: 50px;
+}
+
+/* Playback keeps its transport. The map going out of flow would otherwise
+   leave the bar stranded behind it, and a replay you cannot pause or scrub is
+   not a replay — so it rides over the expanded map instead of under it. */
+.playback-map.map-expanded ~ .pb-bar {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 6;
+}
+
+/* ---------------- theme switch ----------------
+ *
+ * Sits on the header, which is dark chrome in every theme — so it is painted
+ * from white at low alpha like the utilisation meter beside it, not from the
+ * surface tokens, which would make it vanish in Light. */
+.theme-switch {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  padding: 3px 3px 3px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.theme-switch-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.theme-switch-options {
+  display: flex;
+  gap: 2px;
+}
+
+.theme-switch button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.theme-switch button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* The chosen one is filled rather than outlined — at this size an outline reads
+   as another button rather than as the answer. */
+.theme-switch button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Day is the sun, Dusk the sunset, Night the moon: the icon keeps its own
+   colour when idle so the row is scannable without reading the words. */
+.theme-switch button:not(.active) svg {
+  color: #f6c453;
+}
+
+.theme-switch button:not(.active):nth-child(2) svg {
+  color: #7fb2ff;
+}
+
+.theme-switch button:not(.active):nth-child(3) svg {
+  color: #cbd5e1;
+}
+
+@media (max-width: 1250px) {
+  /* Names go before the control does — the icons still say which is which. */
+  .theme-switch-label,
+  .theme-switch button span {
+    display: none;
+  }
+
+  .theme-switch {
+    padding: 3px;
+  }
+
+  .theme-switch button {
+    padding: 0 9px;
+  }
+}
+
+@media (max-width: 900px) {
+  /* The header runs out of room before the title does; the theme is a setting,
+     not something read at a glance, so it is the first thing to go. */
+  .theme-switch {
+    display: none;
+  }
+}
+
+/* Beats the `stroke` the rose's own group sets, because a CSS rule outranks a
+   presentation attribute. */
+.compass-rose text {
+  stroke: var(--rose-halo);
+}
+
+/* ---------------- dark and satellite ----------------
+ *
+ * Almost everything follows from the tokens in index.css. What is left here is
+ * the handful of places that cannot: colours owned by MapLibre's own stylesheet,
+ * and fills that were picked against a white ground rather than against a
+ * token. Dark and Satellite share all of it — only the basemap differs. */
+
+/* MapLibre paints its popups and controls white from its own CSS. */
+[data-theme='dusk'] .maplibregl-popup-content,
+[data-theme='night'] .maplibregl-popup-content {
+  background: var(--surface);
+  color: var(--text);
+}
+
+[data-theme='dusk'] .maplibregl-popup-tip,
+[data-theme='night'] .maplibregl-popup-tip {
+  border-top-color: var(--surface);
+  border-bottom-color: var(--surface);
+}
+
+[data-theme='dusk'] .maplibregl-ctrl-group,
+[data-theme='night'] .maplibregl-ctrl-group {
+  background: var(--map-control);
+}
+
+[data-theme='dusk'] .maplibregl-ctrl-group button,
+[data-theme='night'] .maplibregl-ctrl-group button {
+  background: transparent;
+}
+
+/* The control glyphs are black SVGs baked into MapLibre's stylesheet, so they
+   are lightened rather than recoloured — there is no property to reach them. */
+[data-theme='dusk'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon,
+[data-theme='night'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.9);
+}
+
+[data-theme='dusk'] .maplibregl-ctrl-attrib,
+[data-theme='night'] .maplibregl-ctrl-attrib {
+  background: var(--map-control);
+  color: var(--muted);
+}
+
+[data-theme='dusk'] .maplibregl-ctrl-attrib a,
+[data-theme='night'] .maplibregl-ctrl-attrib a {
+  color: var(--ink-accent);
+}
+
+/* --navy-700 is near-black against a dark surface, so the solid buttons move up
+   to --navy-500, which still carries white text at full contrast. */
+[data-theme='dusk'] .primary-button,
+[data-theme='night'] .primary-button,
+[data-theme='dusk'] .action-grid button.primary,
+[data-theme='night'] .action-grid button.primary,
+[data-theme='dusk'] .filter-chip.active,
+[data-theme='night'] .filter-chip.active {
+  background: var(--navy-500);
+  border-color: var(--accent);
+}
+
+/* Selected-state icon chips were a white knockout on a tinted card. */
+[data-theme='dusk'] .service-tile.selected .service-icon,
+[data-theme='night'] .service-tile.selected .service-icon,
+[data-theme='dusk'] .template-card.selected .template-icon,
+[data-theme='night'] .template-card.selected .template-icon {
+  background: var(--surface);
 }

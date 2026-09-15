@@ -1,9 +1,13 @@
 import { useMemo } from 'react'
 import { useAppSelector } from '../app/hooks'
-import { buildCompassRose, COMPASS_INK } from '../map/compassRose'
+import { buildCompassRose } from '../map/compassRose'
 
-/** The halo the map's own labels are set in, so the rose's numbers match. */
-const LABEL_HALO = '#f8fafc'
+/**
+ * The ink and the label halo are both CSS, not attributes: they change with the
+ * theme, and a rose drawn in black is invisible on a night chart. The ring
+ * paints in `currentColor` (`--rose-ink`) and `.compass-rose text` carries the
+ * halo (`--rose-halo`) — see App.css.
+ */
 
 /**
  * The chart rose, pinned to the top right of the map pane and drawn as the
@@ -33,11 +37,11 @@ export default function CompassRose() {
       role="img"
       aria-label={`Compass rose, variation ${variationText}`}
     >
-      <g transform={`rotate(${-bearing})`} stroke={COMPASS_INK} fill="none">
+      <g transform={`rotate(${-bearing})`} stroke="currentColor" fill="none">
         {/* The meridian, and the point the whole rose is set from. */}
         <line x1={0} y1={-radius} x2={0} y2={radius} strokeWidth={0.5} strokeDasharray="1 2.5" />
         <circle r={2.4} strokeWidth={0.6} />
-        <circle r={0.7} fill={COMPASS_INK} stroke="none" />
+        <circle r={0.7} fill="currentColor" stroke="none" />
 
         <circle r={radius} strokeWidth={0.9} />
         <path d={ticksOne} strokeWidth={0.3} />
@@ -46,7 +50,7 @@ export default function CompassRose() {
 
         {/* Half solid, half open, as a compass needle is drawn. */}
         <polygon points={pointerOpen} strokeWidth={0.7} strokeLinejoin="round" />
-        <polygon points={pointerSolid} fill={COMPASS_INK} strokeWidth={0.7} strokeLinejoin="round" />
+        <polygon points={pointerSolid} fill="currentColor" strokeWidth={0.7} strokeLinejoin="round" />
 
         {/* Magnetic north dashed — it is where the compass points, not where
             north is. Two degrees off true, so it runs close enough to the
@@ -67,8 +71,7 @@ export default function CompassRose() {
           transform="rotate(-90)"
           x={radius * 0.3}
           y={-2.6}
-          fill={COMPASS_INK}
-          stroke={LABEL_HALO}
+          fill="currentColor"
           strokeWidth={2}
           paintOrder="stroke"
           fontSize={6.5}
@@ -88,9 +91,8 @@ export default function CompassRose() {
             x={l.x}
             y={l.y}
             transform={`rotate(${l.rotate} ${l.x} ${l.y})`}
-            fill={COMPASS_INK}
-            stroke={LABEL_HALO}
-            strokeWidth={1.5}
+            fill="currentColor"
+              strokeWidth={1.5}
             paintOrder="stroke"
             fontSize={7}
             fontWeight={600}

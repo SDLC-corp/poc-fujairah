@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Map as MapLibreMap, Marker, NavigationControl, Popup, ScaleControl } from 'maplibre-gl'
-import type { GeoJSONSource, MapMouseEvent, MapTouchEvent } from 'maplibre-gl'
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  MapMouseEvent,
+  MapTouchEvent,
+} from 'maplibre-gl'
 import type { Feature, FeatureCollection } from 'geojson'
 import { centroid, pointOnFeature } from '@turf/turf'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -18,6 +23,7 @@ import {
   selectGeofences,
   selectSwingCircles,
   selectVesselHulls,
+  selectDragOverlay,
 } from '../features/analysis/selectors'
 import type { FreeSpotProps } from '../features/analysis/selectors'
 import { setBearing, setPitch } from '../features/view/viewSlice'
@@ -50,7 +56,8 @@ import {
 } from '@turf/turf'
 import '../map/workerSetup'
 import {
-  BASEMAP_STYLE,
+  BASEMAP_STYLES,
+  SEA_INK,
   INITIAL_CENTER,
   INITIAL_ZOOM,
   MAX_PITCH,
@@ -61,12 +68,14 @@ import {
   addPortLayers,
   configureBuildingLayer,
   configureNameLayers,
+  configureWaterLayers,
   EMPTY_FC,
   findBuildingLayer,
   FLAT_VESSEL_LAYERS,
   INTERACTIVE_LAYERS,
   LAYER_GROUPS,
   SOURCE_IDS,
+  SWING_INK,
   THREE_D_VESSEL_LAYERS,
 } from '../map/layers'
 import type { LayerId, VesselCollection, VesselFeature, VesselProps, VesselType } from '../types/gis'
@@ -146,6 +155,7 @@ export default function MapView() {
   // so it is built once rather than fetched or stored.
   const graticule = useMemo(() => buildGraticule(), [])
   const geofences = useAppSelector(selectGeofences)
+  const dragOverlay = useAppSelector(selectDragOverlay)
   const showBuffer = useAppSelector((s) => s.analysis.showBuffer)
   const showNearestLine = useAppSelector((s) => s.analysis.showNearestBerthLine)
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)
@@ -169,6 +179,7 @@ export default function MapView() {
   const playbackProgress = useAppSelector((s) => s.playback.progress)
   const playbackData = useAppSelector((s) => s.playback.data)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
+  const theme = useAppSelector((s) => s.ui.theme)
   const movedSpots = useAppSelector((s) => s.spots.moved)
   const areas = useAppSelector(selectAreas)
   const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
@@ -194,6 +205,9 @@ export default function MapView() {
   playbackProgressRef.current = playbackProgress
   const areasRef = useRef(areas)
   areasRef.current = areas
+  /** Read inside the style handler, which is attached once and outlives the theme. */
+  const seaRef = useRef(SEA_INK[theme])
+  seaRef.current = SEA_INK[theme]
   const vesselsRef = useRef(vessels?.features ?? [])
   vesselsRef.current = vessels?.features ?? []
   const freeSpotsRef = useRef(freeSpots.features)
@@ -257,7 +271,7 @@ export default function MapView() {
 
     const map = new MapLibreMap({
       container,
-      style: BASEMAP_STYLE,
+      style: BASEMAP_STYLES[theme],
       center: INITIAL_CENTER,
       zoom: INITIAL_ZOOM,
       pitch: vessels3d ? PITCHED_VIEW : 0,
@@ -306,6 +320,9 @@ export default function MapView() {
     // event, attach the port layers as soon as the style can hold them and
     // re-attach if anything ever drops them.
     const ensurePortLayers = () => {
+      // Before the early return: a style swap brings the vendor's own blues
+      // back with it, and `styledata` is the only signal that they have landed.
+      configureWaterLayers(map, seaRef.current)
       if (map.getSource(SOURCE_IDS.anchorages)) return
       registerAnchorIcon(map)
       registerVesselIcons(map)
@@ -377,6 +394,64 @@ export default function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch])
 
+  /**
+   * Swap the basemap with the console theme.
+   *
+   * Nothing else here has to change: `setStyle` drops every layer, MapLibre
+   * fires `styledata`, and `ensurePortLayers` re-attaches the port layers and
+   * bumps `styleEpoch` — which is what every data effect below is keyed on, so
+   * the whole picture is re-pushed onto the new style. The camera survives a
+   * style change untouched, so the operator keeps their view.
+   *
+   * Guarded by a ref rather than skipped on first run: the map was created with
+   * this very style a moment ago, and re-setting it would throw the basemap
+   * away and reload it for nothing.
+   */
+  const styleUrlRef = useRef(BASEMAP_STYLES[theme])
+  useEffect(() => {
+    const map = mapRef.current
+    const next = BASEMAP_STYLES[theme]
+    if (!map || styleUrlRef.current === next) return
+    styleUrlRef.current = next
+    map.setStyle(next)
+  }, [theme])
+
+  /**
+   * Swing circles are drawn in the chart's own ink, which inverts with the
+   * theme: the daylight near-black is the sea's own colour on the dusk and
+   * night sheets, where the circles vanish into it entirely.
+   */
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !styleEpoch) return
+    const ink = SWING_INK[theme]
+    const selected: ExpressionSpecification = ['boolean', ['feature-state', 'selected'], false]
+
+    if (map.getLayer('swing-fill')) {
+      map.setPaintProperty('swing-fill', 'fill-color', ['case', selected, '#f59e0b', ink.fill])
+      // A light wash needs a touch more weight than a dark one to read at all.
+      map.setPaintProperty('swing-fill', 'fill-opacity', [
+        'case',
+        selected,
+        0.18,
+        theme === 'day' ? 0.05 : 0.07,
+      ])
+    }
+    if (map.getLayer('swing-outline')) {
+      map.setPaintProperty('swing-outline', 'line-color', ['case', selected, '#b45309', ink.line])
+      map.setPaintProperty('swing-outline', 'line-opacity', [
+        'case',
+        selected,
+        1,
+        theme === 'day' ? 0.55 : 0.75,
+      ])
+    }
+    if (map.getLayer('swing-label')) {
+      map.setPaintProperty('swing-label', 'text-halo-color', theme === 'day' ? '#f8fafc' : '#061a33')
+      map.setPaintProperty('swing-label', 'text-color', theme === 'day' ? '#b45309' : '#fbbf24')
+    }
+  }, [styleEpoch, theme])
+
   /* 3D buildings come from the basemap's own extrusion layer. */
   useEffect(() => {
     const map = mapRef.current
@@ -414,6 +489,9 @@ export default function MapView() {
       [SOURCE_IDS.anchors, playbackFleet ? null : anchorMarks],
       [SOURCE_IDS.geofences, geofences],
       [SOURCE_IDS.labels, labelPoints],
+      // Dropped against a replayed fleet — the drag is a fact about the live
+      // snapshot, not about the recorded day.
+      [SOURCE_IDS.dragging, playbackFleet ? null : dragOverlay],
     ]
     for (const [sourceId, data] of pairs) {
       const source = map.getSource(sourceId) as GeoJSONSource | undefined
@@ -434,6 +512,7 @@ export default function MapView() {
     labelPoints,
     playbackFleet,
     playbackHulls,
+    dragOverlay,
   ])
 
   /**

@@ -8,7 +8,13 @@ import {
 import { selectFeature } from '../features/selection/selectionSlice'
 import { setTab } from '../features/ui/uiSlice'
 import { focusVessel } from '../features/view/viewSlice'
-import { formatDateTime, formatDistance, hoursBetween } from '../utils/format'
+import {
+  formatDateTime,
+  formatDistance,
+  formatDuration,
+  hoursBetween,
+  hoursSince,
+} from '../utils/format'
 import { flagName } from '../utils/flags'
 import { VESSEL_COLORS, VESSEL_LABELS, VESSEL_STATUS_SHORT } from '../map/vesselTypes'
 
@@ -45,6 +51,10 @@ export default function VesselDrawer({ vesselId, onClose }: Props) {
   const p = entry.vessel.properties
   const berth = nearest[p.id]
   const dwell = hoursBetween(p.ata, p.etd)
+  // Elapsed, as against `dwell`, which is the stay she was booked for. Only
+  // counted while she is actually stopped — see VesselDetailsScreen.
+  const atRest = p.status === 'anchored' || p.status === 'moored'
+  const restedH = atRest ? hoursSince(p.ata) : null
   const swingR = Math.round(swingRadiusM(p.lengthM, swingFactor, safetyMarginM))
   const [lon, lat] = entry.vessel.geometry.coordinates
 
@@ -134,8 +144,14 @@ export default function VesselDrawer({ vesselId, onClose }: Props) {
               <dd>{formatDateTime(p.etd) || '—'}</dd>
             </div>
             <div>
-              <dt>Dwell</dt>
-              <dd>{dwell == null ? '—' : `${dwell} h`}</dd>
+              <dt title="The stay she was booked for — ATA through to ETD.">Planned stay</dt>
+              <dd>{formatDuration(dwell)}</dd>
+            </div>
+            <div>
+              <dt title="Time elapsed since she arrived. Counted only while she is stopped.">
+                {p.status === 'moored' ? 'Moored for' : 'Anchored for'}
+              </dt>
+              <dd>{atRest ? formatDuration(restedH) : '—'}</dd>
             </div>
             <div>
               <dt>Agent</dt>

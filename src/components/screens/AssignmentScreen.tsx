@@ -6,11 +6,12 @@ import {
   selectPassageWay,
 } from '../../features/analysis/selectors'
 import type { AssignmentCandidate, SpotOption } from '../../features/analysis/selectors'
-import { selectFeature } from '../../features/selection/selectionSlice'
+import { clearSelection, selectFeature } from '../../features/selection/selectionSlice'
 import { startTransit } from '../../features/transit/transitSlice'
+import { releaseSpot, RELEASE_REASONS } from '../../features/portData/portDataSlice'
 import { cancelPicking, clearPick, startPicking } from '../../features/spots/spotsSlice'
 import { distance, pointOnFeature } from '@turf/turf'
-import { formatDateTime, formatDistance } from '../../utils/format'
+import { formatDateTime, formatDistance, formatDuration, hoursSince } from '../../utils/format'
 import { buildRoute } from '../../map/route'
 import { VESSEL_LABELS } from '../../map/vesselTypes'
 import AddVesselForm from '../AddVesselForm'
@@ -34,6 +35,38 @@ export default function AssignmentScreen() {
   const freeSpots = useAppSelector(selectFreeSpots)
   const pickingFor = useAppSelector((s) => s.spots.pickingFor)
   const pickedSpots = useAppSelector((s) => s.spots.picked)
+  const vessels = useAppSelector((s) => s.portData.vessels)
+  const releases = useAppSelector((s) => s.portData.releases)
+  const selected = useAppSelector((s) => s.selection.selected)
+
+  /**
+   * The occupied spot under the operator's cursor.
+   *
+   * There is no separate "occupied spot" object to click — a taken spot *is* a
+   * vessel lying at anchor, and clicking her on the map already selects her. So
+   * the panel keys off that selection rather than inventing a second way to
+   * point at the same water.
+   */
+  const occupant =
+    selected?.layer === 'vessels'
+      ? (vessels?.features.find(
+          (v) =>
+            v.properties.id === selected.id &&
+            (v.properties.status === 'anchored' || v.properties.status === 'moored'),
+        ) ?? null)
+      : null
+
+  const [releasing, setReleasing] = useState(false)
+  const [reason, setReason] = useState<string>(RELEASE_REASONS[0])
+  const [note, setNote] = useState('')
+  // "Other" says nothing on its own, so it has to be written out.
+  const reasonComplete = reason !== 'Other' || note.trim().length > 0
+
+  function closeRelease() {
+    setReleasing(false)
+    setReason(RELEASE_REASONS[0])
+    setNote('')
+  }
 
   /** Turn a free spot clicked on the map into the same shape the allocator emits. */
   const fromMap = (c: AssignmentCandidate): SpotOption | null => {
@@ -90,6 +123,54 @@ export default function AssignmentScreen() {
   return (
     <>
       <AddVesselForm />
+
+      {/* ---- the spot the operator just clicked, if somebody is on it ---- */}
+      {occupant && (
+        <section className="panel occupied-panel">
+          <h2>
+            Occupied spot
+            <span className="pill pill-anchored">
+              Area {occupant.properties.area ?? '—'}
+            </span>
+          </h2>
+          <p className="muted">
+            <strong>{occupant.properties.name}</strong> ·{' '}
+            {VESSEL_LABELS[occupant.properties.type]} · {occupant.properties.lengthM} m LOA
+          </p>
+          <dl className="kv kv-wide">
+            <div>
+              <dt>Anchored for</dt>
+              <dd>{formatDuration(hoursSince(occupant.properties.ata))}</dd>
+            </div>
+            <div>
+              <dt>Arrived</dt>
+              <dd>{formatDateTime(occupant.properties.ata)}</dd>
+            </div>
+            <div className="kv-span">
+              <dt>Position</dt>
+              <dd>
+                {occupant.geometry.coordinates[1].toFixed(5)}°N,{' '}
+                {occupant.geometry.coordinates[0].toFixed(5)}°E
+              </dd>
+            </div>
+          </dl>
+          <div className="spot-actions">
+            <button type="button" className="primary-button" onClick={() => setReleasing(true)}>
+              Release spot
+            </button>
+            <button
+              type="button"
+              className="ghost-button"
+              onClick={() => dispatch(clearSelection())}
+            >
+              Deselect
+            </button>
+          </div>
+          <p className="muted hint">
+            Releasing frees the water for the allocator and puts her back in the queue below.
+          </p>
+        </section>
+      )}
 
       <section className="panel">
         <h2>
@@ -333,6 +414,123 @@ export default function AssignmentScreen() {
             </div>
           </div>
         </div>
+      )}
+
+      {releasing && occupant && (
+        <div className="dialog" role="dialog" aria-modal="true" aria-label="Release spot">
+          <div className="dialog-card">
+            <h3>Release spot</h3>
+            <p>
+              Give up the water <strong>{occupant.properties.name}</strong> is lying in
+              {occupant.properties.area ? ` in Area ${occupant.properties.area}` : ''}. She returns
+              to the waiting queue and the spot becomes available to the allocator at once.
+            </p>
+
+            <label className="field">
+              <span>
+                Reason <em className="req">*</em>
+              </span>
+              <select
+                className="text-input"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              >
+                {RELEASE_REASONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>
+                Note {reason === 'Other' && <em className="req">*</em>}
+              </span>
+              <textarea
+                className="text-input"
+                rows={3}
+                maxLength={200}
+                placeholder={
+                  reason === 'Other'
+                    ? 'Say what happened — this is the only record of it.'
+                    : 'Optional detail for the log'
+                }
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+              <small className="muted field-note">
+                Recorded against the release with the time and the operator.
+              </small>
+            </label>
+
+            <div className="dialog-actions">
+              <button type="button" className="ghost-button" onClick={closeRelease}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!reasonComplete}
+                onClick={() => {
+                  dispatch(
+                    releaseSpot({
+                      vesselId: occupant.properties.id,
+                      reason,
+                      note,
+                    }),
+                  )
+                  // The vessel is no longer on that spot, so a card still
+                  // describing her there would be describing nothing.
+                  dispatch(clearSelection())
+                  closeRelease()
+                }}
+              >
+                Release spot
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {releases.length > 0 && (
+        <section className="panel panel-wide">
+          <h2>
+            Released spots
+            <span className="badge badge-ok">{releases.length}</span>
+          </h2>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Reference</th>
+                <th>Vessel</th>
+                <th>Area</th>
+                <th>Reason</th>
+                <th>Released</th>
+                <th>By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {releases.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <code className="ref-cell">{r.id}</code>
+                  </td>
+                  <td>
+                    <strong>{r.vesselName}</strong>
+                  </td>
+                  <td>{r.areaCode ?? '—'}</td>
+                  <td>
+                    {r.reason}
+                    {r.note && <small className="muted release-note">{r.note}</small>}
+                  </td>
+                  <td className="muted">{formatDateTime(r.at)}</td>
+                  <td className="muted">{r.by}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       )}
 
       <RawJson label="POST /api/anchorage/assignments" data={payload} />

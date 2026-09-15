@@ -134,6 +134,16 @@ export type VesselProps = {
     | 'sailed'
   /** Area code the vessel was placed in, e.g. BN. Optional — derived live too. */
   area?: string | null
+  /**
+   * Where she was lying when she brought up, and on what heading.
+   *
+   * Kept so the anchor's own position can be worked out twice — once for then,
+   * once for now — and the two compared. A vessel swings about her anchor, so
+   * her position moving is normal and says nothing; it is the *anchor* moving
+   * that means it is dragging. Cleared when she gives up the spot.
+   */
+  anchoredAt?: [number, number] | null
+  anchoredHeadingDeg?: number | null
   /** Estimated time of arrival, ISO 8601 — set on vessels awaiting assignment. */
   eta?: string
   /** Actual time of arrival, ISO 8601. */

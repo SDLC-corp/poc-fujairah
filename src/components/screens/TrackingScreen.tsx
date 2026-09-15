@@ -12,6 +12,7 @@ import { formatArea, formatDistance } from '../../utils/format'
 import { flagName } from '../../utils/flags'
 import MapView from '../MapView'
 import MapFocusControl from '../MapFocusControl'
+import MapFullscreen from '../MapFullscreen'
 import FeatureDetails from '../FeatureDetails'
 import RawJson from '../RawJson'
 import { setVesselStatus } from '../../features/portData/portDataSlice'
@@ -44,6 +45,7 @@ export default function TrackingScreen() {
   const selected = useAppSelector((s) => s.selection.selected)
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)
   const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
+  const mapFullscreen = useAppSelector((s) => s.ui.mapFullscreen)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<(typeof STATUSES)[number]>('all')
 
@@ -205,8 +207,9 @@ export default function TrackingScreen() {
         {/* The card rides the map here as it does on the dashboard: picking a
             contact should answer "which one is that, and what is it" on the
             chart itself, without the eye going down to the pane below. */}
-        <div className="track-map">
+        <div className={`track-map${mapFullscreen ? ' map-expanded' : ''}`}>
           <MapView />
+          <MapFullscreen />
           <MapFocusControl />
           <FeatureDetails />
         </div>

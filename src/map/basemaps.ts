@@ -1,11 +1,38 @@
+import type { ThemeId } from '../features/ui/uiSlice'
+
 const KEY = import.meta.env.VITE_MAPTILER_KEY
 
+const style = (id: string) => `https://api.maptiler.com/maps/${id}/style.json?key=${KEY}`
+
 /**
- * MapTiler Streets vector basemap. Vector styles ship their own glyphs, sprites
- * and building footprints, so the port layers get real fonts and the city can be
- * extruded without any extra data.
+ * One basemap per console theme.
+ *
+ * All three are the same vector style in different lights, which matters for
+ * more than looks: they carry the same layer names and the same glyphs and
+ * sprites, so the port layers re-attach unchanged when the theme is swapped at
+ * runtime, the city stays extrudable, and the sea can be repainted by the same
+ * rule in each (see `configureWaterLayers`).
  */
-export const BASEMAP_STYLE = `https://api.maptiler.com/maps/streets-v2/style.json?key=${KEY}`
+export const BASEMAP_STYLES: Record<ThemeId, string> = {
+  day: style('streets-v2'),
+  dusk: style('streets-v2-dark'),
+  night: style('streets-v2-night'),
+}
+
+/**
+ * The sea, painted over whatever the basemap shipped.
+ *
+ * The styles differ in how they treat water — the night sheet in particular
+ * goes almost black, which loses the anchorage against the land. These are the
+ * blues the port's own charts use: pale enough in daylight to read soundings
+ * through, deep enough after dark that the vessel marks and the dotted area
+ * boundaries carry.
+ */
+export const SEA_INK: Record<ThemeId, string> = {
+  day: '#c3dcf2',
+  dusk: '#0b2647',
+  night: '#061a33',
+}
 
 /**
  * The map opens on the Fujairah Anchorage Area — that is where the vessels are.

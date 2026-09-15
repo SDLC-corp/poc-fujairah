@@ -33,6 +33,7 @@ export const SOURCE_IDS = {
   nearestLine: 'src-nearest-line',
   playback: 'src-playback',
   spotDrag: 'src-spot-drag',
+  dragging: 'src-dragging',
 } as const
 
 /** Style layers belonging to each toggleable data layer, bottom to top. */
@@ -84,10 +85,33 @@ export const SOUNDING_INK = '#8796ac'
 /** The graticule, in the console's --muted itself: read off, not followed. */
 export const GRATICULE_INK = '#5f7391'
 
+/**
+ * The swing circle's ink, which has to invert with the chart.
+ *
+ * On the daylight sheet it is drawn in the chart's near-black; on the dusk and
+ * night sheets that is the sea's own colour and the circle simply disappears,
+ * so it is drawn instead in the off-white the paper charts use for a light
+ * overprint. Slightly blued rather than pure white — a hard #fff over a navy
+ * sea glares, and these circles cover most of the anchorage at once.
+ *
+ * The selected circle keeps its amber in every theme: it is the one the
+ * operator is working, and it has to stay findable against the others.
+ */
+export const SWING_INK: Record<'day' | 'dusk' | 'night', { fill: string; line: string }> = {
+  day: { fill: '#0f172a', line: '#334155' },
+  dusk: { fill: '#dbe7f5', line: '#e3edfa' },
+  night: { fill: '#dbe7f5', line: '#e3edfa' },
+}
+
 /** Every isobath, one weight and one colour — see `contours-line`. */
 export const CONTOUR_INK = '#6a97ba'
-/** The depth figure on the line, a shade down so it holds against the tints. */
-const CONTOUR_LABEL_INK = '#3f7096'
+/**
+ * The depth figure on the line. Set a touch lighter than the isobath itself, so
+ * the figure reads as a note on the line rather than as a second mark competing
+ * with it — the areas carry no fill now, and a figure dark enough to hold
+ * against a tint is heavier than open water needs.
+ */
+const CONTOUR_LABEL_INK = '#7ba3c2'
 
 /** Incident fences: red for a hard exclusion, amber for advisory. */
 const geofenceColor: ExpressionSpecification = [
@@ -145,6 +169,22 @@ export function configureBuildingLayer(map: MapLibreMap, id: string) {
   map.setPaintProperty(id, 'fill-extrusion-color', '#8ea0b5')
   map.setPaintProperty(id, 'fill-extrusion-opacity', 0.85)
   map.setPaintProperty(id, 'fill-extrusion-vertical-gradient', true)
+}
+
+/**
+ * Repaints the basemap's own water fills in the port's sea colour.
+ *
+ * Done to the style rather than by laying our own polygon over it: the water
+ * fills already carry the coastline, the creeks and the harbour basin at every
+ * zoom, and nothing we could draw would follow them. Re-applied after every
+ * style change, since `setStyle` brings the vendor's own blues back with it.
+ */
+export function configureWaterLayers(map: MapLibreMap, color: string): void {
+  for (const layer of map.getStyle().layers) {
+    if (layer.type !== 'fill') continue
+    if (!('source-layer' in layer) || layer['source-layer'] !== 'water') continue
+    map.setPaintProperty(layer.id, 'fill-color', color)
+  }
 }
 
 /** Vector-tile layers that carry street names and building/place names. */
@@ -216,17 +256,28 @@ export function addPortLayers(map: MapLibreMap) {
     filter: ['==', ['geometry-type'], 'Polygon'],
     paint: {
       'fill-color': anchorageColor,
-      // The sea is strongly blue, so the tints need real weight to read as the
-      // chart's colours rather than as shades of the water.
-      'fill-opacity': ['case', ['==', ['get', 'category'], 'restricted'], 0.14, 0.5],
+      /**
+       * Drawn, but invisible. The areas — anchorages and restricted alike — are
+       * carried by their dotted boundary and their code rather than by a tint,
+       * so the chart underneath stays readable: depth contours, soundings and
+       * the graticule all used to be read through half-opaque colour.
+       *
+       * The layer itself stays because it is the click target. INTERACTIVE_LAYERS
+       * picks an area from anywhere inside it, and a dotted boundary is far too
+       * thin to aim at. A fully transparent fill is still returned by
+       * queryRenderedFeatures — only `visibility: none` takes a layer out of the
+       * hit test, which is exactly what the layer toggle does.
+       */
+      'fill-opacity': 0,
     },
   })
   /* --- depth contours --------------------------------------------------
-   * Slotted between the area fills and their outlines: over the tints so the
-   * lines stay legible — the FAA fills carry real weight at 0.5 opacity,
-   * unlike the light washes on the paper chart — but under the boundaries and
-   * area codes, which have to win. Depths are metres below Fujairah Harbour
-   * Datum; see scripts/gen-contours.mjs for the datum shift. */
+   * Still slotted between the area fill and its outline. The fill is
+   * transparent now, so nothing is being read through — but the order still
+   * decides that the dotted boundaries and the area codes draw over the
+   * isobaths rather than under them, which is the way round that has to hold.
+   * Depths are metres below Fujairah Harbour Datum; see
+   * scripts/gen-contours.mjs for the datum shift. */
   add({
     id: 'contours-line',
     type: 'line',
@@ -240,7 +291,7 @@ export function addPortLayers(map: MapLibreMap) {
       // cost more than it bought here. `major` is still carried on the feature
       // and still decides which lines get labelled first.
       'line-color': CONTOUR_INK,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.8, 14, 1.6],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.5, 14, 1],
       'line-opacity': 0.9,
     },
   })
@@ -249,9 +300,16 @@ export function addPortLayers(map: MapLibreMap) {
     type: 'line',
     source: SOURCE_IDS.anchorages,
     filter: ['==', ['geometry-type'], 'Polygon'],
+    // Round caps on a near-zero dash render as dots, the same way the geofence
+    // boundaries are drawn.
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
       'line-color': anchorageColor,
-      'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3.5, 1.6],
+      // A shade heavier than it was: with the tint gone the boundary is the only
+      // thing holding the area's extent, and dots carry less weight than a
+      // continuous line of the same width.
+      'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3.5, 2],
+      'line-dasharray': [0.1, 2],
       'line-opacity': 0.9,
     },
   })
@@ -303,8 +361,8 @@ export function addPortLayers(map: MapLibreMap) {
 
   /* --- graticule -------------------------------------------------------
    * Meridians and parallels every 5', graduated at 1' and subdivided at 0.2'.
-   * Over the area fills, as the sheet runs its graduation straight across the
-   * tinted areas, but under everything that has to be read. The ticks are
+   * Over the areas, as the sheet runs its graduation straight across them,
+   * but under everything that has to be read. The ticks are
    * geometry in minutes rather than pixels, so they hold their proportion to
    * the graduation at every zoom — see graticule.ts. */
   add({
@@ -639,7 +697,9 @@ export function addPortLayers(map: MapLibreMap) {
     paint: {
       'text-color': CONTOUR_LABEL_INK,
       'text-halo-color': '#f8fafc',
-      'text-halo-width': 1.8,
+      // Just enough to lift the figure off the line it sits on. The wider halo
+      // this had was sized to punch through the area fills.
+      'text-halo-width': 1.1,
       // The lines all read the same weight now, so nothing here says one
       // isobath outranks another. This is density, not hierarchy: twenty
       // labelled contours at once is unreadable, so the 50s name themselves
@@ -758,6 +818,47 @@ export function addPortLayers(map: MapLibreMap) {
       'line-width': 2.4,
     },
   })
+  /* --- dragging anchor -------------------------------------------------
+   * Drawn near the top, over the swing circles it contradicts: the point of
+   * the mark is that she is *not* where that circle says she should be. */
+  add({
+    id: 'dragging-circle',
+    type: 'line',
+    source: SOURCE_IDS.dragging,
+    filter: ['==', ['get', 'kind'], 'circle'],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      // The circle she was brought up in, left where it was laid.
+      'line-color': '#dc2626',
+      'line-width': 1.8,
+      'line-dasharray': [3, 2],
+      'line-opacity': 0.85,
+    },
+  })
+  add({
+    id: 'dragging-run',
+    type: 'line',
+    source: SOURCE_IDS.dragging,
+    filter: ['==', ['get', 'kind'], 'run'],
+    layout: { 'line-cap': 'round' },
+    paint: { 'line-color': '#dc2626', 'line-width': 2.6 },
+  })
+  add({
+    id: 'dragging-label',
+    type: 'symbol',
+    source: SOURCE_IDS.dragging,
+    filter: ['==', ['get', 'kind'], 'run'],
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-font': FONT_BOLD,
+      'text-size': 11,
+      'symbol-placement': 'line-center',
+      'text-offset': [0, -0.9],
+      'text-allow-overlap': true,
+    },
+    paint: { 'text-color': '#7f1d1d', 'text-halo-color': '#fff7ed', 'text-halo-width': 1.8 },
+  })
+
   // Replayed approach: the whole route faint, the part already run solid, and
   // the vessel's position at the scrub point on top.
   add({

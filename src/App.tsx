@@ -7,13 +7,16 @@ import { selectCurrentUser } from './features/users/selectors'
 import { signOut } from './features/auth/authSlice'
 import LoginScreen from './components/LoginScreen'
 import DashboardKpis from './components/DashboardKpis'
+import DragAlert from './components/DragAlert'
 import HeaderUtilisation from './components/HeaderUtilisation'
 import MapView from './components/MapView'
 import TabRail from './components/TabRail'
+import ThemeSwitch from './components/ThemeSwitch'
 import { TABS } from './components/tabs'
 import FeatureDetails from './components/FeatureDetails'
-import IncidentAlert from './components/IncidentAlert'
+import IncidentWatch from './components/IncidentWatch'
 import MapFocusControl from './components/MapFocusControl'
+import MapFullscreen from './components/MapFullscreen'
 import MapLegend from './components/MapLegend'
 import CompassRose from './components/CompassRose'
 import DashboardScreen from './components/screens/DashboardScreen'
@@ -49,6 +52,8 @@ export default function App() {
   const error = useAppSelector((s) => s.portData.error)
   const navOpen = useAppSelector((s) => s.ui.navOpen)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
+  const mapFullscreen = useAppSelector((s) => s.ui.mapFullscreen)
+  const theme = useAppSelector((s) => s.ui.theme)
   const user = useAppSelector((s) => s.auth.user)
   const allowedTabs = useAppSelector(selectAllowedTabs)
   const currentRole = useAppSelector(selectCurrentRole)
@@ -61,6 +66,16 @@ export default function App() {
     // never pulls the dataset.
     if (user && status === 'idle') dispatch(loadPortData())
   }, [user, status, dispatch])
+
+  /**
+   * The theme tokens hang off the document root rather than the app shell, so
+   * the login screen — which renders instead of the shell, not inside it — is
+   * themed too, and so is the scrollbar and any form control the browser paints
+   * from `color-scheme`.
+   */
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
 
   /**
    * Land on something this role can actually open.
@@ -112,6 +127,7 @@ export default function App() {
           {status === 'ready' ? 'Data loaded' : status === 'loading' ? 'Loading…' : status}
         </span> */}
         <HeaderUtilisation />
+        <ThemeSwitch />
         <div className="app-user">
           <span className="app-user-name" title={account?.email ?? user.email}>
             {account?.name ?? user.name}
@@ -125,9 +141,11 @@ export default function App() {
         </div>
       </header>
 
-      {/* Mounted at the root so a reported incident follows the operator
-          whichever screen they are on. */}
-      <IncidentAlert />
+      {/* Headless: puts declared zones on the chart on its own timer. */}
+      <IncidentWatch />
+      {/* The console's one notification, mounted at the root so it follows the
+          operator whichever screen they are on. */}
+      <DragAlert />
 
       <div className="app-body">
         <TabRail />
@@ -144,8 +162,9 @@ export default function App() {
             <div className="screen-scroll">
               <DashboardKpis />
               <div className="dash-body">
-                <div className="dash-map">
+                <div className={`dash-map${mapFullscreen ? ' map-expanded' : ''}`}>
                   <MapView />
+                  <MapFullscreen />
                   <MapFocusControl />
                   <CompassRose />
                   <MapLegend />
@@ -161,8 +180,9 @@ export default function App() {
             </div>
           ) : showsMap ? (
             <div className="screen-split">
-              <div className="map-pane">
+              <div className={`map-pane${mapFullscreen ? ' map-expanded' : ''}`}>
                 <MapView />
+                <MapFullscreen />
                 <MapFocusControl />
                 <CompassRose />
                 <MapLegend />

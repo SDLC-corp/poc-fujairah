@@ -59,6 +59,28 @@ export function hoursBetween(from?: string | null, to?: string | null): number |
   return Math.round((b - a) / 3600_000)
 }
 
+/** Hours from an ISO timestamp until now, or null if it is missing or unparseable. */
+export function hoursSince(from?: string | null): number | null {
+  return hoursBetween(from, new Date().toISOString())
+}
+
+/**
+ * 152 -> "6 d 8 h".
+ *
+ * Days first, because an anchorage stay is counted in days — an operator
+ * reading "152 h" has to divide before the figure means anything. The hours are
+ * kept alongside rather than rounded away: the difference between day six and
+ * day seven decides whether a vessel is over its expected departure.
+ */
+export function formatDuration(hours?: number | null): string {
+  if (hours == null) return '—'
+  if (hours < 1) return '<1 h'
+  if (hours < 24) return `${hours} h`
+  const days = Math.floor(hours / 24)
+  const rest = hours % 24
+  return rest ? `${days} d ${rest} h` : `${days} d`
+}
+
 export function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }

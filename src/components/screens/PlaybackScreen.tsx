@@ -13,7 +13,7 @@ import {
   togglePlay,
 } from '../../features/playback/playbackSlice'
 import type { PlaybackSpeed } from '../../features/playback/playbackSlice'
-import { sampleAt } from '../../utils/playbackTrack'
+import { indexAt, sampleAt } from '../../utils/playbackTrack'
 import { clearSelection, selectFeature } from '../../features/selection/selectionSlice'
 import { flagName } from '../../utils/flags'
 import { VESSEL_COLORS, VESSEL_LABELS, VESSEL_STATUS_SHORT } from '../../map/vesselTypes'
@@ -21,6 +21,8 @@ import type { VesselStatus } from '../../map/vesselTypes'
 import type { VesselType } from '../../types/gis'
 import MapView from '../MapView'
 import MapFocusControl from '../MapFocusControl'
+import MapFullscreen from '../MapFullscreen'
+import PlaybackTimeline from '../PlaybackTimeline'
 
 /** Wall-clock seconds one replayed hour takes at 1x. */
 const REAL_SECONDS_PER_HOUR = 60
@@ -31,7 +33,9 @@ export default function PlaybackScreen() {
     (s) => s.playback,
   )
   const [showRaw, setShowRaw] = useState(false)
+  const [showTimeline, setShowTimeline] = useState(true)
   const selected = useAppSelector((s) => s.selection.selected)
+  const mapFullscreen = useAppSelector((s) => s.ui.mapFullscreen)
 
   useEffect(() => {
     if (status === 'idle') dispatch(loadPlayback())
@@ -79,17 +83,38 @@ export default function PlaybackScreen() {
 
   /** One nudge = one recorded fix. */
   const STEP = vessel && vessel.track.length > 1 ? 1 / (vessel.track.length - 1) : 0.01
+  /** Which fix the playhead is sitting on, for the timeline to mark and follow. */
+  const hereIndex = vessel ? indexAt(vessel.track, progress) : 0
   const movingNow = fleet.filter((v) => sampleAt(v.track, progress)?.status === 'underway').length
 
   return (
     <div className="playback-layout">
       {/* ---------- the map owns the whole area ---------- */}
-      <div className="playback-map">
+      {/* `has-timeline` shifts the map's own top-right controls clear of the
+          panel, which otherwise sits straight over the zoom and full-screen. */}
+      <div
+        className={`playback-map${mapFullscreen ? ' map-expanded' : ''}${
+          showTimeline && vessel && data ? ' has-timeline' : ''
+        }`}
+      >
         <MapView />
+        <MapFullscreen />
         <MapFocusControl />
 
         {status === 'loading' && <div className="pb-state">Loading recorded day…</div>}
         {status === 'failed' && <div className="pb-state pb-state-bad">{error}</div>}
+
+        {showTimeline && vessel && data && (
+          <PlaybackTimeline
+            vessel={vessel}
+            day={data.day}
+            current={hereIndex}
+            // A fix is a point on the track, so the playhead lands exactly on it
+            // rather than somewhere between two.
+            onPick={(i) => dispatch(scrub(i / Math.max(1, vessel.track.length - 1)))}
+            onClose={() => setShowTimeline(false)}
+          />
+        )}
 
         {detailFor && detailFix && (
           <aside className="pb-detail">
@@ -297,7 +322,16 @@ export default function PlaybackScreen() {
           </span>
           <button
             type="button"
+            className={`filter-chip chip-labelled${showTimeline ? ' active' : ''}`}
+            aria-pressed={showTimeline}
+            onClick={() => setShowTimeline((v) => !v)}
+          >
+            Timeline
+          </button>
+          <button
+            type="button"
             className={`filter-chip chip-labelled${showRaw ? ' active' : ''}`}
+            aria-pressed={showRaw}
             onClick={() => setShowRaw((v) => !v)}
           >
             Raw

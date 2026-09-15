@@ -22,8 +22,15 @@ const WMM_EPOCH_YEAR = 2026.61
 const WMM_DECLINATION_DEG = 2.131
 const WMM_ANNUAL_CHANGE_DEG = 0.0052
 
-/** The rose is printed in black on the sheet, and drawn in black here. */
-export const COMPASS_INK = '#111111'
+/**
+ * The rose is printed in black on the sheet, and drawn in black here — until
+ * the console goes dark, where black on a night chart is simply not there. The
+ * actual ink is the `--rose-ink` token; this is the CSS reference to it, which
+ * is what the layer panel needs for its swatch. The rose itself paints in
+ * `currentColor` and takes the same token through CSS, since `var()` does not
+ * work in an SVG presentation attribute.
+ */
+export const COMPASS_INK = 'var(--rose-ink)'
 
 /**
  * Outer radius in SVG units, and the room outside it the numbers need.

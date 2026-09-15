@@ -1,10 +1,29 @@
+/**
+ * Three themes, named for the light being worked in: Day (the default), Dusk
+ * and Night.
+ *
+ * Day carries a light console over a daylight chart. Dusk and Night share every
+ * surface below — a white console beside a dark chart is glare — and differ
+ * only in the basemap and the colour of the sea. See `BASEMAP_STYLES` and
+ * `SEA_INK` in src/map/basemaps.ts for the map half.
+ *
+ * The rule for adding colour: reach for a semantic token, never a raw navy.
+ * The navy scale is the product's brand and is deliberately identical in every
+ * theme — the login gradient is painted from it — so a navy used as a text
+ * colour is a bug that only shows up once the background goes dark.
+ */
 :root {
-  /* Navy on white */
+  /* Brand navy. Fixed across themes. */
   --navy-900: #071a33;
   --navy-800: #0a2540;
   --navy-700: #123255;
   --navy-600: #1a4478;
   --navy-500: #1b56b5;
+
+  /* Chrome: the header, the nav rail and card headers. Dark in every theme —
+     it is the frame around the work, not part of it. */
+  --chrome: var(--navy-800);
+  --chrome-ink: #ffffff;
 
   --bg: #eef2f8;
   --surface: #ffffff;
@@ -15,6 +34,18 @@
   --muted: #5f7391;
   --accent: var(--navy-500);
   --accent-soft: #e8f0fd;
+
+  /* Headings, figures and emphasis. Navy on white, near-white on navy. */
+  --ink-strong: var(--navy-800);
+  --ink-accent: var(--navy-700);
+
+  /* Controls floating over the map — they sit on the basemap, not on a panel,
+     so they are tinted from the map's own ground rather than from --surface. */
+  --map-control: rgba(255, 255, 255, 0.94);
+  --map-control-ink: var(--navy-700);
+  /* The chart rose is printed in black on the sheet, and drawn in black here. */
+  --rose-ink: #111111;
+  --rose-halo: #f8fafc;
 
   --ok: #10794a;
   --warn: #b26a00;
@@ -28,6 +59,46 @@
   color-scheme: light;
   color: var(--text);
   background: var(--bg);
+}
+
+/**
+ * Dusk and Night share every surface. Only the chart beneath differs, so the
+ * console does not flicker between two kinds of dark when the map is swapped.
+ */
+[data-theme='dusk'],
+[data-theme='night'] {
+  --chrome: #061527;
+
+  --bg: #050f1d;
+  --surface: #0c1f36;
+  --surface-2: #112944;
+  --border: #1d3c5d;
+  --border-strong: #2b5581;
+  --text: #e3ecfa;
+  --muted: #92a8c6;
+  --accent: #5b9bf5;
+  --accent-soft: #102b4c;
+
+  --ink-strong: #eaf2ff;
+  --ink-accent: #7fb2ff;
+
+  --map-control: rgba(10, 28, 48, 0.9);
+  --map-control-ink: #cfe0f7;
+  --rose-ink: #c3d6ef;
+  --rose-halo: rgba(5, 15, 29, 0.8);
+
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --alert: #f87171;
+  --alert-soft: #3b1b1b;
+
+  /* Deeper and wider than the light shadows: on a dark ground a shadow does
+     almost no work, so the panels are lifted by their borders and only the
+     things that truly float get a visible one. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
 }
 
 * {

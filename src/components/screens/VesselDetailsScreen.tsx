@@ -12,7 +12,9 @@ import {
   formatArea,
   formatDateTime,
   formatDistance,
+  formatDuration,
   hoursBetween,
+  hoursSince,
   minutesBetween,
 } from '../../utils/format'
 import {
@@ -125,6 +127,15 @@ export default function VesselDetailsScreen() {
   const otherAreas = entry.areas.filter((a) => a.properties.category !== 'anchorage')
   const swingR = swingRadiusM(p.lengthM, swingFactor, safetyMarginM)
   const dwell = hoursBetween(p.ata, p.etd)
+  /**
+   * How long she has been lying there, as against `dwell`, which is the stay
+   * she was booked for. Only vessels that are actually stopped have one — a
+   * ship under way has an ATA from her last call and has not been at anchor
+   * since, so counting from it would be nonsense.
+   */
+  const atRest = p.status === 'anchored' || p.status === 'moored'
+  const restedH = atRest ? hoursSince(p.ata) : null
+  const overstaying = dwell != null && restedH != null && restedH > dwell
   const [lon, lat] = entry.vessel.geometry.coordinates
 
   const arrival = gradeLeg(p.eta, p.ata, {
@@ -149,7 +160,17 @@ export default function VesselDetailsScreen() {
 
   const payload = {
     vessel: { ...p, position: { lon, lat } },
-    voyage: { ...voyage, eta: p.eta ?? null, ata: p.ata ?? null, etd: p.etd ?? null },
+    voyage: {
+      ...voyage,
+      eta: p.eta ?? null,
+      ata: p.ata ?? null,
+      etd: p.etd ?? null,
+      plannedStayHours: dwell,
+      // Derived on read, not stored: it is only true for as long as the
+      // response takes to reach the client.
+      anchoredForHours: restedH,
+      overstaying,
+    },
     assignment: {
       area: anchorage?.properties.code ?? null,
       nearestBerth: berth?.berth.properties.name ?? null,
@@ -399,8 +420,17 @@ export default function VesselDetailsScreen() {
               <dd>{formatDateTime(p.etd)}</dd>
             </div>
             <div>
-              <dt>Dwell</dt>
-              <dd>{dwell == null ? '—' : `${dwell} h`}</dd>
+              <dt title="The stay she was booked for — ATA through to ETD.">Planned stay</dt>
+              <dd>{formatDuration(dwell)}</dd>
+            </div>
+            <div>
+              <dt title="Time elapsed since she arrived. Counted only while she is stopped.">
+                {p.status === 'moored' ? 'Moored for' : 'Anchored for'}
+              </dt>
+              <dd className={overstaying ? 'is-alert' : undefined}>
+                {atRest ? formatDuration(restedH) : '—'}
+                {overstaying && <small> past ETD</small>}
+              </dd>
             </div>
             <div className="kv-span">
               <dt>Shipping agent</dt>

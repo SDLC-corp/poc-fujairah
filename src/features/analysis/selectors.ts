@@ -254,6 +254,105 @@ export const selectRestrictedIncursions = createSelector([selectVesselAreaIndex]
 )
 
 /* ------------------------------------------------------------------ *
+ * Dragging anchor
+ * ------------------------------------------------------------------ */
+
+/**
+ * How far the anchor may appear to move before it counts as dragging.
+ *
+ * Not zero: the anchor's position is worked out from the vessel's own position
+ * and heading, both of which carry noise — a degree of heading on a 300 m cable
+ * is already several metres. Below this the difference is instrument error, not
+ * ground tackle, and an alarm that cries at every AIS jitter gets switched off.
+ */
+export const DRAG_TOLERANCE_M = 75
+
+export interface DraggingVessel {
+  vessel: VesselFeature
+  /** Where the anchor was let go, and where it appears to be now. */
+  laidAt: [number, number]
+  anchorNow: [number, number]
+  driftM: number
+  /** The circle she should have been swinging in. */
+  radiusM: number
+}
+
+/**
+ * Vessels whose anchor has moved.
+ *
+ * A vessel at anchor swings about her ground tackle, so her own position moving
+ * is normal and says nothing on its own. What matters is whether the *anchor*
+ * has shifted — so the anchor is derived twice, once from where she brought up
+ * and once from where she is now, and the two are compared. That is the
+ * difference between a ship riding to her cable and a ship dragging across the
+ * anchorage.
+ */
+export const selectDraggingVessels = createSelector(
+  [selectVessels, selectSwingFactor, selectSafetyMarginM],
+  (vessels, factor, marginM): DraggingVessel[] => {
+    const out: DraggingVessel[] = []
+
+    for (const vessel of vessels?.features ?? []) {
+      const p = vessel.properties
+      if (p.status !== 'anchored' && p.status !== 'moored') continue
+      if (!p.anchoredAt) continue
+
+      const laidAt = anchorPosition(
+        p.anchoredAt,
+        p.lengthM,
+        p.anchoredHeadingDeg ?? p.headingDeg,
+        factor,
+      )
+      const anchorNow = anchorPosition(
+        vessel.geometry.coordinates,
+        p.lengthM,
+        p.headingDeg,
+        factor,
+      )
+      const driftM = distance(laidAt, anchorNow, { units: 'kilometers' }) * 1000
+      if (driftM <= DRAG_TOLERANCE_M) continue
+
+      out.push({
+        vessel,
+        laidAt,
+        anchorNow,
+        driftM: Math.round(driftM),
+        radiusM: Math.round(swingRadiusM(p.lengthM, factor, marginM)),
+      })
+    }
+
+    // Worst first: the one that has run furthest is the one to deal with.
+    return out.sort((a, b) => b.driftM - a.driftM)
+  },
+)
+
+/**
+ * What the drag looks like on the chart: the circle she was supposed to be
+ * swinging in, and the run her anchor has made out of it.
+ */
+export const selectDragOverlay = createSelector(
+  [selectDraggingVessels],
+  (dragging): FeatureCollection => ({
+    type: 'FeatureCollection',
+    features: dragging.flatMap((d) => [
+      {
+        ...circle(d.laidAt, d.radiusM / 1000, { units: 'kilometers', steps: 48 }),
+        properties: { kind: 'circle', id: d.vessel.properties.id },
+      } as Feature,
+      {
+        type: 'Feature',
+        properties: {
+          kind: 'run',
+          id: d.vessel.properties.id,
+          label: `${d.vessel.properties.name} · dragged ${d.driftM} m`,
+        },
+        geometry: { type: 'LineString', coordinates: [d.laidAt, d.anchorNow] },
+      } as Feature,
+    ]),
+  }),
+)
+
+/* ------------------------------------------------------------------ *
  * Free spots: where another vessel could actually be placed
  * ------------------------------------------------------------------ */
 

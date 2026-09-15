@@ -14,13 +14,65 @@ export type TabId =
   | 'settings'
   | 'help'
 
+/**
+ * Console themes, named for the light an operator is working in rather than for
+ * the colours: a watch keeper asks for the night chart, not for "dark mode".
+ * Day is the default. Each carries its own basemap and sea — see
+ * BASEMAP_STYLES and SEA_INK in src/map/basemaps.ts, and the token blocks in
+ * src/index.css.
+ */
+export type ThemeId = 'day' | 'dusk' | 'night'
+
+export const THEMES: { id: ThemeId; label: string; hint: string }[] = [
+  { id: 'day', label: 'Day', hint: 'Light console, daylight chart' },
+  { id: 'dusk', label: 'Dusk', hint: 'Dark console, dusk chart' },
+  { id: 'night', label: 'Night', hint: 'Dark console, night chart' },
+]
+
+const THEME_KEY = 'fujairah.poc.theme'
+
+/** What the themes used to be called, so a stored preference still resolves. */
+const RENAMED: Record<string, ThemeId> = {
+  light: 'day',
+  dark: 'dusk',
+  satellite: 'night',
+}
+
+/**
+ * localStorage rather than sessionStorage, unlike the demo session: a display
+ * preference should outlive the tab it was set in.
+ */
+function readStoredTheme(): ThemeId {
+  try {
+    const raw = localStorage.getItem(THEME_KEY) ?? ''
+    if (raw === 'day' || raw === 'dusk' || raw === 'night') return raw
+    return RENAMED[raw] ?? 'day'
+  } catch {
+    return 'day'
+  }
+}
+
 interface UiState {
   /** Whether the icon nav rail is shown. */
   navOpen: boolean
   activeTab: TabId
+  theme: ThemeId
+  /**
+   * Whether the map pane is expanded over the rest of the screen.
+   *
+   * One flag for the whole app rather than one per screen, because only one map
+   * is ever mounted at a time — each screen that has one has exactly one, and
+   * the pane that reads this is the pane that owns the toggle.
+   */
+  mapFullscreen: boolean
 }
 
-const initialState: UiState = { navOpen: true, activeTab: 'dashboard' }
+const initialState: UiState = {
+  navOpen: true,
+  activeTab: 'dashboard',
+  theme: readStoredTheme(),
+  mapFullscreen: false,
+}
 
 const uiSlice = createSlice({
   name: 'ui',
@@ -35,8 +87,24 @@ const uiSlice = createSlice({
     setTab(state, action: PayloadAction<TabId>) {
       state.activeTab = action.payload
     },
+    setTheme(state, action: PayloadAction<ThemeId>) {
+      state.theme = action.payload
+      try {
+        localStorage.setItem(THEME_KEY, action.payload)
+      } catch {
+        // Private browsing can refuse the write; the theme still applies for
+        // this session, it just will not be remembered.
+      }
+    },
+    toggleMapFullscreen(state) {
+      state.mapFullscreen = !state.mapFullscreen
+    },
+    setMapFullscreen(state, action: PayloadAction<boolean>) {
+      state.mapFullscreen = action.payload
+    },
   },
 })
 
-export const { toggleNav, setNavOpen, setTab } = uiSlice.actions
+export const { toggleNav, setNavOpen, setTab, setTheme, toggleMapFullscreen, setMapFullscreen } =
+  uiSlice.actions
 export default uiSlice.reducer

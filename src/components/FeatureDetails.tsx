@@ -6,6 +6,8 @@ import {
   swingRadiusM,
 } from '../features/analysis/selectors'
 import { SAFETY_MARGIN_NM } from '../features/analysis/analysisSlice'
+import { selectAllowedTabs } from '../features/roles/selectors'
+import { setTab } from '../features/ui/uiSlice'
 import { VESSEL_LABELS } from '../map/vesselTypes'
 import type { VesselType } from '../types/gis'
 import { clearSelection } from '../features/selection/selectionSlice'
@@ -36,6 +38,7 @@ export default function FeatureDetails() {
   const swingFactor = useAppSelector((s) => s.analysis.swingFactor)
   const safetyMarginM = useAppSelector((s) => s.analysis.safetyMarginM)
   const transit = useAppSelector((s) => s.transit.active)
+  const allowedTabs = useAppSelector(selectAllowedTabs)
 
   if (!selected) return null
   // A move owns the map while it runs. The card would be describing a vessel
@@ -74,11 +77,33 @@ export default function FeatureDetails() {
   return (
     <aside className="details-card">
       <header>
-        <div>
+        <div className="details-title">
           <span className="details-kind">{LAYER_TITLE[selected.layer]}</span>
           <h3>{String(props.name ?? selected.id)}</h3>
         </div>
-        <button type="button" className="close" onClick={() => dispatch(clearSelection())}>
+
+        {/* The full record lives on its own screen, which reads the same
+            selection this card does — so opening it is just a change of tab.
+            Hidden when the role cannot reach that screen, on the same rule as
+            the nav rail: what a role cannot open is not offered. */}
+        {selected.layer === 'vessels' && allowedTabs.has('vessel') && (
+          <button
+            type="button"
+            className="details-full"
+            title="Show full details"
+            aria-label="Show full details"
+            onClick={() => dispatch(setTab('vessel'))}
+          >
+            Full details
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="close"
+          aria-label="Close"
+          onClick={() => dispatch(clearSelection())}
+        >
           ×
         </button>
       </header>

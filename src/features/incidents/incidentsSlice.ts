@@ -16,31 +16,31 @@ export const INCIDENT_JITTER_MS = 45_000
 interface IncidentsState {
   /** Geofence ids that have been reported, and so are live on the map. */
   raised: string[]
-  /** The one still to be acknowledged — drives the alert. */
-  announced: string | null
 }
 
 const initialState: IncidentsState = {
   raised: [],
-  announced: null,
 }
 
 const incidentsSlice = createSlice({
   name: 'incidents',
   initialState,
   reducers: {
-    /** Reports a geofence: it goes live on the map and raises the alert. */
+    /**
+     * Reports a geofence, putting it live on the map.
+     *
+     * It no longer raises a toast of its own: a declared zone is a standing
+     * condition an operator reads off the chart, and the one notification slot
+     * belongs to the thing that needs acting on this minute — a vessel dragging
+     * across the anchorage. The fence still shows, and the dashboard still
+     * counts who is inside it.
+     */
     raiseGeofence(state, action: PayloadAction<string>) {
       if (state.raised.includes(action.payload)) return
       state.raised.push(action.payload)
-      state.announced = action.payload
-    },
-    /** Operator has seen it. The fence stays on the map; the alert goes away. */
-    acknowledgeIncident(state) {
-      state.announced = null
     },
   },
 })
 
-export const { raiseGeofence, acknowledgeIncident } = incidentsSlice.actions
+export const { raiseGeofence } = incidentsSlice.actions
 export default incidentsSlice.reducer
