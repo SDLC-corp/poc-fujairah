@@ -1,6 +1,4 @@
-import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { setSafetyMarginM, setSwingFactor } from '../features/analysis/analysisSlice'
-import { METRES_PER_NM } from '../utils/format'
+import { useAppSelector } from '../app/hooks'
 
 /** Sample average LOA per area — what the allocator would preload per zone. */
 const AREA_DEFAULTS = [
@@ -11,62 +9,24 @@ const AREA_DEFAULTS = [
 ]
 
 /**
- * Swing-radius configuration. The circle a vessel needs is its length times a
- * multiplying factor, plus a margin so two safe areas never touch.
+ * What the swing rule works out to per area.
+ *
+ * The rule itself is set on the Anchorage configuration panel — this is the
+ * read-out: the average ship each area is pre-sized for, and the circle that
+ * ship ends up needing once the notice's arithmetic has been applied to it.
  */
 export default function SwingPanel() {
-  const dispatch = useAppDispatch()
   const factor = useAppSelector((s) => s.analysis.swingFactor)
   const margin = useAppSelector((s) => s.analysis.safetyMarginM)
-  // The field reads in miles; the store keeps metres, because the swing radius
-  // is built from LOA in metres and a mile of slack is not the granularity the
-  // margin is actually tuned at — 10 m is 0.005 NM.
-  const marginNm = Number((margin / METRES_PER_NM).toFixed(3))
 
   return (
     <>
       <section className="panel">
-        <h2>Swing radius parameters</h2>
-        <div className="form-row">
-          <label>
-            Vessel length multiplying factor
-            <input
-              className="text-input"
-              type="number"
-              min={1}
-              max={6}
-              step={0.1}
-              value={factor}
-              onChange={(e) => dispatch(setSwingFactor(Number(e.target.value) || 1))}
-            />
-          </label>
-          <label>
-            Safety margin (nautical miles)
-            <input
-              className="text-input"
-              type="number"
-              min={0}
-              max={0.5}
-              step={0.005}
-              value={marginNm}
-              onChange={(e) =>
-                dispatch(
-                  setSafetyMarginM(Number(((Number(e.target.value) || 0) * METRES_PER_NM).toFixed(1))),
-                )
-              }
-            />
-          </label>
-        </div>
-        <p className="muted hint">
-          Entered in miles, held in metres — currently <strong>{margin} m</strong>. Safe-area radius
-          = LOA × factor + margin, so a 200 m vessel needs{' '}
-          <strong>{Math.round(200 * factor + margin)} m</strong>.
-        </p>
-      </section>
-
-      <section className="panel">
         <h2>Area configuration</h2>
-        <p className="muted">Expected average vessel length per area, used to pre-size spots.</p>
+        <p className="muted">
+          Expected average vessel length per area, used to pre-size spots. The radius column is the
+          rule from Anchorage configuration applied to it.
+        </p>
         <table className="data-table">
           <thead>
             <tr>

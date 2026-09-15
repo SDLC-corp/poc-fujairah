@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { FiShare2 } from 'react-icons/fi'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   selectNearestBerthByVessel,
@@ -29,6 +31,8 @@ import { VESSEL_COLORS, VESSEL_LABELS, VESSEL_STATUS_SHORT } from '../../map/ves
 import Icon from '../Icon'
 import ProximityPanel from '../ProximityPanel'
 import RawJson from '../RawJson'
+import ShareVesselDialog from '../ShareVesselDialog'
+import type { ShareSection } from '../ShareVesselDialog'
 
 const HISTORY = [
   { at: '03 Aug 04:10', event: 'Anchored', where: 'Anchor Berth 1', note: 'Brought up, 6 shackles' },
@@ -102,6 +106,7 @@ const SAMPLE_VOYAGE = {
 
 export default function VesselDetailsScreen() {
   const dispatch = useAppDispatch()
+  const [sharing, setSharing] = useState(false)
   const index = useAppSelector(selectVesselAreaIndex)
   const nearest = useAppSelector(selectNearestBerthByVessel)
   const selected = useAppSelector((s) => s.selection.selected)
@@ -137,6 +142,49 @@ export default function VesselDetailsScreen() {
   const restedH = atRest ? hoursSince(p.ata) : null
   const overstaying = dwell != null && restedH != null && restedH > dwell
   const [lon, lat] = entry.vessel.geometry.coordinates
+
+  /**
+   * What the Share dialog offers to send. Built from the same values the page
+   * shows, so the two can never disagree about what this vessel is.
+   */
+  const shareSections: ShareSection[] = [
+    {
+      id: 'particulars',
+      label: 'Particulars',
+      rows: [
+        ['IMO', p.imo],
+        ['Type', VESSEL_LABELS[p.type]],
+        ['Flag', flagName(p.flag)],
+        ['LOA', `${p.lengthM} m`],
+        ['Beam', `${p.beamM} m`],
+        ['Draft', `${p.draftM} m`],
+      ],
+    },
+    {
+      id: 'status',
+      label: 'Status & anchorage',
+      rows: [
+        ['Status', VESSEL_STATUS_SHORT[p.status]],
+        ['Area', anchorage?.properties.name ?? '—'],
+        ['Swing radius', `${Math.round(swingR)} m`],
+        ['Speed', `${p.speedKn} kn`],
+        ['Heading', `${p.headingDeg}°`],
+        ...(atRest ? ([['Anchored for', formatDuration(restedH)]] as [string, string][]) : []),
+      ],
+    },
+    {
+      id: 'voyage',
+      label: 'Voyage & call',
+      rows: [
+        ['Last port', voyage.lastPort],
+        ['Next port', voyage.nextPort],
+        ['Agent', voyage.agent],
+        ['ETA', formatDateTime(p.eta)],
+        ['ATA', formatDateTime(p.ata)],
+        ['ETD', formatDateTime(p.etd)],
+      ],
+    },
+  ]
 
   const arrival = gradeLeg(p.eta, p.ata, {
     planned: SAMPLE_SCHEDULE.eta,
@@ -231,6 +279,9 @@ export default function VesselDetailsScreen() {
               }}
             >
               Track on map
+            </button>
+            <button type="button" onClick={() => setSharing(true)}>
+              <FiShare2 size={14} /> Share
             </button>
             {p.status === 'awaiting' && (
               <button type="button" onClick={() => dispatch(setTab('assignment'))}>
@@ -539,6 +590,16 @@ export default function VesselDetailsScreen() {
       </div>
 
       <RawJson label={`GET /api/vessels/${p.id}`} data={payload} />
+
+      {sharing && (
+        <ShareVesselDialog
+          title={p.name}
+          subtitle={`IMO ${p.imo} · ${VESSEL_LABELS[p.type]} · ${flagName(p.flag)} flag`}
+          sections={shareSections}
+          position={{ lat, lon }}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </div>
   )
 }

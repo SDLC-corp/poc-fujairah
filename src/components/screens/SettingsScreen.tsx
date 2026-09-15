@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import AnchorageConfigPanel from '../AnchorageConfigPanel'
 import LayerPanel from '../LayerPanel'
 import SwingPanel from '../SwingPanel'
 import ViewPanel from '../ViewPanel'
@@ -84,6 +85,7 @@ export default function SettingsScreen() {
       </section>
 
       {/* Live map configuration — the "map settings / default view" part of this screen. */}
+      <AnchorageConfigPanel />
       <LayerPanel />
       <SwingPanel />
       <ViewPanel />
