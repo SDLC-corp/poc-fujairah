@@ -92,6 +92,9 @@ function esc(value: string): string {
 const LAYER_OF: Record<string, LayerId> = {
   'vessels-hull-3d': 'vessels',
   'vessels-circle': 'vessels',
+  // The swing circle carries its vessel's own id, so clicking the occupied
+  // water selects the ship lying in it.
+  'swing-fill': 'vessels',
   'anchorages-point': 'anchorages',
   'anchorages-fill': 'anchorages',
   'geofence-fill': 'geofences',

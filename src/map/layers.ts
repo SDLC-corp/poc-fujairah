@@ -68,11 +68,21 @@ export const LAYER_GROUPS: Record<LayerId, string[]> = {
 export const FLAT_VESSEL_LAYERS = ['vessels-halo', 'vessels-circle']
 export const THREE_D_VESSEL_LAYERS = ['vessels-hull-3d']
 
-/** Layers that respond to clicks, topmost first. */
+/**
+ * Layers that respond to clicks, topmost first.
+ *
+ * `swing-fill` is in here so that the water a vessel is *occupying* can be
+ * clicked, not just the mark at the middle of it. A taken spot is the circle,
+ * and asking an operator to hit a 12 px dot to work it is asking them to miss.
+ * It sits below the vessel marks — clicking the ship herself still wins — and
+ * above the area fill, so a click inside a swing circle picks the vessel rather
+ * than the anchorage she is lying in.
+ */
 export const INTERACTIVE_LAYERS = [
   'vessels-hull-3d',
   'anchorages-point',
   'vessels-circle',
+  'swing-fill',
   'anchorages-fill',
 ]
 

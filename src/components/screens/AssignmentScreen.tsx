@@ -180,6 +180,10 @@ export default function AssignmentScreen() {
           Each vessel is matched to a free spot in an area the notice designates for it, big enough
           for its swing circle, and nearest to where it is now waiting.
         </p>
+        <p className="muted hint">
+          Click an occupied spot on the map — the vessel or the circle she is swinging in — to give
+          that water up again.
+        </p>
       </section>
 
       {queue.map((c) => {
