@@ -28,7 +28,9 @@ import {
 import { AREA_COLORS } from '../../map/areaColors'
 import { flagName } from '../../utils/flags'
 import { VESSEL_COLORS, VESSEL_LABELS, VESSEL_STATUS_SHORT } from '../../map/vesselTypes'
-import Freshness from '../Freshness'
+import TrackSourceTag from '../TrackSourceTag'
+import UpdatedChip from '../UpdatedChip'
+import { trackSourceOf } from '../../map/trackSources'
 import Icon from '../Icon'
 import ProximityPanel from '../ProximityPanel'
 import RawJson from '../RawJson'
@@ -295,6 +297,9 @@ export default function VesselDetailsScreen() {
                   Hazardous{req.imoClass ? ` · IMDG ${req.imoClass.split(' ')[0]}` : ''}
                 </span>
               )}
+              {/* Beside the area, because "Anchored, Area A" is a claim about
+                  now and is only true if the fix behind it is recent. */}
+              <UpdatedChip at={p.positionAt} />
             </div>
           </div>
 
@@ -303,9 +308,11 @@ export default function VesselDetailsScreen() {
               type="button"
               className="primary-button"
               onClick={() => {
+                // Screen first: changing tab closes the details card, so the
+                // selection has to land after the move to survive it.
+                dispatch(setTab('tracking'))
                 dispatch(selectFeature({ layer: 'vessels', id: p.id }))
                 dispatch(focusVessel(p.id))
-                dispatch(setTab('tracking'))
               }}
             >
               Track on map
@@ -315,6 +322,10 @@ export default function VesselDetailsScreen() {
                 Assign anchorage
               </button>
             )}
+            {/* On its own line under the buttons: it describes the track rather
+                than doing anything to it, and in the row it read as a third
+                action sitting between two real ones. */}
+            <TrackSourceTag vesselId={p.id} source={trackSourceOf(p)} />
           </div>
         </div>
       </section>
@@ -385,7 +396,6 @@ export default function VesselDetailsScreen() {
               </div>
             </dl>
           </div>
-          <Freshness source="Registry & AIS static" at={p.positionAt} />
         </section>
 
 
@@ -418,9 +428,6 @@ export default function VesselDetailsScreen() {
               <dd>{lon.toFixed(5)}°E</dd>
             </div>
           </dl>
-          {/* A position is the one figure here that goes off quickly: a vessel
-              at anchor reports every three minutes, so ten is already old. */}
-          <Freshness source="AIS position report" at={p.positionAt} staleAfterMin={10} />
         </section>
 
 
@@ -521,10 +528,6 @@ export default function VesselDetailsScreen() {
                 : 'No ETD on file, so the departure leg cannot be graded.'}
             </p>
           )}
-          <Freshness
-            source="Declared schedule"
-            at={p.etaUpdatedAt ?? req?.submittedAt ?? p.positionAt}
-          />
         </section>
 
       </div>
@@ -533,7 +536,6 @@ export default function VesselDetailsScreen() {
         <section className="panel">
           <h2>
             Voyage &amp; call
-            {!req && <span className="badge badge-ok">AIS</span>}
           </h2>
           <dl className="kv kv-wide">
             <div>
@@ -640,10 +642,6 @@ export default function VesselDetailsScreen() {
             </div>
           </dl>
 
-          <Freshness
-            source={req ? 'Agent declaration' : 'AIS voyage data'}
-            at={p.etaUpdatedAt ?? req?.submittedAt ?? p.positionAt}
-          />
 
           {req && (
             <>

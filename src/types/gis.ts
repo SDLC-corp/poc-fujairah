@@ -153,6 +153,17 @@ export type VesselProps = {
    * field a real feed would fill from the AIS report itself.
    */
   positionAt?: string | null
+  /**
+   * Where this position reached the console from.
+   *
+   * Two answers, because operationally there are two: the VTMIS, which has
+   * already associated and tracked the target and hands over a named vessel;
+   * or radar direct, which gives a measured position and nothing else — no
+   * name, no IMO, only a contact where something is.
+   *
+   * Absent on this feed, which comes over the VTMIS — see `trackSourceOf`.
+   */
+  trackSource?: 'vtmis' | 'radar'
   /** Estimated time of arrival, ISO 8601 — set on vessels awaiting assignment. */
   eta?: string
   /** When the ETA was last revised, so the declared figure can carry its age. */

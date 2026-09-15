@@ -26,6 +26,15 @@ interface PlaybackState {
   progress: number
   /** Replay day, YYYY-MM-DD. Only day one carries data in this PoC. */
   date: string
+  /**
+   * The slice of that day to replay, as `HH:MM` UTC — null for the whole of it.
+   *
+   * Null rather than the day's own bounds on purpose: "not chosen" and "chosen,
+   * and it happens to be midnight to midnight" are different states, and only
+   * the first should quietly follow a file whose recorded span changes.
+   */
+  fromTime: string | null
+  toTime: string | null
   /** The recorded day, fetched on demand — it is far larger than the snapshot. */
   data: PlaybackData | null
   status: 'idle' | 'loading' | 'ready' | 'failed'
@@ -49,6 +58,8 @@ const initialState: PlaybackState = {
   speed: 4,
   progress: 0,
   date: PLAYBACK_DAY,
+  fromTime: null,
+  toTime: null,
   data: null,
   status: 'idle',
   error: null,
@@ -140,6 +151,31 @@ const playbackSlice = createSlice({
       state.progress = 0
       state.playing = false
     },
+
+    /**
+     * Narrow the replay to part of the day.
+     *
+     * The playhead goes back to the start and the transport stops, because
+     * progress is a fraction of the window: leaving it where it was would jump
+     * the replay to an unrelated moment the instant the window changed.
+     */
+    setPlaybackWindow(
+      state,
+      action: PayloadAction<{ from?: string | null; to?: string | null }>,
+    ) {
+      if ('from' in action.payload) state.fromTime = action.payload.from || null
+      if ('to' in action.payload) state.toTime = action.payload.to || null
+      state.progress = 0
+      state.playing = false
+    },
+
+    /** Back to the whole recorded day. */
+    clearPlaybackWindow(state) {
+      state.fromTime = null
+      state.toTime = null
+      state.progress = 0
+      state.playing = false
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -176,5 +212,7 @@ export const {
   stop,
   step,
   setDate,
+  setPlaybackWindow,
+  clearPlaybackWindow,
 } = playbackSlice.actions
 export default playbackSlice.reducer

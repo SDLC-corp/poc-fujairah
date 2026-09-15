@@ -165,9 +165,12 @@ export default function VesselDrawer({ vesselId, onClose }: Props) {
             type="button"
             className="primary-button"
             onClick={() => {
+              // Screen first, then the vessel: changing tab puts the details
+              // card away, so selecting before the move would close the very
+              // card this button exists to open.
+              dispatch(setTab('tracking'))
               dispatch(selectFeature({ layer: 'vessels', id: p.id }))
               dispatch(focusVessel(p.id))
-              dispatch(setTab('tracking'))
             }}
           >
             Track on map

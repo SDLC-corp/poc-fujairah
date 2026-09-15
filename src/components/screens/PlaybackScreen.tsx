@@ -5,6 +5,8 @@ import {
   PLAYBACK_SPEEDS,
   scrub,
   setDate,
+  setPlaybackWindow,
+  clearPlaybackWindow,
   setPlaybackVessel,
   setProgress,
   setSpeed,
@@ -14,7 +16,7 @@ import {
 } from '../../features/playback/playbackSlice'
 import type { PlaybackSpeed } from '../../features/playback/playbackSlice'
 import { sampleAt } from '../../utils/playbackTrack'
-import { clearSelection, selectFeature } from '../../features/selection/selectionSlice'
+import { closeCard, highlightFeature } from '../../features/selection/selectionSlice'
 import { flagName } from '../../utils/flags'
 import { VESSEL_COLORS, VESSEL_LABELS, VESSEL_STATUS_SHORT } from '../../map/vesselTypes'
 import type { VesselStatus } from '../../map/vesselTypes'
@@ -24,17 +26,34 @@ import MapFocusControl from '../MapFocusControl'
 import MapFullscreen from '../MapFullscreen'
 import PlaybackTimeline from '../PlaybackTimeline'
 import PlaybackFollowPicker from '../PlaybackFollowPicker'
+import ReplayTimeField from '../ReplayTimeField'
+import {
+  hhmmUtc,
+  selectPlaybackWindow,
+  selectReplayTimes,
+  selectWindowedPlayback,
+} from '../../features/playback/selectors'
 
 /** Wall-clock seconds one replayed hour takes at 1x. */
 const REAL_SECONDS_PER_HOUR = 60
 
 export default function PlaybackScreen() {
   const dispatch = useAppDispatch()
-  const { vesselId, followIds, playing, speed, progress, date, data, status, error } =
+  const { vesselId, followIds, playing, speed, progress, date, fromTime, toTime, status, error } =
     useAppSelector((s) => s.playback)
+  // Everything on this screen reads the windowed day; the raw file is only
+  // needed for the bounds the pickers are allowed to offer.
+  const data = useAppSelector(selectWindowedPlayback)
+  const replayWindow = useAppSelector(selectPlaybackWindow)
+  const replayTimes = useAppSelector(selectReplayTimes)
+  /** What the file actually covers — the only times worth offering. */
+  const recorded = replayWindow
+    ? { from: hhmmUtc(replayWindow.dayFromMs), to: hhmmUtc(replayWindow.dayToMs) }
+    : null
   const [showRaw, setShowRaw] = useState(false)
   const [showTimeline, setShowTimeline] = useState(true)
   const selected = useAppSelector((s) => s.selection.selected)
+  const cardOpen = useAppSelector((s) => s.selection.cardOpen)
   const mapFullscreen = useAppSelector((s) => s.ui.mapFullscreen)
 
   useEffect(() => {
@@ -46,41 +65,78 @@ export default function PlaybackScreen() {
   /** In the picker's order, so the timeline's filter chips match the dropdown. */
   const followed = fleet.filter((v) => followIds.includes(v.id))
 
-  /* Selecting the followed vessel lights the map's own halo and detail card. */
+  /**
+   * The followed vessel is lit on the map, but not opened.
+   *
+   * The replay picks a subject on its own — the first ship in the file, or
+   * whichever the picker last brought to the front — and that is a good reason
+   * to halo her on the chart, but not to put a details card over it. The card
+   * is something the operator opens by clicking, here as everywhere else.
+   */
   const followId = vessel?.id
   useEffect(() => {
-    if (followId) dispatch(selectFeature({ layer: 'vessels', id: followId }))
+    if (followId) dispatch(highlightFeature({ layer: 'vessels', id: followId }))
   }, [followId, dispatch])
   const here = vessel ? sampleAt(vessel.track, progress) : null
 
-  /** Replayed hours in the file, used to scale the transport against real time. */
-  const spanHours = data ? (Date.parse(data.to) - Date.parse(data.from)) / 3600_000 : 6
+  /**
+   * Replayed hours, used to scale the transport against real time.
+   *
+   * Floored, because it is a divisor: a degenerate window would otherwise put a
+   * zero under the division and hand the playhead Infinity or NaN, and a NaN
+   * progress never reaches 1, so the replay would run for ever going nowhere.
+   */
+  const spanHours = Math.max(
+    0.05,
+    data ? (Date.parse(data.to) - Date.parse(data.from)) / 3600_000 : 6,
+  )
+  /** Nothing to run through: a window can leave the subject with one fix or none. */
+  const canPlay = Boolean(vessel && vessel.track.length > 1)
 
-  /* Transport: advance in real time, scaled by the speed multiplier. */
-  const frameRef = useRef<number | null>(null)
-  const lastTickRef = useRef(0)
+  /**
+   * Transport: advance in real time, scaled by the speed multiplier.
+   *
+   * The playhead is read from a ref rather than from the render, so this effect
+   * is created once per press of play instead of being torn down and rebuilt on
+   * every frame it produces. That rebuild was the bug behind a replay that sat
+   * still: elapsed time was measured from the moment the effect re-ran to the
+   * next frame, not from one frame to the next, so the heavier the render the
+   * smaller the measured step — and past a certain weight the playhead advanced
+   * by effectively nothing each time round. Frame-to-frame cannot do that: the
+   * clock is the browser's, and it has no opinion about how long the render
+   * took.
+   */
+  const progressRef = useRef(progress)
+  progressRef.current = progress
   useEffect(() => {
-    if (!playing || !vessel) return
-    lastTickRef.current = performance.now()
+    if (!playing || !canPlay) return
+    let last = performance.now()
+    let frame = 0
 
     const tick = (now: number) => {
-      const deltaS = (now - lastTickRef.current) / 1000
-      lastTickRef.current = now
-      dispatch(setProgress(progress + (deltaS * speed) / (spanHours * REAL_SECONDS_PER_HOUR)))
-      frameRef.current = requestAnimationFrame(tick)
+      const deltaS = (now - last) / 1000
+      last = now
+      dispatch(
+        setProgress(progressRef.current + (deltaS * speed) / (spanHours * REAL_SECONDS_PER_HOUR)),
+      )
+      frame = requestAnimationFrame(tick)
     }
-    frameRef.current = requestAnimationFrame(tick)
-    return () => {
-      if (frameRef.current != null) cancelAnimationFrame(frameRef.current)
-    }
-  }, [playing, speed, vessel, spanHours, dispatch, progress])
+
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [playing, speed, canPlay, spanHours, dispatch])
 
   /** The file is UTC, and so is the port's operating clock here. */
   const clock = (iso?: string) => (iso ? `${new Date(iso).toISOString().slice(11, 16)}Z` : '—')
 
-  /** The card is shown for whichever ship is selected — from the list or the map. */
+  /**
+   * The card is shown for whichever ship was *clicked* — on the map or in the
+   * list. A vessel the replay merely follows is haloed, not opened.
+   */
   const detailFor =
-    selected?.layer === 'vessels' ? (fleet.find((v) => v.id === selected.id) ?? null) : null
+    cardOpen && selected?.layer === 'vessels'
+      ? (fleet.find((v) => v.id === selected.id) ?? null)
+      : null
   const detailFix = detailFor ? sampleAt(detailFor.track, progress) : null
 
   /** One nudge = one recorded fix. */
@@ -103,6 +159,22 @@ export default function PlaybackScreen() {
 
         {status === 'loading' && <div className="pb-state">Loading recorded day…</div>}
         {status === 'failed' && <div className="pb-state pb-state-bad">{error}</div>}
+
+        {/* Silence here was the bug: a window outside the recording emptied
+            every track, and the screen simply did nothing when play was
+            pressed. Now it says what happened and what is being replayed. */}
+        {status === 'ready' && recorded && replayWindow?.outside && (
+          <div className="pb-state pb-state-warn">
+            Nothing was recorded in those hours — this file covers {recorded.from} to{' '}
+            {recorded.to} UTC. Replaying all of it.
+          </div>
+        )}
+        {status === 'ready' && recorded && replayWindow?.clamped && (
+          <div className="pb-state pb-state-warn">
+            Held inside the recording ({recorded.from}–{recorded.to} UTC): replaying{' '}
+            {hhmmUtc(replayWindow.fromMs)}–{hhmmUtc(replayWindow.toMs)}.
+          </div>
+        )}
 
         {showTimeline && followed.length > 0 && data && (
           <PlaybackTimeline
@@ -139,7 +211,10 @@ export default function PlaybackScreen() {
                 type="button"
                 className="close"
                 aria-label="Close details"
-                onClick={() => dispatch(clearSelection())}
+                // Shuts the card, keeps the halo: she is still the ship the
+                // replay is following, and dropping that as well would stop
+                // the track being drawn for her.
+                onClick={() => dispatch(closeCard())}
               >
                 ×
               </button>
@@ -248,6 +323,52 @@ export default function PlaybackScreen() {
             max={data?.day ?? date}
             onChange={(e) => dispatch(setDate(e.target.value || date))}
           />
+
+          {/* Left empty, the replay is the whole recording — which is what it
+              was before this existed, so the default costs nothing. The bounds
+              are on the inputs because the file is six hours, not a day, and a
+              picker that offers 03:00 is offering an empty replay. */}
+          {/* A div, not a label: a label owns one control, and forwarding every
+              click in here to whichever input came first is not what any of
+              these three want. Each carries its own aria-label instead. */}
+          <div
+            className="pb-window"
+            title={
+              recorded
+                ? `Replay part of the recording. It covers ${recorded.from} to ${recorded.to} UTC.`
+                : 'Replay only part of the day'
+            }
+          >
+            <ReplayTimeField
+              label="Replay from"
+              value={fromTime}
+              options={replayTimes}
+              placeholder={recorded ? `Start ${recorded.from}` : 'Start'}
+              onCommit={(from) => dispatch(setPlaybackWindow({ from }))}
+            />
+            <span aria-hidden="true">→</span>
+            <ReplayTimeField
+              label="Replay to"
+              value={toTime}
+              options={replayTimes}
+              placeholder={recorded ? `End ${recorded.to}` : 'End'}
+              onCommit={(to) => dispatch(setPlaybackWindow({ to }))}
+            />
+            {replayWindow?.trimmed ? (
+              <button
+                type="button"
+                className="link-cell pb-window-reset"
+                title="Replay the whole recording"
+                onClick={() => dispatch(clearPlaybackWindow())}
+              >
+                Full day
+              </button>
+            ) : (
+              <span className="muted pb-window-note">
+                {recorded ? `${recorded.from}–${recorded.to}` : 'full day'}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="pb-bar-group pb-transport">
@@ -263,6 +384,10 @@ export default function PlaybackScreen() {
             type="button"
             className="pb-play"
             aria-label={playing ? 'Pause' : 'Play'}
+            // Off rather than silently doing nothing when the chosen hours hold
+            // fewer than two fixes for the vessel in front.
+            disabled={!canPlay}
+            title={canPlay ? undefined : 'No run to play in these hours'}
             onClick={() => dispatch(togglePlay())}
           >
             {playing ? '❚❚' : '▶'}
@@ -281,7 +406,13 @@ export default function PlaybackScreen() {
         </div>
 
         <div className="pb-bar-group pb-timeline">
-          <span className="pb-clock">{clock(data?.from)}</span>
+          {/* Read from the window rather than from the trimmed file: these two
+              labels are the ends of the scrub bar, so they have to be the ends
+              of the window itself and cannot be allowed to disagree with the
+              pickers above them. */}
+          <span className="pb-clock">
+            {replayWindow ? `${hhmmUtc(replayWindow.fromMs)}Z` : '—'}
+          </span>
           <input
             className="pb-scrub"
             type="range"
@@ -292,7 +423,9 @@ export default function PlaybackScreen() {
             aria-label="Scrub playback"
             onChange={(e) => dispatch(scrub(Number(e.target.value)))}
           />
-          <span className="pb-clock">{clock(data?.to)}</span>
+          <span className="pb-clock">
+            {replayWindow ? `${hhmmUtc(replayWindow.toMs)}Z` : '—'}
+          </span>
         </div>
 
         <div className="pb-bar-group pb-speeds">

@@ -194,6 +194,24 @@ const portDataSlice = createSlice({
     },
 
     /**
+     * Records which sensor is holding the track.
+     *
+     * Operator-set here because nothing is telling the console: a live feed
+     * carries it on every position report, and when one is connected this
+     * reducer is what it writes through.
+     */
+    setVesselTrackSource(
+      state,
+      action: PayloadAction<{ vesselId: string; source: VesselProps['trackSource'] }>,
+    ) {
+      const vessel = state.vessels?.features.find(
+        (f) => f.properties.id === action.payload.vesselId,
+      )
+      if (!vessel) return
+      vessel.properties.trackSource = action.payload.source
+    },
+
+    /**
      * Moves a vessel without touching where she brought up — which is exactly
      * what dragging looks like in the data. Used by the drag watch to make the
      * alarm demonstrable on a static dataset, the same way the incident timer
@@ -298,5 +316,6 @@ export const {
   releaseSpot,
   setVesselEta,
   setVesselStatus,
+  setVesselTrackSource,
 } = portDataSlice.actions
 export default portDataSlice.reducer

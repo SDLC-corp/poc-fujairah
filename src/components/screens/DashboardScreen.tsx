@@ -6,16 +6,21 @@ import {
   selectRestrictedIncursions,
   selectVesselAreaIndex,
 } from '../../features/analysis/selectors'
-import { selectFeature } from '../../features/selection/selectionSlice'
+import { highlightFeature, selectFeature } from '../../features/selection/selectionSlice'
 import { focusFeature } from '../../features/view/viewSlice'
 import type { FocusTarget } from '../../features/view/viewSlice'
 import type { LayerId } from '../../types/gis'
 import { AREA_COLORS } from '../../map/areaColors'
 import { buildOccupancySeries } from '../../utils/occupancyCurve'
 import { OCCUPANCY_ALERT_PCT } from '../../utils/occupancyLoad'
+import CollapsiblePanel from '../CollapsiblePanel'
 import FleetMixDonut from '../FleetMixDonut'
 import OccupancyWave from '../OccupancyWave'
+import PanelFolds from '../PanelFolds'
 import RawJson from '../RawJson'
+
+/** The folding panels, in the order they appear — drives "collapse all". */
+const PANEL_IDS = ['dash-occupancy', 'dash-fleet', 'dash-alerts', 'dash-spots']
 
 /**
  * Overview of the offshore anchorage: the live map sits beside these panels, and
@@ -53,11 +58,16 @@ export default function DashboardScreen() {
     }))
 
   /**
-   * Jump the map to whatever an alert is reporting: select it so the detail
-   * card and highlight follow, and frame it so the popup lands in view.
+   * Jump the map to whatever an alert is reporting: light it up so the
+   * highlight follows, and frame it so it lands in view.
+   *
+   * Highlighted, not opened. "Show on map" is a request to look at the chart,
+   * and answering it by dropping a details card over that chart answers a
+   * question nobody asked — the map's own focus balloon already names what was
+   * revealed. The card is what a click on the feature itself is for.
    */
   function reveal(layer: LayerId, target: FocusTarget, id: string) {
-    dispatch(selectFeature({ layer, id }))
+    dispatch(highlightFeature({ layer, id }))
     dispatch(focusFeature({ target, id }))
   }
 
@@ -104,25 +114,25 @@ export default function DashboardScreen() {
 
   return (
     <>
+      <PanelFolds ids={PANEL_IDS} />
 
-
-      <section className="panel">
-        <h2>Occupancy through the day</h2>
+      <CollapsiblePanel id="dash-occupancy" title="Occupancy through the day">
         <OccupancyWave series={series} />
-      </section>
+      </CollapsiblePanel>
 
-      <section className="panel">
-        <h2>Fleet by class</h2>
+      <CollapsiblePanel id="dash-fleet" title="Fleet by class">
         <FleetMixDonut />
-      </section>
+      </CollapsiblePanel>
 
-      <section className="panel">
-        <h2>
-          Notifications
+      <CollapsiblePanel
+        id="dash-alerts"
+        title="Notifications"
+        badge={
           <span className={`badge ${incursions.length ? 'badge-alert' : 'badge-ok'}`}>
             {breaches.length + incursions.length + nearFull.length + incoming.length}
           </span>
-        </h2>
+        }
+      >
         <ul className="feed">
           {breaches.map((b) => (
             <li
@@ -193,15 +203,17 @@ export default function DashboardScreen() {
             <p className="muted">Nothing to report.</p>
           )}
         </ul>
-      </section>
+      </CollapsiblePanel>
 
-     
-
-      <section className="panel">
-        <h2>
-          Spots by area
-          {busiest && <span className="badge badge-ok">busiest {busiest.area.properties.code}</span>}
-        </h2>
+      <CollapsiblePanel
+        id="dash-spots"
+        title="Spots by area"
+        badge={
+          busiest ? (
+            <span className="badge badge-ok">busiest {busiest.area.properties.code}</span>
+          ) : null
+        }
+      >
         <ul className="bar-list">
           {capacity.map((row) => (
             <li key={row.area.properties.id}>
@@ -230,7 +242,7 @@ export default function DashboardScreen() {
             </li>
           ))}
         </ul>
-      </section>
+      </CollapsiblePanel>
 
       <RawJson label="GET /api/dashboard/summary" data={payload} />
     </>

@@ -2199,6 +2199,132 @@ input[type='range'] {
   font-weight: 500;
 }
 
+/* ---- given vs actual anchor position ---- */
+
+/* Neutral ground, unlike the amber swing box beside it: this block is a plain
+   statement of two positions most of the time, and only says something is
+   wrong when the run says so. */
+.anchor-box {
+  margin: 0 14px 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.anchor-box .swing-head {
+  color: var(--muted);
+}
+
+.anchor-box .swing-head strong {
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--ok);
+}
+
+.anchor-box .swing-head strong.is-alert {
+  color: var(--alert);
+}
+
+.anchor-kv {
+  margin: 9px 0 0;
+  display: grid;
+  gap: 9px;
+}
+
+.anchor-kv dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.anchor-head-right {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+/* ---- copy to clipboard ---- */
+
+/* Quiet until the row is under the cursor: the positions are what the block is
+   for, and a button beside each of them competing for attention would make it
+   harder to read the very thing it exists to copy. Kept visible on focus so it
+   is reachable from the keyboard. */
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.anchor-box:hover .copy-button,
+.copy-button:focus-visible,
+.copy-button.is-done,
+.copy-button.is-failed {
+  opacity: 1;
+}
+
+.copy-button:hover {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.copy-button.is-done {
+  color: var(--ok);
+}
+
+.copy-button.is-failed {
+  color: var(--alert);
+}
+
+/* Touch has no hover to reveal it, so it simply stays out. */
+@media (hover: none) {
+  .copy-button {
+    opacity: 1;
+  }
+}
+
+.anchor-kv dd {
+  margin: 2px 0 0;
+}
+
+/* Monospaced so the two positions sit digit under digit and the difference
+   between them can be read straight down the column. */
+.pos-dmm {
+  display: block;
+  font: 12px/1.4 ui-monospace, Consolas, monospace;
+  letter-spacing: -0.01em;
+  color: var(--ink-strong);
+}
+
+.anchor-kv dd small {
+  display: block;
+  font-size: 10.5px;
+}
+
+.anchor-note {
+  margin: 9px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 /* arrival confirmation on the map */
 .arrival-popup .maplibregl-popup-content {
   padding: 10px 13px;
@@ -3707,6 +3833,39 @@ input[type='range'] {
   color: var(--text);
 }
 
+/* ---- how old the fix is ---- */
+
+/* Deliberately unlike the chips it sits beside: no border and no ground, so it
+   reads as a note about them rather than as another fact of the same weight. */
+.updated-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.updated-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--ok);
+}
+
+/* Past the threshold it stops being a footnote: the figures above it are
+   describing where she used to be. */
+.updated-chip.is-stale {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.updated-chip.is-stale .updated-dot {
+  background: var(--warn);
+}
+
 .area-chip-dot {
   width: 7px;
   height: 7px;
@@ -4305,6 +4464,8 @@ input[type='range'] {
 
 .vessel-hero-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   flex: none;
   align-items: flex-start;
@@ -4380,6 +4541,118 @@ input[type='range'] {
   }
 }
 
+
+/* ---------------- track source ---------------- */
+
+/* The tag sits with the buttons but is not one of them, so it has to win back
+   the padding and the border `.vessel-hero-actions button` hands out. */
+.source-picker {
+  position: relative;
+  display: inline-flex;
+}
+
+/* A row of its own under the actions, aligned to the same edge — it says what
+   the track is, which is not a third thing to do with it. */
+.vessel-hero-actions .source-picker {
+  flex: 0 0 100%;
+  justify-content: flex-end;
+}
+
+.vessel-hero-actions .source-badge,
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  margin: 0;
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+button.source-badge {
+  cursor: pointer;
+}
+
+button.source-badge:hover,
+button.source-badge[aria-expanded='true'] {
+  border-color: currentcolor;
+}
+
+/* Hung from the right edge of the tag so it opens back over the card rather
+   than off it — the tag sits at the right of the hero, and a menu anchored left
+   would run past the panel every time. */
+.source-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 9;
+  box-sizing: border-box;
+  width: 290px;
+  max-width: min(290px, calc(100vw - 32px));
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  text-align: left;
+}
+
+.source-menu-head {
+  margin: 3px 7px 5px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Each option carries its own consequence: these are not two names for the
+   same thing, and the difference between them is the reason to choose one.
+   Stacked rather than columned — the explanation is a sentence, and beside a
+   fixed label column it had barely half the card to wrap into. */
+.source-option {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  /* A button is centred and set not to wrap by its own UA styles; both have to
+     go, or the hint runs straight out of the card. */
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+
+.source-option:hover {
+  background: var(--surface-2);
+}
+
+.source-option.is-on {
+  background: var(--accent-soft);
+}
+
+.source-option .source-badge {
+  margin-bottom: 4px;
+}
+
+.source-option-hint {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 
 /* ---------------- free-spot handle + details popup ---------------- */
 
@@ -5074,6 +5347,17 @@ input[type='range'] {
   background: var(--alert-soft);
 }
 
+/* The replay still works — it is just not replaying what was typed. */
+.pb-state-warn {
+  max-width: min(460px, 82vw);
+  border-radius: 10px;
+  text-align: center;
+  line-height: 1.45;
+  color: var(--warn);
+  border-color: rgba(180, 83, 9, 0.35);
+  background: var(--tint-amber);
+}
+
 /* ---------------- playback: follow picker ---------------- */
 
 .pb-follow {
@@ -5113,6 +5397,29 @@ input[type='range'] {
 }
 
 /* Opens upwards: the bar it hangs off is at the foot of the screen. */
+/* ---- replay window ---- */
+
+.pb-window {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pb-time {
+  width: auto;
+  min-width: 0;
+  padding: 5px 6px;
+  font-size: 12px;
+}
+
+.pb-window-note,
+.pb-window-reset {
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
 .pb-follow-menu {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -7718,6 +8025,102 @@ button.perm-module {
 
 .screen-scroll:has(.dash-map.map-expanded) .dash-panels .legend-name {
   white-space: nowrap;
+}
+
+/* ---- folding the floating panels ---- */
+
+/* The bar that folds the column, above the panels it folds. Sits on the same
+   floating ground so it reads as part of the column rather than as something
+   drawn on the chart. */
+.panel-folds {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--map-control);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-sm);
+  font-size: 11px;
+}
+
+.panel-folds-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* The whole heading is the hit area, not just the chevron — a 15 px target on
+   a floating panel is a miss waiting to happen. The rule under the heading is
+   the body's business now, so the heading gives up its own bottom margin and
+   the body supplies the same gap back. */
+.panel-collapsible > h2 {
+  margin-bottom: 0;
+}
+
+/* Folded, there is nothing under the rule for it to separate. */
+.panel-collapsible.is-collapsed > h2 {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.panel-disclosure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  /* The heading's own line-height comes from the body and is loose enough to
+     sit the 11 px text off-centre against a 15 px chevron. Tight and centred,
+     the two line up on the same middle. */
+  line-height: 1.2;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.panel-disclosure-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-chevron {
+  flex: none;
+  color: var(--muted);
+  transition: transform 140ms ease;
+}
+
+.panel-collapsible.is-collapsed .panel-chevron {
+  transform: rotate(-90deg);
+}
+
+.panel-disclosure:hover .panel-chevron {
+  color: var(--accent);
+}
+
+/* Folded, the panel is its own heading and nothing else — so it keeps the card's
+   own padding on both sides of that heading. Zeroing the bottom here (which is
+   the obvious way to make a folded panel compact) leaves 13 px above the title
+   and none below it, and the title reads as having sunk to the floor of the
+   card. The heading gives up its rule and its own bottom padding instead; the
+   card's padding does the centring. */
+
+.panel-body {
+  margin-top: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-chevron {
+    transition: none;
+  }
 }
 
 /* Everything the map pins to its own right edge steps left of the panel:

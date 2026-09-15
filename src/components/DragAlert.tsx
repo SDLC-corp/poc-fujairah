@@ -3,7 +3,7 @@ import { destination } from '@turf/turf'
 import { useAppDispatch, useAppSelector } from '../app/hooks'
 import { selectDraggingVessels, swingRadiusM } from '../features/analysis/selectors'
 import { dragVessel } from '../features/portData/portDataSlice'
-import { selectFeature } from '../features/selection/selectionSlice'
+import { highlightFeature } from '../features/selection/selectionSlice'
 import { focusVessel } from '../features/view/viewSlice'
 import { setTab } from '../features/ui/uiSlice'
 import { formatDistance } from '../utils/format'
@@ -101,10 +101,13 @@ export default function DragAlert() {
   const p = worst.vessel.properties
   if (p.id === dismissedId) return null
 
-  /** Put it on the chart: the map lives on the dashboard, so go there first. */
+  /**
+   * Put it on the chart: the map lives on the dashboard, so go there first.
+   * She is lit up and framed, not opened — same as any other "show on map".
+   */
   function show() {
     dispatch(setTab('dashboard'))
-    dispatch(selectFeature({ layer: 'vessels', id: p.id }))
+    dispatch(highlightFeature({ layer: 'vessels', id: p.id }))
     dispatch(focusVessel(p.id))
   }
 

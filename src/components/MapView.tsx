@@ -27,6 +27,7 @@ import {
 import type { FreeSpotProps } from '../features/analysis/selectors'
 import { dismissArrival, finishTransit } from '../features/transit/transitSlice'
 import { anchorVessel } from '../features/portData/portDataSlice'
+import { selectWindowedPlayback } from '../features/playback/selectors'
 import {
   cancelRelocate,
   clearSpot,
@@ -180,7 +181,9 @@ export default function MapView() {
   const playbackVesselId = useAppSelector((s) => s.playback.vesselId)
   const playbackFollowIds = useAppSelector((s) => s.playback.followIds)
   const playbackProgress = useAppSelector((s) => s.playback.progress)
-  const playbackData = useAppSelector((s) => s.playback.data)
+  // Windowed, not raw: if the operator has narrowed the replay to four hours,
+  // four hours is the day as far as everything drawn here is concerned.
+  const playbackData = useAppSelector(selectWindowedPlayback)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
   const theme = useAppSelector((s) => s.ui.theme)
   const movedSpots = useAppSelector((s) => s.spots.moved)
@@ -760,6 +763,20 @@ export default function MapView() {
     return () => cancelAnimationFrame(frame)
   }, [styleEpoch, arrival, vessels, cableM])
 
+  /**
+   * Changing screen puts away anything the operator opened on the last one.
+   *
+   * The details card stands down on its own (see selectionSlice), but a popup
+   * opened by an alert is attached to the map, and the map is the one thing
+   * that does not unmount when the tab changes — so it would still be sitting
+   * over the chart, pointing at something clicked on a screen that is no longer
+   * showing.
+   */
+  useEffect(() => {
+    focusPopupRef.current?.remove()
+    focusPopupRef.current = null
+  }, [activeTab])
+
   /* Confirm the arrival on the map itself. */
   useEffect(() => {
     const map = mapRef.current
@@ -1236,7 +1253,9 @@ export default function MapView() {
     const map = mapRef.current
     if (!map || !styleEpoch || activeTab !== 'playback') return
     const chosen = playbackData?.vessels.find((v) => v.id === playbackVesselId)
-    if (!chosen || fittedTrackRef.current === chosen.id) return
+    // A window can leave a vessel with no fixes at all; there is nothing to
+    // frame, and Math.min of nothing is Infinity.
+    if (!chosen || !chosen.track.length || fittedTrackRef.current === chosen.id) return
 
     const first = fittedTrackRef.current === null
     fittedTrackRef.current = chosen.id

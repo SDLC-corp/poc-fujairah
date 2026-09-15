@@ -65,6 +65,16 @@ interface UiState {
    * the pane that reads this is the pane that owns the toggle.
    */
   mapFullscreen: boolean
+  /**
+   * Panels the operator has folded away, by id.
+   *
+   * Held here rather than in each panel so "collapse all" is one action, and so
+   * the state survives the panel unmounting — a panel that forgets it was shut
+   * every time the map is expanded and collapsed is not a preference, it is a
+   * flicker. Collapsed is the exception, so the list holds the shut ones and an
+   * unknown panel is open.
+   */
+  collapsedPanels: string[]
 }
 
 const initialState: UiState = {
@@ -72,6 +82,7 @@ const initialState: UiState = {
   activeTab: 'dashboard',
   theme: readStoredTheme(),
   mapFullscreen: false,
+  collapsedPanels: [],
 }
 
 const uiSlice = createSlice({
@@ -102,9 +113,27 @@ const uiSlice = createSlice({
     setMapFullscreen(state, action: PayloadAction<boolean>) {
       state.mapFullscreen = action.payload
     },
+    togglePanel(state, action: PayloadAction<string>) {
+      const id = action.payload
+      state.collapsedPanels = state.collapsedPanels.includes(id)
+        ? state.collapsedPanels.filter((p) => p !== id)
+        : [...state.collapsedPanels, id]
+    },
+    /** Folds a known set away, or opens everything when given nothing. */
+    setCollapsedPanels(state, action: PayloadAction<string[]>) {
+      state.collapsedPanels = action.payload
+    },
   },
 })
 
-export const { toggleNav, setNavOpen, setTab, setTheme, toggleMapFullscreen, setMapFullscreen } =
-  uiSlice.actions
+export const {
+  toggleNav,
+  setNavOpen,
+  setTab,
+  setTheme,
+  toggleMapFullscreen,
+  setMapFullscreen,
+  togglePanel,
+  setCollapsedPanels,
+} = uiSlice.actions
 export default uiSlice.reducer
