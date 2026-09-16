@@ -157,9 +157,11 @@ export default function DragAlert() {
           Show on map
         </button>
         {/* The alarm says she has moved; this is how the port says what is
-            being done about it, to the one person who can act on it. */}
+            being done about it — by mail to whoever can act on it, or as a call
+            to the water. "Report" rather than "Send mail", because which of
+            those it is gets decided inside the dialog. */}
         <button type="button" className="incident-show" onClick={() => setReporting(true)}>
-          {sent ? 'Report again' : 'Send mail'}
+          {sent ? 'Report again' : 'Report'}
         </button>
         <button
           type="button"

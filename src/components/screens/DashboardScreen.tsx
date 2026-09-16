@@ -14,7 +14,7 @@ import { AREA_COLORS } from '../../map/areaColors'
 import { buildOccupancySeries } from '../../utils/occupancyCurve'
 import { OCCUPANCY_ALERT_PCT } from '../../utils/occupancyLoad'
 import { useState } from 'react'
-import { FiMail } from 'react-icons/fi'
+import { FiRadio } from 'react-icons/fi'
 import { centroid } from '@turf/turf'
 import type { Feature } from 'geojson'
 import CollapsiblePanel from '../CollapsiblePanel'
@@ -152,11 +152,11 @@ export default function DashboardScreen() {
         <button
           type="button"
           className="feed-mail"
-          title={sent ? `Reported to ${sent.to}` : 'Report this by mail'}
+          title={sent ? `Reported to ${sent.to}` : 'Broadcast this to shipping'}
           onClick={() => setReporting({ key, subject })}
         >
-          <FiMail size={12} aria-hidden="true" />
-          {sent ? 'Report again' : 'Send mail'}
+          <FiRadio size={12} aria-hidden="true" />
+          {sent ? 'Report again' : 'Report'}
         </button>
         {sent && (
           <span className="feed-sent">

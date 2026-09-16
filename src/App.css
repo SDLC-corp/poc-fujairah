@@ -727,6 +727,21 @@ input[type='range'] {
   gap: 10px;
 }
 
+/* The age of everything under it, between the header and the property list.
+   Takes the list's own side padding so the chip lines up with the labels
+   beneath it. */
+.details-updated {
+  margin: 0;
+  padding: 9px 14px 0;
+}
+
+/* The list gives up its top padding to the strip above, or the two sit 22px
+   apart with nothing between them. Carries the card so it outranks
+   `.details-card dl` on class count rather than on source order. */
+.details-card .details-updated + dl {
+  padding-top: 8px;
+}
+
 /* The name gives up width before the two controls beside it do — a long vessel
    name must not push "Full details" off the corner it lives in. */
 .details-title {
@@ -7293,12 +7308,53 @@ button.perm-module {
 
 /* Sits directly under the address it overrides, so the relationship between
    the two is the layout rather than something to be worked out. */
-.mail-all {
-  margin: -4px 0 12px;
-  gap: 8px;
+/* Who the report is broadcast to. Rows in a box rather than loose radios: the
+   bordered group says the two are one decision, and which one is taken changes
+   the opening words of the message underneath. */
+.mail-audience {
+  margin-top: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-.mail-all .muted {
+.mail-audience-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mail-audience-row + .mail-audience-row {
+  border-top: 1px solid var(--border);
+}
+
+.mail-audience-row:hover {
+  background: var(--surface-2);
+}
+
+/* The chosen row, tinted rather than merely dot-marked: which audience is
+   selected changes what the preview below is, so it has to be findable at a
+   glance after scrolling back up to it. */
+.mail-audience-row.is-on {
+  background: var(--accent-soft);
+}
+
+.mail-audience-row input {
+  flex: none;
+  margin: 0;
+}
+
+.mail-audience-label {
+  min-width: 0;
+}
+
+/* The fleet count, or what kind of call it is — pushed to the far end so the
+   notes line up as a column of their own and the labels read as a list. */
+.mail-audience-note {
   margin-left: auto;
   font-size: 10.5px;
   white-space: nowrap;

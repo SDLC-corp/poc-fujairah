@@ -13,6 +13,7 @@ import type { VesselType } from '../types/gis'
 import { clearSelection } from '../features/selection/selectionSlice'
 import { formatDateTime, formatDistance, titleCase } from '../utils/format'
 import AnchorPosition from './AnchorPosition'
+import UpdatedChip from './UpdatedChip'
 import type { LayerId } from '../types/gis'
 
 /**
@@ -34,8 +35,15 @@ const DATE_KEYS = new Set([
   'createdAt',
 ])
 
-/** Shown in their own block, or not worth a row on a card this size. */
-const SKIP_KEYS = new Set(['request', 'anchoredAt', 'anchoredHeadingDeg'])
+/**
+ * Shown in their own block, or not worth a row on a card this size.
+ *
+ * `positionAt` is here because it is now the chip under the title. A row saying
+ * "Position at 03 Aug 14:20" is the same fact as "updated 1 min ago" and the
+ * worse half of it: the age is what decides whether the rest of the card is
+ * describing now, and nobody works that out from a timestamp at a glance.
+ */
+const SKIP_KEYS = new Set(['request', 'anchoredAt', 'anchoredHeadingDeg', 'positionAt'])
 
 /** Where the generated label reads badly or says less than it could. */
 const LABEL: Record<string, string> = {
@@ -187,6 +195,18 @@ export default function FeatureDetails() {
           ×
         </button>
       </header>
+
+      {/* How old everything below it is.
+          Under the header rather than in it: the header is dark chrome in every
+          theme and this chip is painted from the surface tokens, and the age
+          qualifies the figures rather than the title. First thing under it,
+          because a position, an area and a speed are all claims about *now* and
+          are only true if the fix behind them is minutes old. */}
+      {selected.layer === 'vessels' && (
+        <p className="details-updated">
+          <UpdatedChip at={props.positionAt as string | null | undefined} />
+        </p>
+      )}
 
       <dl>
         {rows.map(([key, value]) => (
