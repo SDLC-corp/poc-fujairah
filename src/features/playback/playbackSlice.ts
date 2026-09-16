@@ -24,15 +24,23 @@ interface PlaybackState {
   speed: PlaybackSpeed
   /** Scrub position along the track, 0–1. */
   progress: number
-  /** Replay day, YYYY-MM-DD. Only day one carries data in this PoC. */
-  date: string
   /**
-   * The slice of that day to replay, as `HH:MM` UTC — null for the whole of it.
+   * The window to replay, as a date on each end and a clock on each end.
    *
-   * Null rather than the day's own bounds on purpose: "not chosen" and "chosen,
-   * and it happens to be midnight to midnight" are different states, and only
-   * the first should quietly follow a file whose recorded span changes.
+   * Four fields rather than a day plus two times, because an incident does not
+   * agree to happen inside one calendar day. The two halves compose: the date
+   * says which day each end falls on and the clock says where in it, so
+   * `03 Aug` + `13:00` → `04 Aug` + `14:00` is one continuous 25-hour window
+   * and needs no special case for the midnight it crosses.
+   *
+   * All four are `YYYY-MM-DD` / `HH:MM` UTC, and all four are null for "not
+   * chosen". Null rather than the recording's own bounds on purpose: "not
+   * chosen" and "chosen, and it happens to be the whole recording" are
+   * different states, and only the first should quietly follow a file whose
+   * span changes. Nothing chosen means one day, all of it.
    */
+  fromDate: string | null
+  toDate: string | null
   fromTime: string | null
   toTime: string | null
   /** The recorded day, fetched on demand — it is far larger than the snapshot. */
@@ -48,16 +56,14 @@ export const loadPlayback = createAsyncThunk('playback/load', async (): Promise<
   return (await res.json()) as PlaybackData
 })
 
-/** The single day of history the PoC ships with. */
-export const PLAYBACK_DAY = '2026-08-03'
-
 const initialState: PlaybackState = {
   vesselId: null,
   followIds: [],
   playing: false,
   speed: 4,
   progress: 0,
-  date: PLAYBACK_DAY,
+  fromDate: null,
+  toDate: null,
   fromTime: null,
   toTime: null,
   data: null,
@@ -146,14 +152,11 @@ const playbackSlice = createSlice({
       state.playing = false
       state.progress = Math.min(1, Math.max(0, state.progress + action.payload))
     },
-    setDate(state, action: PayloadAction<string>) {
-      state.date = action.payload
-      state.progress = 0
-      state.playing = false
-    },
-
     /**
-     * Narrow the replay to part of the day.
+     * Move one end of the replay window — either date, either clock.
+     *
+     * Each field is applied only when the payload carries its key, so a change
+     * of date does not silently reset a clock the operator has already set.
      *
      * The playhead goes back to the start and the transport stops, because
      * progress is a fraction of the window: leaving it where it was would jump
@@ -161,16 +164,26 @@ const playbackSlice = createSlice({
      */
     setPlaybackWindow(
       state,
-      action: PayloadAction<{ from?: string | null; to?: string | null }>,
+      action: PayloadAction<{
+        fromDate?: string | null
+        toDate?: string | null
+        from?: string | null
+        to?: string | null
+      }>,
     ) {
-      if ('from' in action.payload) state.fromTime = action.payload.from || null
-      if ('to' in action.payload) state.toTime = action.payload.to || null
+      const p = action.payload
+      if ('fromDate' in p) state.fromDate = p.fromDate || null
+      if ('toDate' in p) state.toDate = p.toDate || null
+      if ('from' in p) state.fromTime = p.from || null
+      if ('to' in p) state.toTime = p.to || null
       state.progress = 0
       state.playing = false
     },
 
-    /** Back to the whole recorded day. */
+    /** Back to one day, all of it — the state the screen opens in. */
     clearPlaybackWindow(state) {
+      state.fromDate = null
+      state.toDate = null
       state.fromTime = null
       state.toTime = null
       state.progress = 0
@@ -186,7 +199,24 @@ const playbackSlice = createSlice({
       .addCase(loadPlayback.fulfilled, (state, action) => {
         state.status = 'ready'
         state.data = action.payload
-        state.date = action.payload.day
+        /**
+         * Open on today, at the hours the traffic actually runs at.
+         *
+         * Today because the archive's own date is an implementation detail the
+         * operator should not have to know — it is projected onto whatever date
+         * is chosen, so there is no reason for the screen to open on a date in
+         * the past. The archive's own clock hours rather than the wall clock
+         * because the recorded run covers part of a day: opening at "now" lands
+         * outside it more often than in it, and a replay that starts on an empty
+         * window is a worse first impression than one that starts on the
+         * movement. Only when nothing has been chosen, so it never overrides the
+         * operator.
+         */
+        if (!state.fromDate && !state.toDate && !state.fromTime && !state.toTime) {
+          state.fromDate = new Date().toISOString().slice(0, 10)
+          state.fromTime = action.payload.from.slice(11, 16)
+          state.toTime = action.payload.to.slice(11, 16)
+        }
         // Default to the first recorded vessel so the screen opens populated.
         state.vesselId = state.vesselId ?? action.payload.vessels[0]?.id ?? null
         if (!state.followIds.length && state.vesselId) state.followIds = [state.vesselId]
@@ -211,7 +241,6 @@ export const {
   rewind,
   stop,
   step,
-  setDate,
   setPlaybackWindow,
   clearPlaybackWindow,
 } = playbackSlice.actions

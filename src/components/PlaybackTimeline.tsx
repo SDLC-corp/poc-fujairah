@@ -22,10 +22,18 @@ interface Props {
   /** The followed vessels, in the order the picker holds them. */
   vessels: PlaybackVessel[]
   primaryId: string | null
-  day: string
+  /**
+   * The replayed window, already written out.
+   *
+   * A range rather than a day, because the window can span several: a single
+   * date at the head of this column would name one of them and quietly deny the
+   * rest.
+   */
+  range: string
   /** Timestamp under the playhead, used to mark and scroll to the current row. */
   playheadAt: string | null
-  onPick: (vesselId: string, index: number) => void
+  /** The chosen row's own timestamp — the playhead is placed by time. */
+  onPick: (at: string) => void
   onClose: () => void
 }
 
@@ -63,24 +71,22 @@ function markFor(track: PlaybackSample[], i: number): Mark {
   return { title: 'Position fix', kind: 'fix' }
 }
 
-/** "2026-08-03" -> "03 Aug 2026". */
-function dayLabel(day: string): string {
-  const d = new Date(`${day}T00:00:00Z`)
-  if (Number.isNaN(d.getTime())) return day
-  return d.toLocaleDateString('en-GB', {
+const clock = (iso: string) => new Date(iso).toISOString().slice(11, 16)
+
+/** `03 Aug 14:20` — for a column whose rows can fall on different days. */
+const stamp = (iso: string) =>
+  new Date(iso).toLocaleString('en-GB', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
     timeZone: 'UTC',
   })
-}
-
-const clock = (iso: string) => new Date(iso).toISOString().slice(11, 16)
 
 export default function PlaybackTimeline({
   vessels,
   primaryId,
-  day,
+  range,
   playheadAt,
   onPick,
   onClose,
@@ -123,6 +129,10 @@ export default function PlaybackTimeline({
     out.sort((a, b) => a.fix.at.localeCompare(b.fix.at) || a.name.localeCompare(b.name))
     return out
   }, [shown, effectiveMode])
+
+  /** Read off the rows themselves, so it tracks what is listed. */
+  const multiDay =
+    rows.length > 1 && rows[0].fix.at.slice(0, 10) !== rows[rows.length - 1].fix.at.slice(0, 10)
 
   /** The last row at or before the playhead — what the chart is showing now. */
   const currentKey = useMemo(() => {
@@ -193,7 +203,7 @@ export default function PlaybackTimeline({
       )}
 
       <div className="pb-tl-sub">
-        <span className="pb-tl-date">{dayLabel(day)}</span>
+        <span className="pb-tl-date">{range}</span>
         <span className="pb-tl-modes">
           {(['events', 'all'] as const).map((m) => (
             <button
@@ -218,12 +228,12 @@ export default function PlaybackTimeline({
               className={`pb-tl-item pb-tl-${row.mark.kind}${on ? ' is-current' : ''}`}
               aria-current={on ? 'true' : undefined}
             >
-              <button
-                type="button"
-                onClick={() => onPick(row.vesselId, row.index)}
-                title="Move the playhead here"
-              >
-                <span className="pb-tl-time">{clock(row.fix.at)}</span>
+              <button type="button" onClick={() => onPick(row.fix.at)} title="Move the playhead here">
+                {/* Dated only when the column spans more than one day, where a
+                    bare clock would put two different moments under one label. */}
+                <span className="pb-tl-time">
+                  {multiDay ? stamp(row.fix.at) : clock(row.fix.at)}
+                </span>
                 <span className="pb-tl-node" aria-hidden="true" style={{ color: row.color }} />
                 <span className="pb-tl-body">
                   {/* Named on every row: a merged column is unreadable without it. */}
@@ -248,7 +258,11 @@ export default function PlaybackTimeline({
         })}
         {rows.length === 0 && (
           <li className="pb-tl-empty muted">
-            {vessels.length === 0 ? 'No vessel followed.' : 'Every followed vessel is filtered out.'}
+            {vessels.length === 0
+              ? 'No vessel followed.'
+              : shown.length === 0
+                ? 'Every followed vessel is filtered out.'
+                : 'No positions were recorded in this window.'}
           </li>
         )}
       </ol>

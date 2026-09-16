@@ -105,6 +105,31 @@ export function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
+function dmm(value: number, pad: number, positive: string, negative: string): string {
+  const hemisphere = value >= 0 ? positive : negative
+  const abs = Math.abs(value)
+  let deg = Math.floor(abs)
+  let min = (abs - deg) * 60
+  // Carry, so rounding never prints the impossible 25° 60.000'.
+  if (min >= 59.9995) {
+    deg += 1
+    min = 0
+  }
+  return `${String(deg).padStart(pad, '0')}° ${min.toFixed(3).padStart(6, '0')}' ${hemisphere}`
+}
+
+/**
+ * A position in degrees and decimal minutes, split at its comma.
+ *
+ * The pair is one fact, but a card narrow enough to wrap it has to lay it out
+ * as two cells: broken apart deliberately it can only ever break *between*
+ * latitude and longitude, where a reader expects a break, instead of in the
+ * middle of a longitude where one is unreadable.
+ */
+export function formatLatLonParts(lat: number, lon: number): [string, string] {
+  return [dmm(lat, 2, 'N', 'S'), dmm(lon, 3, 'E', 'W')]
+}
+
 /**
  * A position in degrees and decimal minutes, the way a bridge works in.
  *
@@ -114,17 +139,33 @@ export function titleCase(value: string): string {
  * three-figure as the convention requires.
  */
 export function formatLatLon(lat: number, lon: number): string {
-  const part = (value: number, pad: number, positive: string, negative: string) => {
-    const hemisphere = value >= 0 ? positive : negative
-    const abs = Math.abs(value)
-    let deg = Math.floor(abs)
-    let min = (abs - deg) * 60
-    // Carry, so rounding never prints the impossible 25° 60.000'.
-    if (min >= 59.9995) {
-      deg += 1
-      min = 0
-    }
-    return `${String(deg).padStart(pad, '0')}° ${min.toFixed(3).padStart(6, '0')}' ${hemisphere}`
-  }
-  return `${part(lat, 2, 'N', 'S')}, ${part(lon, 3, 'E', 'W')}`
+  return formatLatLonParts(lat, lon).join(', ')
+}
+
+/**
+ * The same position in plain decimal degrees — `25.28777, 56.48794`.
+ *
+ * Undecorated on purpose. This is the half of a copied position that gets
+ * pasted into something which parses it rather than read by anyone, and a
+ * parser wants two signed numbers: `25.28777°N, 56.48794°E` is rejected by
+ * Google Maps, by QGIS and by a spreadsheet cell, while the bare pair goes
+ * straight into all three. South and west carry the minus sign the hemisphere
+ * letter would otherwise have carried, and latitude leads, which is the order
+ * every one of those targets expects — GeoJSON's lon-first order is for the
+ * wire, not for a paste.
+ */
+export function formatLatLonDecimal(lat: number, lon: number): string {
+  return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+}
+
+/**
+ * Both forms on one line — `25° 17.266' N, 056° 29.276' E  (25.28777, 56.48794)`.
+ *
+ * What a copied or mailed position carries. Both rather than a choice, because
+ * the two readers want different ones and whoever sends it cannot know which
+ * they are writing to: a bridge plots degrees and minutes, and anything that
+ * parses it afterwards wants the plain decimal pair.
+ */
+export function formatLatLonBoth(lat: number, lon: number): string {
+  return `${formatLatLon(lat, lon)}  (${formatLatLonDecimal(lat, lon)})`
 }

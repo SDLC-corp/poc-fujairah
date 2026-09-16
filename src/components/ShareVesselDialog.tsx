@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { FiCheck, FiCopy, FiMail, FiShare2, FiX } from 'react-icons/fi'
+import { formatLatLon, formatLatLonDecimal } from '../utils/format'
 
 /**
  * Share a vessel's record by email.
@@ -66,7 +67,10 @@ export default function ShareVesselDialog({
 
     if (includePosition && position) {
       out.push('POSITION')
-      out.push(`  ${position.lat.toFixed(5)}°N, ${position.lon.toFixed(5)}°E`)
+      // Degrees and minutes for whoever reads it, plain decimal for whatever
+      // parses it, and a link for anyone who just wants to see where it is.
+      out.push(`  ${formatLatLon(position.lat, position.lon)}`)
+      out.push(`  ${formatLatLonDecimal(position.lat, position.lon)}`)
       if (mapLink) out.push(`  ${mapLink}`)
       out.push('')
     }

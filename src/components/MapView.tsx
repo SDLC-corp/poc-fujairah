@@ -38,7 +38,7 @@ import {
   startRelocate,
 } from '../features/spots/spotsSlice'
 //test
-import { indexAt, sampleAt, trackLine } from '../utils/playbackTrack'
+import { indexAtTime, playheadMs, sampleAtTime, trackLine } from '../utils/playbackTrack'
 import { buildVesselHull } from '../map/vesselGeometry'
 import { buildGraticule } from '../map/graticule'
 import { registerAnchorIcon } from '../map/anchorIcon'
@@ -236,9 +236,13 @@ export default function MapView() {
    */
   const playbackFleet = useMemo<VesselCollection | null>(() => {
     if (activeTab !== 'playback' || !playbackData) return null
+    // The playhead is a moment, not a position in an array: the replayed window
+    // can be wider than the archive, so a vessel is drawn where she was last
+    // reported at this instant and is left off until her first fix in it.
+    const atMs = playheadMs(playbackData, playbackProgress)
     const features: VesselFeature[] = []
     for (const v of playbackData.vessels) {
-      const fix = sampleAt(v.track, playbackProgress)
+      const fix = sampleAtTime(v.track, atMs)
       if (!fix) continue
       features.push({
         type: 'Feature',
@@ -1214,11 +1218,12 @@ export default function MapView() {
       return
     }
 
+    const atMs = playheadMs(playbackData, playbackProgress)
     const features: Feature[] = []
     for (const id of playbackFollowIds) {
       const chosen = playbackData.vessels.find((v) => v.id === id)
       if (!chosen) continue
-      const upto = indexAt(chosen.track, playbackProgress)
+      const upto = indexAtTime(chosen.track, atMs)
       const run = trackLine(chosen).slice(0, upto + 1)
       if (run.length < 2) continue
       features.push({
@@ -1251,8 +1256,8 @@ export default function MapView() {
    */
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !styleEpoch || activeTab !== 'playback') return
-    const chosen = playbackData?.vessels.find((v) => v.id === playbackVesselId)
+    if (!map || !styleEpoch || activeTab !== 'playback' || !playbackData) return
+    const chosen = playbackData.vessels.find((v) => v.id === playbackVesselId)
     // A window can leave a vessel with no fixes at all; there is nothing to
     // frame, and Math.min of nothing is Infinity.
     if (!chosen || !chosen.track.length || fittedTrackRef.current === chosen.id) return
@@ -1273,7 +1278,7 @@ export default function MapView() {
       return
     }
 
-    const fix = sampleAt(chosen.track, playbackProgressRef.current)
+    const fix = sampleAtTime(chosen.track, playheadMs(playbackData, playbackProgressRef.current))
     if (fix) {
       map.easeTo({
         center: [fix.lon, fix.lat],

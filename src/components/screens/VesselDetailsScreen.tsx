@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FiShare2 } from 'react-icons/fi'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   selectNearestBerthByVessel,
@@ -15,6 +16,8 @@ import {
   formatDateTime,
   formatDistance,
   formatDuration,
+  formatLatLonBoth,
+  formatLatLonParts,
   hoursBetween,
   hoursSince,
   minutesBetween,
@@ -34,6 +37,8 @@ import { trackSourceOf } from '../../map/trackSources'
 import Icon from '../Icon'
 import ProximityPanel from '../ProximityPanel'
 import RawJson from '../RawJson'
+import AnchorPosition from '../AnchorPosition'
+import ShareVesselDialog, { type ShareSection } from '../ShareVesselDialog'
 
 const HISTORY = [
   { at: '03 Aug 04:10', event: 'Anchored', where: 'Anchor Berth 1', note: 'Brought up, 6 shackles' },
@@ -169,6 +174,7 @@ export default function VesselDetailsScreen() {
   const dispatch = useAppDispatch()
   const [editingEta, setEditingEta] = useState(false)
   const [etaDraft, setEtaDraft] = useState('')
+  const [sharing, setSharing] = useState(false)
   const index = useAppSelector(selectVesselAreaIndex)
   const nearest = useAppSelector(selectNearestBerthByVessel)
   const selected = useAppSelector((s) => s.selection.selected)
@@ -206,6 +212,7 @@ export default function VesselDetailsScreen() {
   const restedH = atRest ? hoursSince(p.ata) : null
   const overstaying = dwell != null && restedH != null && restedH > dwell
   const [lon, lat] = entry.vessel.geometry.coordinates
+  const [latDmm, lonDmm] = formatLatLonParts(lat, lon)
 
 
   /**
@@ -234,6 +241,47 @@ export default function VesselDetailsScreen() {
    * but the headline must not read as a verdict on the vessel's timekeeping.
    */
   const approxOnly = arrival.estimated && !departure.live
+
+  /**
+   * What the share dialog offers to send, as toggleable blocks.
+   *
+   * The actual position is not in here: the dialog carries it itself, as
+   * coordinates and as a link anyone can open, under its own toggle. What this
+   * adds is everything the position needs to be *read* against — the area she
+   * is lying in, what she is near — and the given position, which is the one
+   * fact the dialog cannot work out from a coordinate.
+   */
+  const shareSections: ShareSection[] = [
+    {
+      id: 'position',
+      label: 'Position & area',
+      rows: [
+        ['Anchorage area', anchorage ? anchorage.properties.name : 'Outside declared areas'],
+        ['Also inside', otherAreas.map((a) => a.properties.name).join(', ') || 'None'],
+        ['Nearest anchor berth', berth ? berth.berth.properties.name : '—'],
+        ['Distance to berth', berth ? formatDistance(berth.distanceM) : '—'],
+        ['Swing radius', `${Math.round(swingR)} m`],
+        ...(p.anchoredAt
+          ? ([
+              ['Given position', formatLatLonBoth(p.anchoredAt[1], p.anchoredAt[0])],
+            ] as [string, string][])
+          : []),
+      ],
+    },
+    {
+      id: 'particulars',
+      label: 'Vessel particulars',
+      rows: [
+        ['Type', VESSEL_LABELS[p.type]],
+        ['IMO', p.imo],
+        ['Flag', flagName(p.flag)],
+        ['LOA', `${p.lengthM} m`],
+        ['Beam', `${p.beamM} m`],
+        ['Draft', `${p.draftM} m`],
+        ['Status', VESSEL_STATUS_SHORT[p.status]],
+      ],
+    },
+  ]
 
   const payload = {
     vessel: { ...p, position: { lon, lat } },
@@ -316,6 +364,12 @@ export default function VesselDetailsScreen() {
               }}
             >
               Track on map
+            </button>
+            {/* Beside Track, because the two are the same kind of thing done
+                for two different audiences: one puts the position on this
+                operator's map, the other puts it in someone else's inbox. */}
+            <button type="button" onClick={() => setSharing(true)}>
+              <FiShare2 size={14} /> Share position
             </button>
             {p.status === 'awaiting' && (
               <button type="button" onClick={() => dispatch(setTab('assignment'))}>
@@ -419,15 +473,36 @@ export default function VesselDetailsScreen() {
               <dt>Distance to berth</dt>
               <dd>{berth ? formatDistance(berth.distanceM) : '—'}</dd>
             </div>
-            <div>
-              <dt>Latitude</dt>
-              <dd>{lat.toFixed(5)}°N</dd>
-            </div>
-            <div>
-              <dt>Longitude</dt>
-              <dd>{lon.toFixed(5)}°E</dd>
-            </div>
+            {/* Her position, unless the block below is going to state it twice
+                over as the second of a pair. Degrees and minutes here as
+                everywhere else the figure is meant to be read. */}
+            {!p.anchoredAt && (
+              <>
+                <div>
+                  <dt>Latitude</dt>
+                  <dd>{latDmm}</dd>
+                </div>
+                <div>
+                  <dt>Longitude</dt>
+                  <dd>{lonDmm}</dd>
+                </div>
+              </>
+            )}
           </dl>
+
+          {/* The same block the map card carries, for the same reason: the
+              position she was given and the position she is in are two facts,
+              and a single row can only state one of them. Only a vessel brought
+              up on an anchor has a given position to compare against. */}
+          {p.anchoredAt && (
+            <AnchorPosition
+              name={p.name}
+              anchoredAt={p.anchoredAt}
+              nowAt={entry.vessel.geometry.coordinates}
+              headingDeg={p.headingDeg}
+              anchoredHeadingDeg={p.anchoredHeadingDeg}
+            />
+          )}
         </section>
 
 
@@ -745,6 +820,17 @@ export default function VesselDetailsScreen() {
 
       <RawJson label={`GET /api/vessels/${p.id}`} data={payload} />
 
+      {sharing && (
+        <ShareVesselDialog
+          title={p.name}
+          subtitle={`${VESSEL_LABELS[p.type]} · IMO ${p.imo} · ${
+            anchorage ? `Area ${anchorage.properties.code}` : 'Outside declared areas'
+          }`}
+          sections={shareSections}
+          position={{ lat, lon }}
+          onClose={() => setSharing(false)}
+        />
+      )}
     </div>
   )
 }

@@ -2216,41 +2216,135 @@ input[type='range'] {
 
 /* Neutral ground, unlike the amber swing box beside it: this block is a plain
    statement of two positions most of the time, and only says something is
-   wrong when the run says so. */
+   wrong when the run says so.
+   Flush by default, because it is also rendered inside a panel on the vessel
+   record, where the panel already owns the padding. Only the map card insets
+   it, and only the map card says so. */
 .anchor-box {
-  margin: 0 14px 14px;
+  margin: 0;
   padding: 10px 12px;
   border-radius: 10px;
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
 
+.details-card .anchor-box {
+  margin: 0 14px 14px;
+}
+
+/* Dragging is the one state that has to carry from across the room, so the
+   block takes the alarm rather than leaving it to a single red word. */
+.anchor-box.is-dragging {
+  background: var(--alert-soft);
+  border-color: var(--alert);
+}
+
+/* A header row rather than a line of text: the title, the verdict, and the
+   copy for the pair. It wraps as a whole — the title holds line one and the
+   badge takes line two if it has to — because `dragged 128 m` is a wider badge
+   than `holding` and must not be what breaks the title in half. */
 .anchor-box .swing-head {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
   color: var(--muted);
 }
 
-.anchor-box .swing-head strong {
-  font-size: 12px;
-  text-transform: none;
-  letter-spacing: 0.01em;
+.anchor-box .swing-head > span:first-child {
+  white-space: nowrap;
+}
+
+.anchor-head-right {
+  margin-left: auto;
+}
+
+/* This one button gives up its label. The title is ~110px and the badge ~80px
+   of a 252px row, so the text is what there is no room for — and the two
+   buttons below keep theirs, where the row is wide enough to spend it. The
+   button names itself through `aria-label`, so nothing is lost but the ink. */
+.anchor-box .anchor-head-right .copy-button-text {
+  display: none;
+}
+
+/* The verdict, as the answer rather than as a word in a line: "holding" is
+   what this block is read for, and the two positions under it are the working.
+   A pill and a dot, so it is found before it is read — and the dot carries the
+   state in shape as well as in colour. Specificity has to clear both
+   `.swing-head strong` and `.anchor-box .swing-head strong`, hence the
+   two-class selector. */
+.anchor-box .anchor-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tint-green);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--ok);
 }
 
-.anchor-box .swing-head strong.is-alert {
+.anchor-box .anchor-verdict.is-alert {
+  background: var(--tint-red);
   color: var(--alert);
 }
 
-.anchor-kv {
-  margin: 9px 0 0;
-  display: grid;
-  gap: 9px;
+.anchor-verdict-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
 }
 
+/* One column, and its own padding.
+   `.details-card dl` styles the property list at the top of the card — two
+   columns, 13px/14px of pad — and this list inherited both, which left each
+   position about 110px to render 29 characters in. Stacked full-width the two
+   run down one left edge, digit under digit, which is the only arrangement the
+   difference between them is visible in.
+   The selector carries the box because it has to outrank `.details-card dl`:
+   that is a class and an element, so a bare `.anchor-kv` loses to it and the
+   two columns come back. Qualified by `.anchor-box` rather than by the card, so
+   it wins on class count wherever the block is rendered — the vessel record
+   included — and does not depend on where it sits in this file. */
+.anchor-box .anchor-kv {
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+/* Given and Actual as two panels rather than two entries in a list. The block
+   is a comparison, so boxing each side makes the pair of them the shape of the
+   block — one thing against another — instead of something to be picked out of
+   a column of small print. */
+.anchor-kv > div {
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.anchor-box.is-dragging .anchor-kv > div {
+  border-color: var(--border-strong);
+}
+
+/* The label takes its own line with the copy button at the far end, so neither
+   steals width from the figures beneath them. `min-height` holds the line open
+   against the button appearing on hover, or the rows would shift under the
+   cursor. */
 .anchor-kv dt {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-height: 19px;
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2315,27 +2409,53 @@ input[type='range'] {
 }
 
 .anchor-kv dd {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
 }
 
-/* Monospaced so the two positions sit digit under digit and the difference
-   between them can be read straight down the column. */
+/* One named row each for latitude and longitude.
+   A position is two figures, and they were running together as one string that
+   broke wherever it ran out of room. Split and labelled, each is a line that
+   says what it is — and because both panels carry the same two labels, the
+   `auto` column resolves to the same width in each, so the latitudes of the two
+   positions start at the same x and so do the longitudes. That alignment is the
+   whole point of the monospace and the tabular figures: a changed digit shows
+   up as a changed column rather than as something to be spotted. */
 .pos-dmm {
-  display: block;
-  font: 12px/1.4 ui-monospace, Consolas, monospace;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 2px;
+  font: 12px/1.45 ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+  white-space: nowrap;
   color: var(--ink-strong);
 }
 
-.anchor-kv dd small {
-  display: block;
-  font-size: 10.5px;
+/* Which of the two this is. Set back out of the monospace so the figures keep
+   the row: the labels are read once and the numbers every time. The stack is
+   named rather than inherited — `inherit` here is the parent's monospace. */
+.pos-axis {
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
 }
 
 .anchor-note {
-  margin: 9px 0 0;
+  margin: 10px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
   font-size: 11px;
   line-height: 1.45;
+}
+
+/* The note is the explanation of the badge, so it follows it into alert. */
+.anchor-box.is-dragging .anchor-note {
+  color: var(--alert);
+  border-top-color: var(--alert);
 }
 
 /* arrival confirmation on the map */
@@ -4537,7 +4657,14 @@ input[type='range'] {
   align-items: flex-start;
 }
 
+/* Flex, because one of these carries an icon: a baseline-aligned glyph beside
+   12.5px text sits low, and centring it is the difference between a button with
+   an icon and a button with something stuck to it. */
 .vessel-hero-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   width: auto;
   margin: 0;
   padding: 8px 16px;
@@ -5393,12 +5520,25 @@ button.source-badge[aria-expanded='true'] {
 
 /* ---------------- playback: status + vessel details ---------------- */
 
-.pb-state {
+/* Positioning lives on the column, not on each notice: more than one of them
+   can be true at a time, and pinned individually they landed on top of each
+   other. `pointer-events: none` so a stack of them cannot swallow a drag of the
+   map underneath; nothing in here is clickable. */
+.pb-states {
   position: absolute;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  pointer-events: none;
+}
+
+.pb-state {
   padding: 7px 14px;
   border-radius: 999px;
   font-size: 12px;
@@ -5422,6 +5562,20 @@ button.source-badge[aria-expanded='true'] {
   color: var(--warn);
   border-color: rgba(180, 83, 9, 0.35);
   background: var(--tint-amber);
+}
+
+/* Nothing is wrong, but what is on screen is not what it appears to be. Set
+   apart from the warnings in tone, since it is a standing statement about the
+   data rather than a problem to fix. */
+.pb-state-note {
+  max-width: min(460px, 82vw);
+  border-radius: 10px;
+  text-align: center;
+  line-height: 1.45;
+  font-size: 11.5px;
+  color: var(--ink-accent);
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
 }
 
 /* ---------------- playback: follow picker ---------------- */
@@ -5465,12 +5619,42 @@ button.source-badge[aria-expanded='true'] {
 /* Opens upwards: the bar it hangs off is at the foot of the screen. */
 /* ---- replay window ---- */
 
+/* A stack of rows now, not a single run of controls: the date range, the time
+   range, and what the two of them actually resolved to. Column rather than row
+   because the pair of them is six controls wide, and a control bar that already
+   carries the transport, the scrub and the speeds has no horizontal room left
+   to spend. */
 .pb-window {
   display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   font-size: 11px;
   color: var(--muted);
+}
+
+.pb-range {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Fixed width so the two rows' fields line up under each other — Date and Time
+   are different lengths, and without this the arrow and the second field of each
+   row sit at two different x. */
+.pb-range-label {
+  flex: none;
+  width: 30px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* The resolved window sits under the fields it comes from, indented past the
+   label column so it reads as their result rather than as a third range. */
+.pb-range-state {
+  padding-left: 35px;
+  gap: 8px;
 }
 
 .pb-time {
@@ -5480,10 +5664,43 @@ button.source-badge[aria-expanded='true'] {
   font-size: 12px;
 }
 
+/* Both date fields share the row evenly, so neither picker is wider than the
+   other for no reason. */
+.pb-range .pb-date,
+.pb-range .pb-time {
+  flex: 1;
+  min-width: 0;
+}
+
 .pb-window-note,
 .pb-window-reset {
   font-size: 10.5px;
   white-space: nowrap;
+}
+
+.pb-window-note {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The reason the window was rejected, in the place the window itself would
+   otherwise be stated — so the row never reads as though an invalid range were
+   in force. */
+.pb-window-fault {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--alert);
+}
+
+/* Both date fields carry the mark, because neither one is at fault on its own:
+   the rule is about the pair. */
+.pb-select.is-bad {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+}
+
+.pb-select.is-bad:focus {
+  border-color: var(--alert);
+  box-shadow: 0 0 0 3px var(--alert-soft);
 }
 
 .pb-follow-menu {

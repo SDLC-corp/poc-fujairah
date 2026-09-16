@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { FiMail, FiX } from 'react-icons/fi'
-import { formatLatLon } from '../utils/format'
+import { formatLatLon, formatLatLonDecimal } from '../utils/format'
 
 /**
  * Send the master the position she is to anchor in.
@@ -41,7 +41,7 @@ export default function SendAnchorPositionDialog({ notice, onSend, onClose }: Pr
     '',
     `Area ${notice.areaCode}, spot ${notice.spotId}`,
     formatLatLon(lat, lon),
-    `${lat.toFixed(5)}°N, ${lon.toFixed(5)}°E`,
+    formatLatLonDecimal(lat, lon),
     '',
     '— Port of Fujairah, Anchorage Management System',
   ].join('\n')
@@ -74,9 +74,7 @@ export default function SendAnchorPositionDialog({ notice, onSend, onClose }: Pr
               parses the mail afterwards wants decimal. */}
           <div className="anchor-mail-pos">
             <strong>{formatLatLon(lat, lon)}</strong>
-            <span className="muted">
-              {lat.toFixed(5)}°N, {lon.toFixed(5)}°E
-            </span>
+            <span className="muted">{formatLatLonDecimal(lat, lon)}</span>
           </div>
 
           <label className="field">
