@@ -17,6 +17,7 @@ import FeatureDetails from './components/FeatureDetails'
 import IncidentWatch from './components/IncidentWatch'
 import MapFocusControl from './components/MapFocusControl'
 import MapFullscreen from './components/MapFullscreen'
+import DashPanelsToggle from './components/DashPanelsToggle'
 import MapLegend from './components/MapLegend'
 import CompassRose from './components/CompassRose'
 import DashboardScreen from './components/screens/DashboardScreen'
@@ -53,6 +54,7 @@ export default function App() {
   const navOpen = useAppSelector((s) => s.ui.navOpen)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
   const mapFullscreen = useAppSelector((s) => s.ui.mapFullscreen)
+  const dashPanelsOpen = useAppSelector((s) => s.ui.dashPanelsOpen)
   const theme = useAppSelector((s) => s.ui.theme)
   const user = useAppSelector((s) => s.auth.user)
   const allowedTabs = useAppSelector(selectAllowedTabs)
@@ -161,7 +163,10 @@ export default function App() {
                page scrolls as one rather than each pane scrolling itself. */
             <div className="screen-scroll">
               <DashboardKpis />
-              <div className="dash-body">
+              {/* `panels-open` only means anything while the map is expanded —
+                  at rest the statistics are a column of the page, not a thing
+                  that opens. */}
+              <div className={`dash-body${dashPanelsOpen ? ' panels-open' : ''}`}>
                 <div className={`dash-map${mapFullscreen ? ' map-expanded' : ''}`}>
                   <MapView />
                   <MapFullscreen />
@@ -169,6 +174,7 @@ export default function App() {
                   <CompassRose />
                   <MapLegend />
                   <FeatureDetails />
+                  {mapFullscreen && <DashPanelsToggle />}
                   {status === 'failed' && (
                     <div className="map-error">Failed to load port data: {error}</div>
                   )}

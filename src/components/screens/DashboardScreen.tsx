@@ -15,6 +15,8 @@ import { buildOccupancySeries } from '../../utils/occupancyCurve'
 import { OCCUPANCY_ALERT_PCT } from '../../utils/occupancyLoad'
 import { useState } from 'react'
 import { FiMail } from 'react-icons/fi'
+import { centroid } from '@turf/turf'
+import type { Feature } from 'geojson'
 import CollapsiblePanel from '../CollapsiblePanel'
 import SendIncidentMailDialog from '../SendIncidentMailDialog'
 import type { IncidentMail, IncidentSubject } from '../SendIncidentMailDialog'
@@ -108,6 +110,23 @@ export default function DashboardScreen() {
    * question nobody asked — the map's own focus balloon already names what was
    * revealed. The card is what a click on the feature itself is for.
    */
+  /**
+   * A place for anything with geometry.
+   *
+   * A polygon reports its middle rather than a corner — "Area A" means the
+   * water, and the middle of it is the only point that stands for the whole.
+   * A vessel reports where she is.
+   */
+  function placeOf(feature: Feature | null | undefined) {
+    if (!feature) return null
+    const [lon, lat] = (
+      feature.geometry.type === 'Point'
+        ? feature.geometry.coordinates
+        : centroid(feature).geometry.coordinates
+    ) as [number, number]
+    return { lat, lon }
+  }
+
   function reveal(layer: LayerId, target: FocusTarget, id: string) {
     dispatch(highlightFeature({ layer, id }))
     dispatch(focusFeature({ target, id }))
@@ -239,6 +258,9 @@ export default function DashboardScreen() {
                   `Vessels: ${b.vessels.map((v) => v.properties.name).join(', ')}`,
                   `Rule: ${b.fence.properties.rule}`,
                 ],
+                // The fence, not one of the ships inside it: the fence is the
+                // thing the reader is being sent to look at.
+                position: placeOf(b.fence),
                 reasons: REASONS.geofence,
               })}
             </li>
@@ -262,6 +284,8 @@ export default function DashboardScreen() {
                   `IMO ${i.vessel.properties.imo} · ${i.vessel.properties.lengthM} m LOA · making ${i.vessel.properties.speedKn} kn`,
                   `Authority: ${i.area.properties.authority}`,
                 ],
+                // Where she actually is, which is the point of the report.
+                position: placeOf(i.vessel),
                 reasons: REASONS.restricted,
               })}
             </li>
@@ -285,6 +309,7 @@ export default function DashboardScreen() {
                   `${r.occupied} of ${r.capacity} spots taken, ${r.available} free.`,
                   `Threshold is ${OCCUPANCY_ALERT_PCT}% of capacity.`,
                 ],
+                position: placeOf(r.area),
                 reasons: REASONS.occupancy,
               })}
             </li>
@@ -308,6 +333,7 @@ export default function DashboardScreen() {
                   `IMO ${vessel.properties.imo} · ${vessel.properties.lengthM} m LOA`,
                   `Heading ${vessel.properties.headingDeg}°.`,
                 ],
+                position: placeOf(vessel),
                 reasons: REASONS.traffic,
               })}
             </li>

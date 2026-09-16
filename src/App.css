@@ -1114,10 +1114,20 @@ input[type='range'] {
   gap: 9px;
 }
 
+/**
+ * Tag in the first column, everything else in the second.
+ *
+ * A grid, not a wrapping flex row. Flexed, the mail button and the tag were
+ * sized from their own content first and the message got whatever was left —
+ * which in a 290 px floating panel was about eighty pixels, one word per line.
+ * Here the text column is `minmax(0, 1fr)`: it takes the width and the button
+ * sits under it, so adding a control can never squeeze the sentence again.
+ */
 .feed-item {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: start;
   padding: 9px 10px;
   border-radius: 9px;
   border: 1px solid var(--border);
@@ -1142,8 +1152,10 @@ input[type='range'] {
 
 /* Severity is spelled out, so the colour is reinforcement rather than the message. */
 .feed-tag {
-  flex: none;
+  grid-column: 1;
+  grid-row: 1;
   align-self: flex-start;
+  justify-self: start;
   margin-top: 1px;
   padding: 1px 7px;
   border-radius: 999px;
@@ -4118,7 +4130,7 @@ input[type='range'] {
 
 /* The alert body is the click target; the tag chip stays decorative. */
 .feed-go {
-  flex: 1;
+  grid-column: 2;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -4152,10 +4164,11 @@ input[type='range'] {
    Quiet until the row is hovered so a feed of ten does not read as twenty
    buttons; always there on touch, and on focus for the keyboard. */
 .feed-mail {
+  /* Under the message, in the message's column — never beside it. */
+  grid-column: 2;
+  justify-self: start;
   display: inline-flex;
   align-items: center;
-  align-self: flex-start;
-  flex: none;
   gap: 5px;
   padding: 3px 8px;
   border: 1px solid var(--border-strong);
@@ -4183,7 +4196,7 @@ input[type='range'] {
 /* Once it has gone, it stays visible: that the incident was reported is part
    of the incident, not a hover state. */
 .feed-sent {
-  flex-basis: 100%;
+  grid-column: 2;
   font-size: 11px;
   line-height: 1.4;
   color: var(--ok);
@@ -6775,13 +6788,40 @@ button.perm-module {
 
 /* Narrower than the share dialog on purpose: one address, one position, one
    button. Nothing here should invite reading around. */
+/**
+ * Header and footer hold still; the middle scrolls.
+ *
+ * The card grew past the viewport once the incident report added a reason, a
+ * note and a position block to the preview — and with the whole card sized to
+ * its content, the Send button went off the bottom of the screen with no way
+ * to reach it. Capping the card and scrolling only the fields keeps the two
+ * things the operator needs — what they are reporting, and the button that
+ * sends it — on screen at every height.
+ */
 .anchor-mail {
   width: min(430px, 100%);
+  /* The overlay centres the card inside 20 px of padding, and a centred item
+     taller than its container cannot be scrolled back up to — so the cap is
+     the height the overlay actually offers, not a round fraction of the
+     viewport that happens to exceed it on a short screen. */
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
   padding: 0;
 }
 
+.anchor-mail .role-dialog-head,
+.anchor-mail .role-dialog-foot {
+  flex: none;
+}
+
 .anchor-mail-body {
+  flex: 1;
+  min-height: 0;
   padding: 16px 18px 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 /* The coordinates are the message. Given the weight to match. */
@@ -6807,6 +6847,19 @@ button.perm-module {
   font-size: 11.5px;
 }
 
+/* Sits directly under the address it overrides, so the relationship between
+   the two is the layout rather than something to be worked out. */
+.mail-all {
+  margin: -4px 0 12px;
+  gap: 8px;
+}
+
+.mail-all .muted {
+  margin-left: auto;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
 /* The drag report is an alarm, not a routine notice — its header mark says so. */
 .role-dialog-icon.is-alert {
   background: var(--alert-soft);
@@ -6825,9 +6878,13 @@ button.perm-module {
   color: var(--ok);
 }
 
+/* Scrolls within itself as well, so a long note cannot push the fields above
+   it out of reach. */
 .anchor-mail-preview {
   margin: 12px 0 0;
   padding: 10px 12px;
+  max-height: 190px;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface-2);
@@ -8055,15 +8112,59 @@ button.perm-module {
  */
 .screen-scroll:has(.dash-map.map-expanded) .dash-panels {
   position: absolute;
-  top: 12px;
+  /* Clear of the round control that opens it, which keeps the corner. */
+  top: 58px;
   right: 12px;
   bottom: 12px;
   z-index: 3;
-  width: 290px;
+  /* 290 left the alert feed about eighty pixels of text column once the tag
+     and the mail control had taken theirs. This is the narrowest width at
+     which a sentence in that feed still reads as a sentence. */
+  width: 330px;
   gap: 10px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+/* Expanded, the figures are called up rather than always there. Display rather
+   than opacity: a hidden column must not keep taking clicks off the chart. */
+.dash-body:not(.panels-open) .dash-map.map-expanded ~ .dash-panels {
+  display: none;
+}
+
+/* ---- the control that calls them up ---- */
+
+.dash-panels-toggle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--map-control);
+  color: var(--map-control-ink);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+}
+
+.dash-panels-toggle:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Open, it is the way back out — same corner, opposite sense. */
+.dash-panels-toggle.is-on {
+  background: var(--chrome);
+  border-color: var(--chrome);
+  color: var(--chrome-ink);
 }
 
 /* Floating over the chart rather than sitting on the page, so they take the
@@ -8078,7 +8179,7 @@ button.perm-module {
  * Fleet by class, stacked.
  *
  * Side by side the 132 px ring and its legend want about 330 px; the floating
- * panel gives them 262. The legend was taking what was left and wrapping
+ * panel gives them 302. The legend was taking what was left and wrapping
  * "Tankers & gas" onto two lines against the ring. Stacked, the ring is centred
  * above a legend with the full width to itself, and every label fits on its own
  * line — no wrapping, and nothing cut short to achieve it.
@@ -8195,22 +8296,32 @@ button.perm-module {
   }
 }
 
-/* Everything the map pins to its own right edge steps left of the panel:
-   290 px of panel, its 12 px gutter, and 12 px between the two. */
+/* With the column shut, the only thing holding the corner is the round control,
+   so everything pinned right steps past that and no further. */
 .dash-map.map-expanded .map-fs-btn {
-  right: 314px;
-}
-
-.dash-map.map-expanded .maplibregl-ctrl-top-right {
-  margin-right: 304px;
-}
-
-.dash-map.map-expanded .compass-rose {
-  right: 352px;
+  right: 58px;
 }
 
 .dash-map.map-expanded .details-card {
-  right: 314px;
+  right: 58px;
+}
+
+/* Opened, everything the map pins to its own right edge steps left of the
+   column: 330 px of panel, its 12 px gutter, and 12 px between the two. */
+.panels-open .dash-map.map-expanded .map-fs-btn {
+  right: 354px;
+}
+
+.panels-open .dash-map.map-expanded .maplibregl-ctrl-top-right {
+  margin-right: 344px;
+}
+
+.panels-open .dash-map.map-expanded .compass-rose {
+  right: 392px;
+}
+
+.panels-open .dash-map.map-expanded .details-card {
+  right: 354px;
 }
 
 /* Back into its own column, rather than out of flow over the whole page. */
@@ -8266,6 +8377,17 @@ button.perm-module {
   .screen-scroll:has(.dash-map.map-expanded) .dash-panels {
     position: static;
     width: auto;
+  }
+
+  /* Back in the flow they are not covering anything, so there is nothing for a
+     control to call up or put away — and hiding them here would only make them
+     unreachable. */
+  .dash-body:not(.panels-open) .dash-map.map-expanded ~ .dash-panels {
+    display: flex;
+  }
+
+  .dash-panels-toggle {
+    display: none;
   }
 
   .dash-map.map-expanded .map-fs-btn {

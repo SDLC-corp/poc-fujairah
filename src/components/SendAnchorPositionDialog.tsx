@@ -81,14 +81,14 @@ export default function SendAnchorPositionDialog({ notice, onSend, onClose }: Pr
 
           <label className="field">
             <span>
-              Master&rsquo;s email <em className="req">*</em>
+              Email <em className="req">*</em>
             </span>
             <input
               className="text-input"
               type="email"
               autoFocus
               autoComplete="off"
-              placeholder="master@vessel.example"
+              placeholder="captain@vessel.example"
               value={to}
               onChange={(e) => setTo(e.target.value)}
               onBlur={() => setTouched(true)}

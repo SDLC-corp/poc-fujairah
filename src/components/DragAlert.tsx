@@ -188,8 +188,10 @@ export default function DragAlert() {
               `outside her ${worst.radiusM} m swing circle.`,
               '',
               `Let go at   ${formatLatLon(worst.laidAt[1], worst.laidAt[0])}`,
-              `Anchor now  ${formatLatLon(worst.anchorNow[1], worst.anchorNow[0])}`,
             ],
+            // Where the anchor is now — the position anyone going to look for
+            // her needs. Where it was let go is above, as the comparison.
+            position: { lat: worst.anchorNow[1], lon: worst.anchorNow[0] },
             reasons: DRAG_REASONS,
           }}
           onSend={(report) => {

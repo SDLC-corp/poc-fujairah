@@ -75,6 +75,16 @@ interface UiState {
    * unknown panel is open.
    */
   collapsedPanels: string[]
+  /**
+   * Whether the dashboard's statistics column is showing while the map is
+   * expanded.
+   *
+   * Shut by default. Full screen is asked for when the chart is the thing being
+   * read, and a column of panels standing over it from the moment it opens is
+   * answering a different request — so the figures wait behind a control until
+   * they are wanted.
+   */
+  dashPanelsOpen: boolean
 }
 
 const initialState: UiState = {
@@ -83,6 +93,7 @@ const initialState: UiState = {
   theme: readStoredTheme(),
   mapFullscreen: false,
   collapsedPanels: [],
+  dashPanelsOpen: false,
 }
 
 const uiSlice = createSlice({
@@ -109,9 +120,16 @@ const uiSlice = createSlice({
     },
     toggleMapFullscreen(state) {
       state.mapFullscreen = !state.mapFullscreen
+      // Leaving takes the column with it, so the next expansion opens on the
+      // chart again rather than on whatever was left showing last time.
+      if (!state.mapFullscreen) state.dashPanelsOpen = false
     },
     setMapFullscreen(state, action: PayloadAction<boolean>) {
       state.mapFullscreen = action.payload
+      if (!action.payload) state.dashPanelsOpen = false
+    },
+    toggleDashPanels(state) {
+      state.dashPanelsOpen = !state.dashPanelsOpen
     },
     togglePanel(state, action: PayloadAction<string>) {
       const id = action.payload
@@ -135,5 +153,6 @@ export const {
   setMapFullscreen,
   togglePanel,
   setCollapsedPanels,
+  toggleDashPanels,
 } = uiSlice.actions
 export default uiSlice.reducer
