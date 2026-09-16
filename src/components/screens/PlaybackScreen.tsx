@@ -39,15 +39,6 @@ import {
 /** Wall-clock seconds one replayed hour takes at 1x. */
 const REAL_SECONDS_PER_HOUR = 60
 
-/** "2026-08-03" -> "03 Aug 2026". */
-const dayLabel = (day: string) =>
-  new Date(`${day}T00:00:00Z`).toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-
 export default function PlaybackScreen() {
   const dispatch = useAppDispatch()
   const {
@@ -67,8 +58,6 @@ export default function PlaybackScreen() {
   // needed for the bounds the pickers are allowed to offer.
   const data = useAppSelector(selectWindowedPlayback)
   const replayWindow = useAppSelector(selectPlaybackWindow)
-  /** The date the archive was actually recorded on, for the projection notice. */
-  const archiveDay = useAppSelector((s) => s.playback.data?.day ?? null)
   const replayTimes = useAppSelector(selectReplayTimes)
   /**
    * What the file actually covers, as full stamps.
@@ -277,24 +266,7 @@ export default function PlaybackScreen() {
             {recorded.to} UTC.
           </div>
         )}
-        {status === 'ready' && replayWindow?.partial && (
-          <div className="pb-state pb-state-warn">
-            Positions were only recorded for part of this window —{' '}
-            {stampUtc(replayWindow.coveredFromMs!)} to {stampUtc(replayWindow.coveredToMs!)} UTC.
-          </div>
-        )}
-
-        {/* Said plainly and every time. These are real recorded tracks, but
-            they are not this date's: the archive holds one day and it is
-            re-stamped onto whichever is asked for. A console that answered
-            "what happened on the 16th" with another day's movement and did not
-            say so would be worse than one that answered nothing. */}
-        {status === 'ready' && !fault && archiveDay && replayWindow?.shiftDays !== 0 && (
-          <div className="pb-state pb-state-note">
-            Demonstration day — these tracks are the {dayLabel(archiveDay)} recording re-stamped
-            onto this date, not recorded history for it.
-          </div>
-        )}
+      
         </div>
 
         {showTimeline && followed.length > 0 && data && (
