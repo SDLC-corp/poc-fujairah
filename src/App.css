@@ -22,9 +22,40 @@
   z-index: 3;
 }
 
+/* The authority's mark, on a white plaque.
+   The header is dark navy in every theme and the published logo is dark navy on
+   white, so laid straight onto the chrome it would be all but invisible. The
+   plaque also gives the mark the clear space its own usage rules ask for
+   without lightening the whole bar — swap the background for `transparent` if a
+   reversed version of the logo is ever supplied. */
+.app-brand {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* Sized by height, never by width: the lockup is a crest beside two wordmarks
+   and its aspect ratio is the logo's business, not the header's. */
+.app-brand img {
+  display: block;
+  width: auto;
+  height: 30px;
+}
+
 .app-title {
   flex: 1;
   min-width: 0;
+}
+
+/* Narrow enough and the mark gives way to the title: the title says which
+   screen this is, and the mark only says whose port it is. */
+@media (max-width: 720px) {
+  .app-brand {
+    display: none;
+  }
 }
 
 .app-header h1 {
@@ -1578,6 +1609,13 @@ input[type='range'] {
   margin-top: 10px;
 }
 
+/* The report's own result is the point of its screen, not a reference table
+   beside something else, so it is given more of the panel before it starts
+   scrolling. */
+.table-scroll.report-rows {
+  max-height: 460px;
+}
+
 .table-scroll thead th {
   position: sticky;
   top: 0;
@@ -1705,6 +1743,20 @@ input[type='range'] {
   color: var(--muted);
   border-bottom: 1px solid var(--border);
   padding-bottom: 5px;
+  /* Matching the cells', which had it and the headers did not: past a handful
+     of columns a header butting against the next one reads as one long label. */
+  padding-right: 6px;
+}
+
+/* Row numbers and identifiers. Tabular so the column scans straight down, and
+   narrow so a row's position does not sit there looking like data. */
+.data-table .col-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-table th.col-num {
+  width: 1%;
 }
 
 .data-table td {
@@ -2556,6 +2608,39 @@ input[type='range'] {
 
 .sign-out:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+/* An action in the chrome. Painted from white at low alpha rather than from the
+   surface tokens, like the sign-out beside it: the header bar is dark in every
+   theme, so a control on it cannot take its colours from the theme. */
+.header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.header-action:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* The icon alone past the width where the bar starts shedding things. It is a
+   radio mast and the dialog names itself on opening, so the word is the part
+   that can go. */
+@media (max-width: 860px) {
+  .header-action-text {
+    display: none;
+  }
 }
 
 /* ---------------- login ---------------- */
@@ -6997,6 +7082,150 @@ button.perm-module {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ---- broadcast to all vessels ---- */
+
+/* Same shell as the share dialog — a head, a scrolling body, a fixed foot. */
+.broadcast-dialog {
+  width: min(540px, 100%);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.broadcast-body {
+  padding: 16px 18px 4px;
+  overflow-y: auto;
+}
+
+.broadcast-priorities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* The signal word under the name, because it is the thing that actually goes on
+   the air: an operator choosing "Safety" is choosing to say SÉCURITÉ. */
+.bc-pri {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.25;
+}
+
+.bc-pri em {
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+/* Each priority carries its own colour once it is the chosen one. Unselected
+   they stay neutral — three coloured chips side by side would read as three
+   warnings rather than as one choice. */
+.bc-pri-warn.active {
+  border-color: var(--warn);
+  background: var(--tint-amber);
+  color: var(--warn);
+}
+
+.bc-pri-alert.active {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+/* The message as it is transmitted and as it would be read aloud, so it is
+   monospaced and preserves its own line breaks — this is not a summary of the
+   broadcast, it is the broadcast. */
+.broadcast-preview {
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  max-height: 190px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font: 11.5px/1.55 ui-monospace, Consolas, monospace;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The priority is on the preview's edge as well as on the chip: by the time the
+   operator is reading the text back, the chips are above the fold. */
+.bc-pre-warn {
+  border-left-color: var(--warn);
+}
+
+.bc-pre-alert {
+  border-left-color: var(--alert);
+}
+
+.broadcast-sent {
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--tint-green);
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ok);
+}
+
+.broadcast-log {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.broadcast-log li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+
+/* The badge holds the left column across both rows, so the text and its
+   provenance line up under each other rather than stepping in and out. */
+.broadcast-log .badge {
+  grid-row: 1 / span 2;
+  align-self: start;
+}
+
+.broadcast-log-text {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.broadcast-log-meta {
+  font-size: 10px;
+}
+
+/* A message over the transmission limit, marked on the field itself — the
+   count underneath says why, but the field is what has to look wrong. */
+.text-input.is-bad {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+}
+
+.text-input.is-bad:focus {
+  border-color: var(--alert);
+  box-shadow: 0 0 0 3px var(--alert-soft);
 }
 
 /* ---- anchor position notice ---- */

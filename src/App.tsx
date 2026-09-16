@@ -6,6 +6,8 @@ import { selectAllowedTabs, selectCurrentRole } from './features/roles/selectors
 import { selectCurrentUser } from './features/users/selectors'
 import { signOut } from './features/auth/authSlice'
 import LoginScreen from './components/LoginScreen'
+import BrandLogo from './components/BrandLogo'
+import BroadcastButton from './components/BroadcastButton'
 import DashboardKpis from './components/DashboardKpis'
 import DragAlert from './components/DragAlert'
 import HeaderUtilisation from './components/HeaderUtilisation'
@@ -122,13 +124,15 @@ export default function App() {
           <span />
           <span />
         </button>
+        <BrandLogo />
         <div className="app-title">
-          <h1>Port of Fujairah — Proof of Concept</h1>
+          <h1>Port of Fujairah — Anchorage Management</h1>
         </div>
         {/* <span className={`status status-${status}`}>
           {status === 'ready' ? 'Data loaded' : status === 'loading' ? 'Loading…' : status}
         </span> */}
         <HeaderUtilisation />
+        <BroadcastButton />
         <ThemeSwitch />
         <div className="app-user">
           <span className="app-user-name" title={account?.email ?? user.email}>

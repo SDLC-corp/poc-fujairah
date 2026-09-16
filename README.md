@@ -132,6 +132,9 @@ npm run verify   # run the Turf analyses over the static data in Node
 ## Layout
 
 ```
+public/
+  logo-fujairah-ports.svg   port authority mark in the header (.png also accepted)
+  favicon.svg               browser tab mark (.png also accepted)
 public/data/
   anchorages.json       official Fujairah Anchorage Area — real, sourced (see below)
   contours.json         10 m depth contours, GEBCO-derived (npm run gen:contours)
@@ -157,6 +160,26 @@ scripts/verify-data.mjs same Turf checks, runnable headless
 Analysis lives in **memoised Redux selectors** (`src/features/analysis/selectors.ts`), so Turf
 only recomputes when the data or the analysis parameters actually change — components stay
 declarative and the map is a pure projection of store state.
+
+## Branding
+
+Two image files, neither of them in the repo — they are the port authority's, not
+this project's, so they are dropped into `public/` rather than committed here:
+
+| File | Where it shows | Notes |
+| --- | --- | --- |
+| `public/logo-fujairah-ports.svg` | Header, left of the title | `.png` works too — [BrandLogo](src/components/BrandLogo.tsx) tries SVG then PNG |
+| `public/favicon.svg` | Browser tab | `.png` works too; both are declared in [index.html](index.html) |
+
+The header logo sits on a **white plaque**, because the header bar is dark navy in
+every theme and the published mark is dark navy on white — laid straight onto the
+chrome it would be all but invisible. If a reversed (white-on-transparent) version
+of the mark is available, use that instead and set `.app-brand`'s `background` to
+`transparent`.
+
+Neither file is required. The logo renders nothing if it is missing rather than
+leaving a broken-image glyph in the chrome, and the title beside it already names
+the port.
 
 ## Official anchorage data
 

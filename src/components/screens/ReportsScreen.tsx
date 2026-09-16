@@ -198,6 +198,26 @@ export default function ReportsScreen() {
     ? Math.round(matchedDwells.reduce((a, b) => a + b, 0) / matchedDwells.length)
     : null
 
+  /**
+   * The matched rows in the order a report reads them: most recent arrival
+   * first.
+   *
+   * Sorted rather than left in fleet order, which is the order the generator
+   * happened to write the file in and means nothing to anyone. The report is
+   * matched on arrival date, so arrival is the column it is about — and now that
+   * every match is listed rather than the first dozen, the order is what decides
+   * whether the top of the table is the useful end of it.
+   */
+  const rows = useMemo(
+    () =>
+      [...filtered].sort(
+        (a, b) =>
+          (b.properties.ata ? Date.parse(b.properties.ata) : 0) -
+          (a.properties.ata ? Date.parse(a.properties.ata) : 0),
+      ),
+    [filtered],
+  )
+
   /** Where the matches are lying, busiest first — the report's own breakdown. */
   const matchedByArea = useMemo(() => {
     const counts = new Map<string, number>()
@@ -496,26 +516,38 @@ export default function ReportsScreen() {
           </div>
         )}
 
-        <div className="table-scroll">
+        {/* Every match, not the first dozen. The container already scrolls at a
+            fixed height with the header pinned, so a long result is a scroll
+            rather than a page that grows without end — and "the file carries the
+            rest" was asking the operator to export a report to find out what was
+            in it. */}
+        <div className="table-scroll report-rows">
           <table className="data-table">
             <thead>
               <tr>
+                <th className="col-num">#</th>
                 <th>Vessel</th>
+                <th>IMO</th>
                 <th>Type</th>
                 <th>Flag</th>
                 <th>Area</th>
                 <th>Arrived</th>
+                <th>Departs</th>
                 <th>Planned stay</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.slice(0, 12).map((v) => {
+              {rows.map((v, i) => {
                 const p = v.properties
                 return (
                   <tr key={p.id}>
+                    {/* The row's place in the result, so a figure quoted off the
+                        screen can be found again after a scroll. */}
+                    <td className="col-num muted">{i + 1}</td>
                     <td>
                       <strong>{p.name}</strong>
                     </td>
+                    <td className="muted col-num">{p.imo || '—'}</td>
                     <td className="muted">{VESSEL_LABELS[p.type] ?? p.type}</td>
                     <td>
                       <span className="flag-cell">
@@ -525,15 +557,14 @@ export default function ReportsScreen() {
                     </td>
                     <td>{p.area ?? '—'}</td>
                     <td className="muted">{formatDateTime(p.ata)}</td>
-                    <td className="muted">
-                      {formatDuration(hoursBetween(p.ata, p.etd))}
-                    </td>
+                    <td className="muted">{formatDateTime(p.etd)}</td>
+                    <td className="muted">{formatDuration(hoursBetween(p.ata, p.etd))}</td>
                   </tr>
                 )
               })}
-              {filtered.length === 0 && (
+              {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="muted">
+                  <td colSpan={9} className="muted">
                     Nothing matches these filters
                     {range !== 'all' && ' — try widening the date range'}.
                   </td>
@@ -543,9 +574,10 @@ export default function ReportsScreen() {
           </table>
         </div>
 
-        {filtered.length > 12 && (
+        {rows.length > 0 && (
           <p className="muted hint">
-            Showing the first 12 of {filtered.length}. The generated file carries all of them.
+            All {rows.length} matching {rows.length === 1 ? 'vessel' : 'vessels'}, most recent
+            arrival first. {format} export carries these same rows.
           </p>
         )}
       </section>

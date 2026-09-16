@@ -2,13 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Both declared so the mark can be dropped in as either format. A browser
+      prefers the SVG and falls back to the PNG when it is not there, so only
+      one of the two files has to exist — see "Branding" in the README.
+    -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
       content="GIS proof of concept for the Port of Fujairah — MapLibre GL, Turf.js and static GeoJSON."
     />
-    <title>Port of Fujairah — GIS PoC</title>
+    <title>Port of Fujairah — Anchorage management</title>
   </head>
   <body>
     <div id="root"></div>
