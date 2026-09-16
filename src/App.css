@@ -4657,10 +4657,20 @@ input[type='range'] {
   align-items: flex-start;
 }
 
-/* Flex, because one of these carries an icon: a baseline-aligned glyph beside
+/* Direct children only.
+   These are the row's own actions, and the row also holds the track-source tag,
+   whose dropdown is full of buttons that are nothing like them. A descendant
+   selector handed every one of those this padding, border, surface and centred
+   flex layout — and it outranks the single-class rules those buttons style
+   themselves with, so the menu's options lost their own left-aligned block
+   layout and came out as bordered pills with the label centred beside the text.
+   `>` is the fix and it is also the honest description: only a button sitting in
+   this row is one of this row's buttons.
+
+   Flex, because one of them carries an icon: a baseline-aligned glyph beside
    12.5px text sits low, and centring it is the difference between a button with
    an icon and a button with something stuck to it. */
-.vessel-hero-actions button {
+.vessel-hero-actions > button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4678,18 +4688,18 @@ input[type='range'] {
   white-space: nowrap;
 }
 
-.vessel-hero-actions button:hover {
+.vessel-hero-actions > button:hover {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
 
-.vessel-hero-actions .primary-button {
+.vessel-hero-actions > .primary-button {
   color: #fff;
   background: var(--navy-500);
   border-color: var(--accent);
 }
 
-.vessel-hero-actions .primary-button:hover {
+.vessel-hero-actions > .primary-button:hover {
   background: var(--navy-600);
   border-color: var(--ink-accent);
 }
@@ -4729,7 +4739,7 @@ input[type='range'] {
     width: 100%;
   }
 
-  .vessel-hero-actions button {
+  .vessel-hero-actions > button {
     flex: 1;
   }
 }
@@ -4737,8 +4747,6 @@ input[type='range'] {
 
 /* ---------------- track source ---------------- */
 
-/* The tag sits with the buttons but is not one of them, so it has to win back
-   the padding and the border `.vessel-hero-actions button` hands out. */
 .source-picker {
   position: relative;
   display: inline-flex;
@@ -4751,7 +4759,8 @@ input[type='range'] {
   justify-content: flex-end;
 }
 
-.vessel-hero-actions .source-badge,
+/* One selector now the actions row keeps to its own children — this used to
+   need a second, more specific one to claw back what that row was handing out. */
 .source-badge {
   display: inline-flex;
   align-items: center;
@@ -4808,8 +4817,15 @@ button.source-badge[aria-expanded='true'] {
    same thing, and the difference between them is the reason to choose one.
    Stacked rather than columned — the explanation is a sentence, and beside a
    fixed label column it had barely half the card to wrap into. */
+/* A column, so the gap between the label and its sentence is a real one: the
+   badge is an atomic inline, and a `margin-bottom` on one of those does not open
+   up the line it sits on. `flex-start` keeps the pill at its own width instead
+   of stretching it the width of the card. */
 .source-option {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
   width: 100%;
   max-width: 100%;
   padding: 7px 8px;
@@ -4830,10 +4846,6 @@ button.source-badge[aria-expanded='true'] {
 
 .source-option.is-on {
   background: var(--accent-soft);
-}
-
-.source-option .source-badge {
-  margin-bottom: 4px;
 }
 
 .source-option-hint {
