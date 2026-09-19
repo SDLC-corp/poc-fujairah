@@ -12,7 +12,8 @@
     "gen:contours": "node scripts/gen-contours.mjs",
     "gen:vessels": "node scripts/gen-vessels.mjs public/data/anchorages.json public/data/vessels.json",
     "gen:wallpack": "node scripts/gen-wallpack.mjs public/data/anchorages.json public/data/vessels.json",
-    "gen:playback": "node scripts/gen-playback.mjs"
+    "gen:playback": "node scripts/gen-playback.mjs",
+    "gen:incidents": "node scripts/gen-incidents.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",

@@ -6,6 +6,12 @@ import {
   selectRestrictedIncursions,
   selectVesselAreaIndex,
 } from '../../features/analysis/selectors'
+import {
+  geofenceSubject,
+  placeOf,
+  REASONS,
+  restrictedSubject,
+} from '../../features/incidents/subjects'
 import { highlightFeature, selectFeature } from '../../features/selection/selectionSlice'
 import { focusFeature } from '../../features/view/viewSlice'
 import type { FocusTarget } from '../../features/view/viewSlice'
@@ -15,8 +21,6 @@ import { buildOccupancySeries } from '../../utils/occupancyCurve'
 import { OCCUPANCY_ALERT_PCT } from '../../utils/occupancyLoad'
 import { useState } from 'react'
 import { FiRadio } from 'react-icons/fi'
-import { centroid } from '@turf/turf'
-import type { Feature } from 'geojson'
 import CollapsiblePanel from '../CollapsiblePanel'
 import SendIncidentMailDialog from '../SendIncidentMailDialog'
 import type { IncidentMail, IncidentSubject } from '../SendIncidentMailDialog'
@@ -27,44 +31,6 @@ import RawJson from '../RawJson'
 
 /** The folding panels, in the order they appear — drives "collapse all". */
 const PANEL_IDS = ['dash-occupancy', 'dash-fleet', 'dash-alerts', 'dash-spots']
-
-/**
- * What an operator is likely to be reporting, per kind of incident.
- *
- * Kept apart rather than pooled into one list, because the useful answers are
- * not the same: a ship inside a prohibited area is a matter of orders given,
- * while an anchorage at its limit is a matter of what is being done about the
- * queue. A single list covering both would be mostly wrong on every screen.
- */
-const REASONS: Record<string, string[]> = {
-  geofence: [
-    'Vessel ordered to leave the area',
-    'Entry permitted — working under escort',
-    'Awaiting master response',
-    'Cause not yet established',
-    'Other',
-  ],
-  restricted: [
-    'Vessel ordered to leave immediately',
-    'Vessel in distress — entry unavoidable',
-    'Awaiting master response',
-    'Reported to the Harbour Master',
-    'Other',
-  ],
-  occupancy: [
-    'Arrivals being diverted to another area',
-    'Spots being released',
-    'No action — short-lived peak',
-    'Escalated to the Harbour Master',
-    'Other',
-  ],
-  traffic: [
-    'Routine movement — no action',
-    'Speed advisory issued',
-    'Awaiting master response',
-    'Other',
-  ],
-}
 
 /**
  * Overview of the offshore anchorage: the live map sits beside these panels, and
@@ -110,23 +76,6 @@ export default function DashboardScreen() {
    * question nobody asked — the map's own focus balloon already names what was
    * revealed. The card is what a click on the feature itself is for.
    */
-  /**
-   * A place for anything with geometry.
-   *
-   * A polygon reports its middle rather than a corner — "Area A" means the
-   * water, and the middle of it is the only point that stands for the whole.
-   * A vessel reports where she is.
-   */
-  function placeOf(feature: Feature | null | undefined) {
-    if (!feature) return null
-    const [lon, lat] = (
-      feature.geometry.type === 'Point'
-        ? feature.geometry.coordinates
-        : centroid(feature).geometry.coordinates
-    ) as [number, number]
-    return { lat, lon }
-  }
-
   function reveal(layer: LayerId, target: FocusTarget, id: string) {
     dispatch(highlightFeature({ layer, id }))
     dispatch(focusFeature({ target, id }))
@@ -251,18 +200,7 @@ export default function DashboardScreen() {
                 {b.fence.properties.area})
                 <span className="feed-time">geofence · live — show on map</span>
               </button>
-              {mailAction(`fence-${b.fence.properties.id}`, {
-                title: `${b.vessels.length} ${b.vessels.length === 1 ? 'vessel' : 'vessels'} inside ${b.fence.properties.name}`,
-                subtitle: `${b.fence.properties.kind === 'exclusion' ? 'Exclusion zone' : 'Advisory zone'} · Area ${b.fence.properties.area} · ${b.fence.properties.cause}`,
-                lines: [
-                  `Vessels: ${b.vessels.map((v) => v.properties.name).join(', ')}`,
-                  `Rule: ${b.fence.properties.rule}`,
-                ],
-                // The fence, not one of the ships inside it: the fence is the
-                // thing the reader is being sent to look at.
-                position: placeOf(b.fence),
-                reasons: REASONS.geofence,
-              })}
+              {mailAction(`fence-${b.fence.properties.id}`, geofenceSubject(b))}
             </li>
           ))}
           {incursions.map((i) => (
@@ -277,17 +215,7 @@ export default function DashboardScreen() {
                 anchoring and steaming prohibited
                 <span className="feed-time">live — show on map</span>
               </button>
-              {mailAction(`restricted-${i.vessel.properties.id}`, {
-                title: `${i.vessel.properties.name} — inside ${i.area.properties.name}`,
-                subtitle: 'Anchoring and steaming prohibited',
-                lines: [
-                  `IMO ${i.vessel.properties.imo} · ${i.vessel.properties.lengthM} m LOA · making ${i.vessel.properties.speedKn} kn`,
-                  `Authority: ${i.area.properties.authority}`,
-                ],
-                // Where she actually is, which is the point of the report.
-                position: placeOf(i.vessel),
-                reasons: REASONS.restricted,
-              })}
+              {mailAction(`restricted-${i.vessel.properties.id}`, restrictedSubject(i))}
             </li>
           ))}
           {nearFull.map((r) => (

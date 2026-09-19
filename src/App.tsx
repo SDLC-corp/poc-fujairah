@@ -28,6 +28,9 @@ import PlaybackScreen from './components/screens/PlaybackScreen'
 import OccupancyScreen from './components/screens/OccupancyScreen'
 import AssignmentScreen from './components/screens/AssignmentScreen'
 import VesselDetailsScreen from './components/screens/VesselDetailsScreen'
+import IncidentsScreen from './components/screens/IncidentsScreen'
+import IncidentDetailScreen from './components/screens/IncidentDetailScreen'
+import DrawIncidentScreen from './components/screens/DrawIncidentScreen'
 import ReportsScreen from './components/screens/ReportsScreen'
 import UsersScreen from './components/screens/UsersScreen'
 import RolesScreen from './components/screens/RolesScreen'
@@ -42,6 +45,9 @@ const SCREENS = {
   occupancy: OccupancyScreen,
   assignment: AssignmentScreen,
   vessel: VesselDetailsScreen,
+  incidents: IncidentsScreen,
+  incident: IncidentDetailScreen,
+  'incident-draw': DrawIncidentScreen,
   reports: ReportsScreen,
   users: UsersScreen,
   roles: RolesScreen,
@@ -108,7 +114,24 @@ export default function App() {
   const showsMap = activeTab === 'assignment' || activeTab === 'dashboard'
   // Tracking carries its own map and lays out its two columns itself, so it
   // opts out of both the standard split and the scrolling card grid.
-  const ownsLayout = activeTab === 'tracking' || activeTab === 'playback'
+  // Tracking and playback carry their own map and lay out their columns
+  // themselves; the incident register does the same, because the map belongs
+  // between its cards and its filters rather than beside the whole screen.
+  /**
+   * Screens where a full-screen chart means the whole screen.
+   *
+   * The register and the draw screen, because on both the map is the work
+   * rather than an illustration beside it. Not the dashboard: its expanded map
+   * is a wider column, not a takeover, and its rail should stay.
+   */
+  const railHidden =
+    mapFullscreen && (activeTab === 'incidents' || activeTab === 'incident-draw')
+
+  const ownsLayout =
+    activeTab === 'tracking' ||
+    activeTab === 'playback' ||
+    activeTab === 'incidents' ||
+    activeTab === 'incident-draw'
 
   return (
     <div className={`app${navOpen ? ' nav-open' : ''}`}>
@@ -153,8 +176,13 @@ export default function App() {
           operator whichever screen they are on. */}
       <DragAlert />
 
-      <div className="app-body">
-        <TabRail />
+      {/* The rail stands down for a full-screen chart on the register.
+          Full screen there means the map is the whole screen, and a navigation
+          column beside it is the one thing still arguing otherwise. Scoped to
+          this tab rather than to the flag: the dashboard's expanded map is a
+          wider column, not a takeover, and its rail should stay. */}
+      <div className={`app-body${railHidden ? ' rail-hidden' : ''}`}>
+        {!railHidden && <TabRail />}
 
         <section className="screen">
           <div className="screen-head">

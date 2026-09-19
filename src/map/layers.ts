@@ -25,6 +25,8 @@ export const SOURCE_IDS = {
   swing: 'src-swing',
   freeSpots: 'src-free-spots',
   geofences: 'src-geofences',
+  incidents: 'src-incidents',
+  draw: 'src-draw',
   transit: 'src-transit',
   anchors: 'src-anchors',
   anchorDrop: 'src-anchor-drop',
@@ -62,7 +64,38 @@ export const LAYER_GROUPS: Record<LayerId, string[]> = {
   swing: ['swing-fill', 'swing-outline', 'swing-label'],
   freeSpots: ['free-spot-fill', 'free-spot-outline'],
   geofences: ['geofence-fill', 'geofence-outline', 'geofence-label'],
+  incidents: [
+    'incident-fill',
+    'incident-outline',
+    'incident-outline-past',
+    'incident-pin',
+    'incident-label',
+  ],
 }
+
+/**
+ * The register's severities on the chart.
+ *
+ * Fixed hexes rather than the theme's `--alert`/`--warn` tokens, because these
+ * are read against the sea in three different chart palettes and a token that
+ * shifts with the console would not hold its meaning across them. High is the
+ * chart's own warning red; medium an amber that survives a navy background;
+ * low a slate that reads as "logged, not urgent" without disappearing.
+ */
+export const INCIDENT_INK: Record<string, string> = {
+  high: '#ef4444',
+  medium: '#f59e0b',
+  low: '#94a3b8',
+}
+
+/**
+ * The shape being drawn — the console's accent blue, held fixed.
+ *
+ * Deliberately not any of the severity colours: a draft is not yet an incident
+ * and must not look like one already classified. Blue over the sea in all three
+ * chart palettes, which the reds and ambers are not.
+ */
+export const DRAW_INK = '#3b82f6'
 
 /** Toggled together with the 3D switch. */
 export const FLAT_VESSEL_LAYERS = ['vessels-halo', 'vessels-circle']
@@ -498,6 +531,170 @@ export function addPortLayers(map: MapLibreMap) {
       'text-allow-overlap': true,
     },
     paint: { 'text-color': '#7f1d1d', 'text-halo-color': '#fff7ed', 'text-halo-width': 1.8 },
+  })
+
+  /* --- incidents: the register's affected water ------------------------- */
+  /**
+   * Coloured by severity, and *faded once dealt with* rather than hidden. A
+   * closed incident is still a thing that happened in that water, and an
+   * operator looking at a patch of anchorage wants to know it has a history —
+   * but it must not compete with the ones still open, so status drives opacity
+   * and severity drives hue. The two encodings are independent, which is what
+   * lets a glance answer "how bad" and "still mine?" at once.
+   */
+  const incidentColor: ExpressionSpecification = [
+    'match',
+    ['get', 'severity'],
+    'high',
+    INCIDENT_INK.high,
+    'medium',
+    INCIDENT_INK.medium,
+    INCIDENT_INK.low,
+  ]
+
+  const incidentOpen: ExpressionSpecification = ['==', ['get', 'status'], 'open']
+  const incidentPast: ExpressionSpecification = ['!=', ['get', 'status'], 'open']
+
+  add({
+    id: 'incident-fill',
+    type: 'fill',
+    source: SOURCE_IDS.incidents,
+    filter: ['==', ['geometry-type'], 'Polygon'],
+    paint: {
+      'fill-color': incidentColor,
+      'fill-opacity': ['case', incidentOpen, 0.22, 0.07],
+    },
+  })
+  /**
+   * Two outline layers rather than one with a conditional dash.
+   *
+   * `line-dasharray` is not a data-driven property in MapLibre — it was
+   * cross-faded historically and still will not take a `case` over feature
+   * data. Written as one layer the expression is accepted and then quietly
+   * ignored, which is the worst of the three possible outcomes. Filtered into
+   * two layers it works, and each one says plainly which state it draws.
+   */
+  add({
+    id: 'incident-outline',
+    type: 'line',
+    source: SOURCE_IDS.incidents,
+    filter: ['all', ['==', ['geometry-type'], 'Polygon'], incidentOpen],
+    layout: { 'line-join': 'round' },
+    paint: {
+      'line-color': incidentColor,
+      'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 3.4, 1.8],
+    },
+  })
+  add({
+    id: 'incident-outline-past',
+    type: 'line',
+    source: SOURCE_IDS.incidents,
+    filter: ['all', ['==', ['geometry-type'], 'Polygon'], incidentPast],
+    layout: { 'line-join': 'round' },
+    paint: {
+      'line-color': incidentColor,
+      'line-width': 1.4,
+      'line-dasharray': [2, 2],
+      'line-opacity': 0.6,
+    },
+  })
+  /**
+   * A mark at the middle of it, so an incident is findable at anchorage-wide
+   * zoom where its own outline is a few pixels across. Only the open ones get
+   * one: fifty pins over the anchorage would bury the water they are about.
+   */
+  add({
+    id: 'incident-pin',
+    type: 'circle',
+    source: SOURCE_IDS.incidents,
+    filter: ['all', ['==', ['geometry-type'], 'Point'], incidentOpen],
+    paint: {
+      'circle-radius': ['case', ['boolean', ['feature-state', 'selected'], false], 8, 5.5],
+      'circle-color': incidentColor,
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 1.4,
+    },
+  })
+  add({
+    id: 'incident-label',
+    type: 'symbol',
+    source: SOURCE_IDS.incidents,
+    filter: ['all', ['==', ['geometry-type'], 'Point'], incidentOpen],
+    minzoom: 10.5,
+    layout: {
+      'text-field': ['get', 'id'],
+      'text-font': FONT_BOLD,
+      'text-size': 10,
+      'text-offset': [0, -1.5],
+      'text-anchor': 'bottom',
+      // Let them collide: the register can put several in one patch of water,
+      // and MapLibre dropping the crowded ones is the right thinning.
+      'text-allow-overlap': false,
+    },
+    paint: {
+      'text-color': incidentColor,
+      'text-halo-color': 'rgba(4, 14, 28, 0.85)',
+      'text-halo-width': 1.6,
+    },
+  })
+
+  /* --- the shape being drawn ------------------------------------------- */
+  /**
+   * Always on top, and not in `LAYER_GROUPS`.
+   *
+   * A draft is not a data layer an operator would think to switch off — it is
+   * the thing they are doing this second. Putting it in the layer panel would
+   * offer them a way to hide their own work, and give the draw screen a
+   * dependency on a toggle it cannot assume.
+   *
+   * `DRAW_INK` rather than a theme token: this is drawn over three different
+   * chart palettes and has to stay findable against all of them, the same
+   * reason the incident severities carry fixed hexes.
+   */
+  add({
+    id: 'draw-fill',
+    type: 'fill',
+    source: SOURCE_IDS.draw,
+    filter: ['==', ['get', 'kind'], 'area'],
+    paint: { 'fill-color': DRAW_INK, 'fill-opacity': 0.22 },
+  })
+  add({
+    id: 'draw-edge',
+    type: 'line',
+    source: SOURCE_IDS.draw,
+    filter: ['in', ['get', 'kind'], ['literal', ['area', 'edge']]],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': DRAW_INK, 'line-width': 2.2 },
+  })
+  /** A white-ringed disc per corner, big enough to be a target as well as a mark. */
+  add({
+    id: 'draw-vertex',
+    type: 'circle',
+    source: SOURCE_IDS.draw,
+    filter: ['==', ['get', 'kind'], 'vertex'],
+    paint: {
+      'circle-radius': 9,
+      'circle-color': DRAW_INK,
+      'circle-stroke-color': '#ffffff',
+      'circle-stroke-width': 2,
+    },
+  })
+  add({
+    id: 'draw-vertex-label',
+    type: 'symbol',
+    source: SOURCE_IDS.draw,
+    filter: ['==', ['get', 'kind'], 'vertex'],
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-font': FONT_BOLD,
+      'text-size': 11,
+      // Numbered in place rather than beside: the order corners were placed in
+      // is what the coordinate table is keyed on, and a label offset from its
+      // own disc is ambiguous the moment two corners are close together.
+      'text-allow-overlap': true,
+      'text-ignore-placement': true,
+    },
+    paint: { 'text-color': '#ffffff' },
   })
 
   /* --- free spots: grid positions that clear every occupied circle ------ */

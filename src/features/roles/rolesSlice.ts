@@ -67,12 +67,21 @@ export interface ModuleDef {
    * The screen in the nav rail this module gates. A role with No Access here
    * does not see that tab at all.
    *
-   * Not every module has one: Vessel Requests, Alerts and the Audit Log are
+   * Not every module has one: Vessel Requests and the Audit Log are
    * permissions the port asked for that have no screen yet. They are left
    * unlinked rather than pointed at an approximate tab, so the day a screen is
    * built the permission is already there and already assigned.
    */
   tab?: TabId
+  /**
+   * Off-rail screens the same grant reaches.
+   *
+   * A module gates one entry in the rail, but a screen reached only *from* that
+   * entry has to be gated by the same permission — otherwise a role denied the
+   * register could still be dropped onto a record by a stale tab. Kept apart
+   * from `tab` because only the first belongs in the rail.
+   */
+  alsoTabs?: TabId[]
 }
 
 export const MODULES: ModuleDef[] = [
@@ -179,6 +188,12 @@ export const MODULES: ModuleDef[] = [
   },
   {
     id: 'alerts',
+    // The screens this module was always describing, now that they exist: the
+    // permission came from the port's own list and sat unlinked until there was
+    // something for it to gate. `tab` gates the register; the details page is
+    // reached only from it, so it is gated by the same grant.
+    tab: 'incidents',
+    alsoTabs: ['incident', 'incident-draw'],
     label: 'Alerts',
     blurb: 'View and manage system alerts and notifications.',
     levels: READ_WRITE,

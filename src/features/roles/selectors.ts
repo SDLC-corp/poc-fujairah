@@ -36,7 +36,10 @@ export const selectAllowedTabs = createSelector([selectCurrentRole], (role): Set
   const allowed = new Set<TabId>(['help'])
   if (!role || !role.active) return allowed
   for (const m of MODULES) {
-    if (m.tab && role.permissions[m.id]?.level !== 'none') allowed.add(m.tab)
+    if (role.permissions[m.id]?.level === 'none') continue
+    if (m.tab) allowed.add(m.tab)
+    // Screens reached only from that tab ride on the same grant.
+    for (const t of m.alsoTabs ?? []) allowed.add(t)
   }
   return allowed
 })

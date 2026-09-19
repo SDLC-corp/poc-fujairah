@@ -79,6 +79,7 @@ const LAYER_TITLE: Record<LayerId, string> = {
   swing: 'Swing circle',
   freeSpots: 'Available spot',
   geofences: 'Geofence',
+  incidents: 'Incident area',
 }
 
 /** One property row's value, rendered as the kind of thing it actually is. */
@@ -124,6 +125,10 @@ export default function FeatureDetails() {
     swing: vessels,
     freeSpots: null,
     geofences,
+    // Incident areas are not in INTERACTIVE_LAYERS: they are read on the
+    // register's own screens, where the record itself is a click away and says
+    // far more than a card over the chart could.
+    incidents: null,
     contours: null,
     soundings: null,
     graticule: null,

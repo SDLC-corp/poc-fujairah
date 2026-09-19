@@ -10,6 +10,7 @@ export type LayerId =
   | 'swing'
   | 'freeSpots'
   | 'geofences'
+  | 'incidents'
 
 // Declared as `type` rather than `interface` so they keep an implicit index
 // signature and stay assignable to GeoJSON's `GeoJsonProperties` in Turf calls.

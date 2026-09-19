@@ -7,14 +7,17 @@ import {
 } from '../features/layers/layersSlice'
 import type { LayerId } from '../types/gis'
 import { COMPASS_INK } from '../map/compassRose'
-import { CONTOUR_INK, GRATICULE_INK, SOUNDING_INK } from '../map/layers'
+import { CONTOUR_INK, GRATICULE_INK, INCIDENT_INK, SOUNDING_INK } from '../map/layers'
 
 const LAYERS: { id: LayerId; label: string; swatch: string }[] = [
   { id: 'anchorages', label: 'Anchorage areas (FAA)', swatch: '#e03b32' },
   { id: 'vessels', label: 'Vessels (AIS snapshot)', swatch: '#8A2BE2' },
   { id: 'swing', label: 'Swing circles', swatch: '#334155' },
   { id: 'freeSpots', label: 'Available spots', swatch: '#16a34a' },
-  { id: 'geofences', label: 'Geofences (incidents)', swatch: '#dc2626' },
+  { id: 'geofences', label: 'Geofences (declared zones)', swatch: '#dc2626' },
+  // Only drawn on the register's own screens — see MapView — but the switch
+  // lives here with the others rather than being a second kind of control.
+  { id: 'incidents', label: 'Incident areas (register)', swatch: INCIDENT_INK.high },
   // Chart furniture is backdrop, so it sits at the foot of the list — and under
   // the spots and vessels on the map.
   { id: 'contours', label: 'Depth contours (10 m)', swatch: CONTOUR_INK },

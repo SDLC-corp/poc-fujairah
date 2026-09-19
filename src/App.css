@@ -2147,13 +2147,13 @@ input[type='range'] {
 }
 
 .faq summary::before {
-  content: '＋';
+  content: 'ï¼‹';
   margin-right: 7px;
   color: var(--accent);
 }
 
 .faq[open] summary::before {
-  content: '－';
+  content: 'ï¼';
 }
 
 .faq p {
@@ -7099,6 +7099,1857 @@ button.perm-module {
   gap: 6px;
 }
 
+/* ---- incident register: at rest, a screen with a chart on it ---- */
+
+/**
+ * Three columns over three rows: a bar, then the figures beside the chart with
+ * the filters at the right, then the register under them with the breakdown
+ * beside it.
+ *
+ * This is the arrangement for working through a register — everything visible
+ * at once. Expanding the map swaps it for the map-first one below, which is the
+ * arrangement for reading the water.
+ *
+ * `minmax(0, ...)` on the middle column, or the map's canvas refuses to shrink
+ * below its content and pushes the filters off the screen.
+ */
+.inc-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.85fr) minmax(0, 2.1fr) minmax(250px, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+  padding: 14px;
+  /* Sized as the flex item it is — `.screen` is a column flex container, and
+     `flex: 1` with `min-height: 0` is what lets the page scroll inside it
+     rather than growing the body. Same form `.playback-layout` uses. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+
+/* The bar spans every column, so the action sits at the true right corner of
+   the layout rather than at the edge of one panel in it. */
+.inc-bar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.inc-bar p {
+  margin: 0;
+  font-size: 12.5px;
+}
+
+.inc-cards-panel {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inc-map {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  min-width: 0;
+  min-height: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.inc-list-panel {
+  grid-column: 1 / span 2;
+  grid-row: 3;
+  min-width: 0;
+}
+
+/* The right column: summary, then filters, directly one under the other.
+   One container spanning both rows rather than a panel pinned to each — pinned,
+   each panel took its row's height from the map or the table beside it, and a
+   gap opened under whichever was shorter. */
+.inc-side {
+  grid-column: 3;
+  grid-row: 2 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  align-self: start;
+}
+
+.inc-side > .panel {
+  margin: 0;
+}
+
+/* ---- the standing figures, as cards ---- */
+
+.inc-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.inc-card-alert {
+  border-left-color: var(--alert);
+}
+
+.inc-card-warn {
+  border-left-color: var(--warn);
+}
+
+.inc-card-ok {
+  border-left-color: var(--ok);
+}
+
+.inc-card-info {
+  border-left-color: var(--accent);
+}
+
+.inc-card-mark {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.inc-card-alert .inc-card-mark {
+  background: var(--alert-soft);
+  border-color: transparent;
+  color: var(--alert);
+}
+
+.inc-card-warn .inc-card-mark {
+  background: var(--tint-amber);
+  border-color: transparent;
+  color: var(--warn);
+}
+
+.inc-card-ok .inc-card-mark {
+  background: var(--tint-green);
+  border-color: transparent;
+  color: var(--ok);
+}
+
+.inc-card-info .inc-card-mark {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.inc-card-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inc-card-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+}
+
+.inc-card-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.inc-card .link-cell {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+
+/* ---- the table ---- */
+
+.inc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.inc-toolbar .inc-search .text-input {
+  padding: 8px 10px 8px 30px;
+  font-size: 12px;
+}
+
+.inc-toolbar .inc-search svg {
+  left: 10px;
+}
+
+.inc-table td {
+  vertical-align: middle;
+}
+
+/* The id opens the record, because it is the thing an operator is given over
+   the radio and asked to look up. Coloured by severity: it is also the first
+   thing that says how much hurry to be in. */
+.inc-id {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inc-id:hover {
+  text-decoration: underline;
+}
+
+.inc-id-high {
+  color: var(--alert);
+}
+
+.inc-id-medium {
+  color: var(--warn);
+}
+
+/* The other half of the row's job: where it is, without leaving for the
+   record. The same split the drawer makes between the row and its Open. */
+.inc-locate {
+  padding: 3px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inc-locate:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.inc-table tr.row-selected {
+  background: var(--accent-soft);
+}
+
+.inc-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 11px;
+  font-size: 11.5px;
+}
+
+.inc-pager-size select {
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+/* The filter column is a stack, and the rhythm comes from the gap rather than
+   each field's own bottom margin — the two together gave six controls six
+   different-looking spacings. */
+.inc-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  margin-top: 8px;
+}
+
+.inc-filters .field {
+  margin-bottom: 0;
+}
+
+/* One column below the width where three stop being three. */
+@media (max-width: 1180px) {
+  .inc-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inc-bar,
+  .inc-cards-panel,
+  .inc-map,
+  .inc-list-panel,
+  .inc-side {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .inc-cards-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  }
+}
+
+/* The rail stands down for a full-screen register, so the screen takes the
+   width it gives up — and the screen's own heading goes with it. Full screen
+   means the chart has the space, and a title bar saying "Incidents" over a map
+   the operator just asked to fill the screen is the last thing still arguing
+   for a smaller one. The tab name is in the header above regardless. */
+.app-body.rail-hidden .screen {
+  margin-left: 0;
+}
+
+.app-body.rail-hidden .screen-head {
+  display: none;
+}
+
+/* ---- incident register: a chart with a drawer over it ---- */
+
+/**
+ * The chart takes the screen and the list comes over it.
+ *
+ * A panel that is always there costs a third of the chart for a list that is
+ * read in bursts — and the chart is the one thing here that cannot be made
+ * smaller without losing what it is for. So the map is the layout, and
+ * everything else is laid on top of it.
+ */
+.inc-map-layout {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---- the figures, over the chart ---- */
+
+/* Top left, under the extent presets, and deliberately small: they are context
+   for the map rather than the subject of the screen. */
+.inc-hud {
+  position: absolute;
+  top: 58px;
+  left: 14px;
+  z-index: 3;
+  width: 216px;
+  padding: 9px 10px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--map-control);
+  box-shadow: var(--shadow-sm);
+}
+
+.inc-hud-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  color: var(--map-control-ink);
+}
+
+.inc-hud-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+/* Each figure is also the filter that produces it, so the count and the list
+   can never disagree about what it meant. */
+.inc-hud-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1px 7px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.inc-hud-card:hover {
+  border-color: var(--accent);
+}
+
+.inc-hud-card svg {
+  grid-row: 1 / span 2;
+  color: var(--muted);
+}
+
+.inc-hud-card.inc-card-alert {
+  border-left-color: var(--alert);
+}
+
+.inc-hud-card.inc-card-alert svg {
+  color: var(--alert);
+}
+
+.inc-hud-card.inc-card-warn {
+  border-left-color: var(--warn);
+}
+
+.inc-hud-card.inc-card-warn svg {
+  color: var(--warn);
+}
+
+.inc-hud-card.inc-card-ok {
+  border-left-color: var(--ok);
+}
+
+.inc-hud-card.inc-card-ok svg {
+  color: var(--ok);
+}
+
+.inc-hud-card.inc-card-info {
+  border-left-color: var(--accent);
+}
+
+.inc-hud-card.inc-card-info svg {
+  color: var(--accent);
+}
+
+.inc-hud-value {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+}
+
+.inc-hud-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.inc-raise {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 5px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--navy-500);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inc-raise:hover {
+  background: var(--navy-600);
+  border-color: var(--ink-accent);
+}
+
+/* ---- the drawer's handle ---- */
+
+/* Top right, where the list would open from. The map's own full-screen button
+   steps left of it — the same trick the playback timeline plays with the
+   controls it covers. */
+.inc-drawer-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 33px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--map-control);
+  color: var(--map-control-ink);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.inc-drawer-btn:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.inc-drawer-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+/* Closed, the full-screen button sits left of the handle. */
+.inc-map-layout .map-fs-btn {
+  right: 64px;
+}
+
+.inc-map-layout .maplibregl-ctrl-top-right {
+  margin-right: 54px;
+}
+
+/* Open, everything pinned to the right edge steps clear of the drawer. */
+.inc-map-layout.drawer-open .map-fs-btn {
+  right: 366px;
+}
+
+.inc-map-layout.drawer-open .maplibregl-ctrl-top-right {
+  margin-right: 356px;
+}
+
+.inc-map-layout.drawer-open .details-card {
+  right: 366px;
+}
+
+/* ---- the drawer ---- */
+
+.inc-drawer {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 5;
+  width: 344px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.inc-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inc-drawer-head > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.inc-drawer-head strong {
+  font-size: 13px;
+}
+
+.inc-drawer-head .muted {
+  font-size: 10.5px;
+}
+
+.inc-drawer-head .icon-button {
+  margin: 0;
+}
+
+.inc-drawer-tools {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inc-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+}
+
+.inc-search svg {
+  position: absolute;
+  left: 9px;
+  pointer-events: none;
+}
+
+.inc-search .text-input {
+  padding: 6px 8px 6px 27px;
+  font-size: 11.5px;
+}
+
+.inc-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.inc-filter-btn:hover,
+.inc-filter-btn.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* How many facets are in force, on the control that opens them — a filter you
+   cannot see is a filter you forget you set. */
+.inc-facet-dot {
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+}
+
+.inc-drawer-filters {
+  flex: none;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.inc-drawer-filters .field {
+  margin-bottom: 9px;
+}
+
+.inc-drawer-filters .text-input {
+  padding: 6px 8px;
+  font-size: 11.5px;
+}
+
+.inc-filter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 9px;
+}
+
+/* The dash between the two dates is the range. `1fr` each so they stay the same
+   width whichever is empty — a date input sizes to its placeholder. */
+.inc-filter-dates {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 5px;
+}
+
+.inc-filter-dates > span {
+  color: var(--muted);
+}
+
+.inc-filter-dates .text-input {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.inc-filter-actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 2px;
+}
+
+/* The base buttons carry no horizontal padding — they are built full-width for
+   a panel — so a row using them has to put it back. */
+.inc-filter-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  width: auto;
+  margin: 0;
+  padding: 7px 12px;
+}
+
+/* ---- the rows ---- */
+
+.inc-rows {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inc-rows li {
+  position: relative;
+}
+
+/* The whole row locates the incident; only the corner opens it. Two targets,
+   because "where is it" and "what is it" are different questions and the first
+   is the one asked from a map. */
+.inc-row-btn {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 56px 8px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font: inherit;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.inc-row-btn:hover {
+  border-color: var(--accent);
+}
+
+.inc-row-btn.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.inc-sev-edge-alert {
+  border-left-color: var(--alert);
+}
+
+.inc-sev-edge-warn {
+  border-left-color: var(--warn);
+}
+
+.inc-sev-edge-low {
+  border-left-color: var(--muted);
+}
+
+.inc-row-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.inc-row-id {
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.inc-row-top .badge {
+  margin-left: auto;
+}
+
+.inc-row-what {
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.inc-row-meta {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.inc-row-open {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 10px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.inc-row-open:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.inc-rows-empty {
+  padding: 14px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.inc-drawer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.inc-pager-nav {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.inc-pager-nav button {
+  min-width: 26px;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.inc-pager-nav button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.inc-pager-nav button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.inc-pager-at {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* The breakdown at the foot of the drawer: it reports what the filters above
+   left, so it reads after them rather than before. */
+.inc-drawer-donut {
+  flex: none;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.inc-drawer-donut .inc-donut svg {
+  width: 84px;
+  height: 84px;
+}
+
+/* Narrow enough and the drawer takes the width it needs; the figures step out
+   of its way rather than sitting under it. */
+@media (max-width: 860px) {
+  .inc-drawer {
+    width: auto;
+    left: 10px;
+  }
+
+  .inc-map-layout.drawer-open .inc-hud {
+    display: none;
+  }
+
+  .inc-map-layout.drawer-open .map-fs-btn {
+    right: 10px;
+  }
+
+  .inc-map-layout.drawer-open .maplibregl-ctrl-top-right {
+    margin-right: 0;
+  }
+}
+
+/* ---- incident register: donut ---- */
+
+.inc-donut {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.inc-donut svg {
+  flex: none;
+  width: 118px;
+  height: 118px;
+}
+
+.inc-donut-total {
+  text-anchor: middle;
+  font-size: 20px;
+  font-weight: 700;
+  fill: var(--ink-strong);
+}
+
+.inc-donut-word {
+  text-anchor: middle;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: var(--muted);
+}
+
+/* Direct-labelled: a donut reads part-to-whole only at a glance, so every
+   slice carries its own count rather than leaving an angle to be judged. */
+.inc-donut-key {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.inc-donut-key li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inc-donut-key strong {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.inc-donut-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+
+/* ---- draw an incident area ---- */
+
+/**
+ * Header across the top, chart and panel side by side, footer across the
+ * bottom — and the middle row is the only one that scrolls.
+ *
+ * The chart must not scroll away while corners are being placed, and the
+ * footer's Next must not either: an operator who has drawn a shape should not
+ * have to scroll to leave the step. So the grid is fixed to the screen and the
+ * panel takes the overflow.
+ */
+.draw-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 400px);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg);
+}
+
+.draw-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 13px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.draw-head-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.draw-head-title h2 {
+  margin: 4px 0 0;
+  font-size: 17px;
+}
+
+.draw-head-title p {
+  margin: 2px 0 0;
+  font-size: 12px;
+}
+
+/* The steps, as a path rather than as tabs: the arrows say the order is real
+   and the disabled ones say it cannot be skipped. */
+.draw-steps {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  flex: none;
+}
+
+.draw-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.draw-steps button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 4px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.draw-steps button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.draw-step-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.draw-steps .is-on {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.draw-steps .is-on .draw-step-n {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.draw-steps .is-done {
+  color: var(--ok);
+}
+
+.draw-steps .is-done .draw-step-n {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.draw-close {
+  flex: none;
+  margin: 0;
+}
+
+/* ---- the chart half ---- */
+
+.draw-map-wrap {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 12px;
+  gap: 10px;
+}
+
+/* What to do next, said in the place the doing happens. It changes with the
+   shape and with how far in the drawing is, so it is never generic advice. */
+.draw-hint {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  flex: none;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 9px;
+  background: var(--accent-soft);
+  font-size: 12px;
+  color: var(--ink-accent);
+}
+
+.draw-hint > span {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.draw-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 5px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 11px;
+  color: var(--alert);
+  cursor: pointer;
+}
+
+.draw-clear:hover:not(:disabled) {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+}
+
+.draw-clear:disabled {
+  opacity: 0.45;
+  cursor: default;
+  color: var(--muted);
+}
+
+.draw-map {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* The cursor's position, which is the figure about to be placed. Bottom left,
+   clear of the map's own controls in the other three corners. */
+.draw-readout {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 2;
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--map-control);
+  color: var(--map-control-ink);
+  font: 11.5px/1 ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---- the panel half ---- */
+
+.draw-panel {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 16px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+}
+
+.draw-block {
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.draw-block:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.draw-block h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 9px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.draw-block h3 .badge,
+.draw-block h3 .icon-button {
+  margin-left: auto;
+}
+
+/* Two choices as cards rather than a select: each carries a line saying what it
+   means, and which one is chosen changes what the rest of the panel is. */
+.draw-pick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.draw-pick-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.draw-pick-btn strong {
+  font-size: 12.5px;
+}
+
+.draw-pick-btn span {
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.draw-pick-btn:hover {
+  border-color: var(--border-strong);
+}
+
+.draw-pick-btn.is-on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.draw-pick-btn.is-on strong {
+  color: var(--accent);
+}
+
+.draw-coords {
+  max-height: 230px;
+}
+
+/* The coordinate cells are editable, so they are inputs sized to sit inside a
+   table row rather than to stand on their own. */
+.draw-coords .text-input {
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.draw-coords td:last-child {
+  width: 1%;
+}
+
+.draw-coord-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+
+.draw-coord-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  color: var(--muted);
+}
+
+.draw-geojson {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  max-height: 160px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font: 10.5px/1.5 ui-monospace, Consolas, monospace;
+  color: var(--text);
+  white-space: pre;
+}
+
+.draw-paste {
+  font: 11.5px/1.6 ui-monospace, Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- footer ---- */
+
+.draw-foot {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 11px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.draw-foot-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Horizontal padding stated, because the two base buttons do not have any.
+   `.ghost-button` and `.primary-button` are `padding: Npx 0` — they are built
+   to be full-width inside a panel, where side padding would do nothing. Taken
+   out of that context by `width: auto` they shrink to their text and the label
+   ends up jammed against both edges. Anywhere those classes are used in a row,
+   the row has to put the padding back. */
+.draw-foot-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: auto;
+  min-width: 96px;
+  margin: 0;
+  padding: 9px 18px;
+}
+
+/* The one that carries the step forward, sized so it reads as the way out. */
+.draw-foot-actions .primary-button {
+  min-width: 140px;
+}
+
+/* Done, and the way back to adding corners. Green rather than the accent: it
+   completes the shape where Clear destroys it, and the two sit side by side. */
+.draw-finish {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  padding: 5px 11px;
+  border: 1px solid var(--ok);
+  border-radius: 8px;
+  background: var(--tint-green);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ok);
+  cursor: pointer;
+}
+
+.draw-finish:hover:not(:disabled) {
+  border-color: var(--ok);
+  filter: brightness(1.06);
+}
+
+.draw-finish:disabled {
+  opacity: 0.45;
+  cursor: default;
+  border-color: var(--border-strong);
+  background: transparent;
+  color: var(--muted);
+}
+
+/* One column below the width where a chart and a panel both stop working. */
+@media (max-width: 1024px) {
+  .draw-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .draw-map-wrap,
+  .draw-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .draw-map {
+    min-height: 360px;
+  }
+
+  .draw-panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .draw-head {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---- draw: full screen ---- */
+
+/**
+ * Full screen, the grid stops being a grid.
+ *
+ * At rest the screen is a header, a chart beside a panel, and a footer — four
+ * areas that each own their space. Full screen the chart owns all of it and the
+ * other three lie over the top, so drawing has the whole water and the controls
+ * are still a click away rather than a screen away.
+ */
+.draw-layout.is-full {
+  display: block;
+  position: relative;
+}
+
+.draw-layout.is-full .draw-map-wrap {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  gap: 0;
+}
+
+.draw-layout.is-full .draw-map {
+  border: 0;
+  border-radius: 0;
+}
+
+/* The header becomes a bar across the top of the chart. Translucent over the
+   map's own control colour, so the water reads through it. */
+.draw-layout.is-full .draw-head {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 6;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--map-control);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The title gives up its subtitle: full screen the operator knows what they
+   opened, and the steps beside it are the thing worth the width. */
+.draw-layout.is-full .draw-head-title h2 {
+  font-size: 14px;
+  margin: 0;
+}
+
+.draw-layout.is-full .draw-head-title p,
+.draw-layout.is-full .draw-head-title .inc-crumbs {
+  display: none;
+}
+
+/* The hint sits under the header bar rather than above the chart. */
+.draw-layout.is-full .draw-hint {
+  position: absolute;
+  top: 66px;
+  left: 10px;
+  right: 376px;
+  z-index: 5;
+  margin: 0;
+}
+
+.draw-layout.is-full.panel-shut .draw-hint {
+  right: 10px;
+}
+
+/* The panel becomes a drawer down the right, clear of the header and footer
+   bars rather than under them. */
+.draw-layout.is-full .draw-panel {
+  position: absolute;
+  top: 66px;
+  right: 10px;
+  bottom: 62px;
+  z-index: 5;
+  width: 356px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.draw-layout.is-full.panel-shut .draw-panel {
+  display: none;
+}
+
+/* The footer becomes a bar across the bottom, so Next is where it always is. */
+.draw-layout.is-full .draw-foot {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 6;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--map-control);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The panel toggle, beside the close. */
+.draw-panel-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--map-control-ink);
+  cursor: pointer;
+}
+
+.draw-panel-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The map's own controls step clear of the header bar and the drawer, the same
+   way they do for the register's list. */
+.draw-layout.is-full .map-fs-btn {
+  top: 66px;
+  right: 376px;
+}
+
+.draw-layout.is-full .maplibregl-ctrl-top-right {
+  margin-top: 56px;
+  margin-right: 366px;
+}
+
+.draw-layout.is-full.panel-shut .map-fs-btn {
+  right: 10px;
+}
+
+.draw-layout.is-full.panel-shut .maplibregl-ctrl-top-right {
+  margin-right: 0;
+}
+
+/* The position readout clears the footer bar. */
+.draw-layout.is-full .draw-readout {
+  bottom: 62px;
+}
+
+/* Too narrow for a drawer over a chart: the panel goes back to being a column
+   the page scrolls through, and full screen only buys the hidden rail. */
+@media (max-width: 1024px) {
+  .draw-layout.is-full {
+    display: grid;
+  }
+
+  .draw-layout.is-full .draw-head,
+  .draw-layout.is-full .draw-panel,
+  .draw-layout.is-full .draw-foot,
+  .draw-layout.is-full .draw-map-wrap {
+    position: static;
+    inset: auto;
+    width: auto;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .draw-layout.is-full .draw-map-wrap {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .draw-layout.is-full .draw-hint {
+    position: static;
+  }
+
+  .draw-layout.is-full .draw-panel-btn {
+    display: none;
+  }
+}
+
+/* ---- raise an incident ---- */
+
+/* Type and severity share a row: they are the two facts that classify the
+   thing, and every other field below is about this particular one. */
+.inc-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0 12px;
+}
+
+.inc-sev-chips,
+.inc-shape-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+/* Colour only once chosen — three coloured chips at rest would read as three
+   warnings rather than as one choice, the same rule the broadcast priorities
+   follow. */
+.inc-sev-alert.active {
+  border-color: var(--alert);
+  background: var(--alert-soft);
+  color: var(--alert);
+}
+
+.inc-sev-warn.active {
+  border-color: var(--warn);
+  background: var(--tint-amber);
+  color: var(--warn);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+.inc-corner-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  padding: 6px 11px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.inc-corner-add:hover {
+  border-style: solid;
+  background: var(--accent-soft);
+}
+
+/* ---- incident details ---- */
+
+.inc-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.inc-crumbs .link-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.inc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.inc-head-id {
+  min-width: 0;
+  flex: 1;
+}
+
+.inc-head-id h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.inc-head-id p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.inc-head-nav {
+  display: flex;
+  gap: 7px;
+  flex: none;
+}
+
+.inc-head-nav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: auto;
+  margin: 0;
+  padding: 7px 13px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inc-head-nav button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.inc-head-nav button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* The one action in the row that does something to the world rather than moving
+   between records, so it is the one that reads as primary. */
+.inc-head-nav .inc-report-btn {
+  border-color: var(--accent);
+  background: var(--navy-500);
+  color: #fff;
+}
+
+.inc-head-nav .inc-report-btn:hover {
+  background: var(--navy-600);
+  border-color: var(--ink-accent);
+  color: #fff;
+}
+
+/* ---- incident details: two columns ---- */
+
+/* The screen's own card grid would otherwise drop this whole layout into one
+   330px column of it. Same rule `.vessel-layout` needs, for the same reason. */
+.screen-grid > .inc-detail-layout {
+  grid-column: 1 / -1;
+}
+
+/**
+ * The header spans, the record runs down the left, the chart sits on the right.
+ *
+ * Which side each panel takes is not arbitrary. The left column is *read* —
+ * what the incident is, the water it affects corner by corner, what has
+ * happened to it since. The right is *glanced at* — where it is, who is on it,
+ * what has been written against it. A map belongs in the second: it answers a
+ * question in a second or not at all, and as a band across the page it pushed
+ * everything that has to be read below the fold.
+ */
+.inc-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.85fr);
+  gap: 14px;
+  align-items: start;
+}
+
+/* The header and the payload run the full width. */
+.inc-detail-layout > .panel-wide,
+.inc-detail-layout > .raw-json {
+  grid-column: 1 / -1;
+}
+
+.inc-detail-main,
+.inc-detail-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.inc-detail-main {
+  grid-column: 1;
+}
+
+.inc-detail-side {
+  grid-column: 2;
+}
+
+/* Inside the columns the panels are the column's children, so the width rule
+   above does not reach them — and must not: a wide panel in a side column is
+   just a panel. */
+.inc-detail-main > .panel,
+.inc-detail-side > .panel {
+  margin: 0;
+}
+
+/* The chart on the record. A card in the side column rather than a band: fixed
+   height because it sits in a scrolling stack, where a map sized by its content
+   is either a sliver or the whole page. */
+.inc-detail-map {
+  position: relative;
+  height: 260px;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* One column below the width where a side column stops being one. */
+@media (max-width: 1080px) {
+  .inc-detail-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inc-detail-main,
+  .inc-detail-side {
+    grid-column: 1;
+  }
+
+  /* Where it is comes before the detail of it, once they are stacked. */
+  .inc-detail-side {
+    order: -1;
+  }
+}
+
+.inc-notes {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.inc-notes li {
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+
+.inc-notes p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.inc-notes .muted {
+  display: block;
+  margin-top: 4px;
+  font-size: 10.5px;
+}
+
+.inc-note-add {
+  margin-top: 12px;
+}
+
+.inc-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.inc-status-actions button:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 /* ---- broadcast to all vessels ---- */
 
 /* Same shell as the share dialog — a head, a scrolling body, a fixed foot. */
@@ -7913,6 +9764,61 @@ button.perm-module {
   display: flex;
   gap: 10px;
 }
+
+/* ---- vessel picker: the flag filter's shell, different rows ---- */
+
+/* It carries `.flag-filter` as well, so the trigger, the menu, the search and
+   the footer all come for free. Only the row differs: no ensign, and the right
+   column is an area rather than a count. */
+/**
+ * Four columns, not the flag filter's five.
+ *
+ * That grid is `14px 19px 1fr auto 24px` — tick, ensign, country, code, count.
+ * A vessel row has no ensign, so its four children fell one column left and the
+ * name landed in the 19px ensign slot, which clips its overflow: the name was
+ * there and nothing of it was visible. The template has to match the row, not
+ * the row the rule was written for.
+ */
+.multi-picker .flag-list label {
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+}
+
+.multi-picker .flag-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multi-picker .flag-abbr {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.multi-picker .flag-count {
+  min-width: 56px;
+  text-align: right;
+  font-variant-numeric: normal;
+  white-space: nowrap;
+}
+
+/* Full width inside a form field, where the flag filter sits in a control row. */
+.field .multi-picker,
+.field .multi-picker .flag-trigger {
+  width: 100%;
+}
+
+.multi-picker .flag-trigger-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+
 
 /* ---- what the dropdown chose ---- */
 

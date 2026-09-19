@@ -8,6 +8,9 @@ export type TabId =
   | 'occupancy'
   | 'assignment'
   | 'vessel'
+  | 'incidents'
+  | 'incident'
+  | 'incident-draw'
   | 'reports'
   | 'users'
   | 'roles'
@@ -106,7 +109,24 @@ const uiSlice = createSlice({
     setNavOpen(state, action: PayloadAction<boolean>) {
       state.navOpen = action.payload
     },
+    /**
+     * Changing screen collapses an expanded map.
+     *
+     * Here rather than in the control's own unmount, which is where it used to
+     * be and was subtly wrong: unmounting happens for two different reasons.
+     * Leaving the screen is one, and a screen *rearranging itself* is the other
+     * — the register swaps its whole layout when the map expands, which
+     * unmounts the very button that was just pressed and fired the cleanup that
+     * turned the flag straight back off. The flag could never stay on.
+     *
+     * A tab change is the thing that was actually meant, and it cannot be
+     * confused with anything else.
+     */
     setTab(state, action: PayloadAction<TabId>) {
+      if (state.activeTab !== action.payload) {
+        state.mapFullscreen = false
+        state.dashPanelsOpen = false
+      }
       state.activeTab = action.payload
     },
     setTheme(state, action: PayloadAction<ThemeId>) {

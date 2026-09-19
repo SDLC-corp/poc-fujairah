@@ -8,20 +8,9 @@ import { focusVessel } from '../features/view/viewSlice'
 import { setTab } from '../features/ui/uiSlice'
 import { formatDistance } from '../utils/format'
 import Icon from './Icon'
+import { dragSubject } from '../features/incidents/subjects'
 import SendIncidentMailDialog from './SendIncidentMailDialog'
 import type { IncidentMail } from './SendIncidentMailDialog'
-import { formatLatLon } from '../utils/format'
-
-/** Why a ship might be running, and what the port is doing about it. */
-const DRAG_REASONS = [
-  'Shamal — strong north-westerly',
-  'Insufficient cable veered',
-  'Poor holding ground',
-  'Heavy swell',
-  'Vessel manoeuvring on her anchor',
-  'Cause not yet established',
-  'Other',
-]
 
 /**
  * Anchor-drag watch.
@@ -182,20 +171,9 @@ export default function DragAlert() {
 
       {reporting && (
         <SendIncidentMailDialog
-          subject={{
-            title: `${p.name} — anchor dragging`,
-            subtitle: p.area ? `Area ${p.area}` : 'Outside the declared areas',
-            lines: [
-              `Anchor has run ${formatDistance(worst.driftM)} from where it was let go,`,
-              `outside her ${worst.radiusM} m swing circle.`,
-              '',
-              `Let go at   ${formatLatLon(worst.laidAt[1], worst.laidAt[0])}`,
-            ],
-            // Where the anchor is now — the position anyone going to look for
-            // her needs. Where it was let go is above, as the comparison.
-            position: { lat: worst.anchorNow[1], lon: worst.anchorNow[0] },
-            reasons: DRAG_REASONS,
-          }}
+          // The same wording the incidents screen and the dashboard use — see
+          // `dragSubject`. Three places can report this one incident.
+          subject={dragSubject(worst)}
           onSend={(report) => {
             setSent(report)
             setReporting(false)

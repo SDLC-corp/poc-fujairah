@@ -75,6 +75,11 @@ npm run build    # typecheck + production bundle
 npm run preview  # serve the production build
 npm run lint     # oxlint
 npm run verify   # run the Turf analyses over the static data in Node
+
+npm run gen:vessels    # regenerate the sample fleet
+npm run gen:incidents  # regenerate the incident register (needs vessels.json)
+npm run gen:playback   # regenerate the recorded day
+npm run gen:contours   # re-contour GEBCO
 ```
 
 ## What it demonstrates
@@ -141,6 +146,7 @@ public/data/
   soundings.json        spot soundings from the same run, same datum
   vessels.json          sample fleet with ATA/ETD (npm run gen:vessels)
   geofences.json        operator-drawn incident fences — editable, not official
+  incidents.json        the incident register (npm run gen:incidents)
 src/
   app/                  store + typed hooks (useAppDispatch / useAppSelector)
   features/

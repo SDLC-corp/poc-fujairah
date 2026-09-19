@@ -28,6 +28,10 @@ import type { FreeSpotProps } from '../features/analysis/selectors'
 import { dismissArrival, finishTransit } from '../features/transit/transitSlice'
 import { anchorVessel } from '../features/portData/portDataSlice'
 import { selectWindowedPlayback } from '../features/playback/selectors'
+import { selectIncidentGeoJson } from '../features/incidentRegister/selectors'
+import { addPoint, completeShape, setHover } from '../features/draw/drawSlice'
+import { selectDraftGeoJson } from '../features/draw/selectors'
+import { distance as turfDistance } from '@turf/turf'
 import {
   cancelRelocate,
   clearSpot,
@@ -112,6 +116,7 @@ const SOURCES_OF: Record<LayerId, string[]> = {
   swing: [SOURCE_IDS.swing],
   freeSpots: [SOURCE_IDS.freeSpots],
   geofences: [SOURCE_IDS.geofences],
+  incidents: [SOURCE_IDS.incidents],
 }
 
 export default function MapView() {
@@ -185,6 +190,11 @@ export default function MapView() {
   // four hours is the day as far as everything drawn here is concerned.
   const playbackData = useAppSelector(selectWindowedPlayback)
   const activeTab = useAppSelector((s) => s.ui.activeTab)
+  const incidentGeo = useAppSelector(selectIncidentGeoJson)
+  /** The register's two screens — the only places its history belongs. */
+  const onIncidents = activeTab === 'incidents' || activeTab === 'incident'
+  const draw = useAppSelector((s) => s.draw)
+  const draftGeo = useAppSelector(selectDraftGeoJson)
   const theme = useAppSelector((s) => s.ui.theme)
   const movedSpots = useAppSelector((s) => s.spots.moved)
   const areas = useAppSelector(selectAreas)
@@ -195,6 +205,15 @@ export default function MapView() {
   // so everything they read goes through a ref rather than a stale closure.
   const spotStateRef = useRef({ relocating, pickingFor })
   spotStateRef.current = { relocating, pickingFor }
+  /**
+   * The drawing session, for handlers attached once at map creation.
+   *
+   * Through a ref for the same reason the spot state is: the click and move
+   * handlers are bound to the map a single time, and re-binding them whenever a
+   * corner is placed would tear down and rebuild a listener on every click.
+   */
+  const drawStateRef = useRef(draw)
+  drawStateRef.current = draw
   /**
    * A move owns the map while it runs. Read through a ref so the effects that
    * consult it are not re-run by the transit itself — they only need to know
@@ -354,6 +373,54 @@ export default function MapView() {
     map.on('styledata', ensurePortLayers)
 
     map.on('click', (e: MapMouseEvent) => {
+      /**
+       * A drawing session owns every click on the chart.
+       *
+       * First, and returning rather than falling through: while a shape is
+       * being drawn a click is a corner, never a selection. Letting it also
+       * select would open a details card over the map the operator is drawing
+       * on, and clear it again on the next corner.
+       *
+       * The distance from the centre goes with the event because only the map
+       * can measure it — the reducer has coordinates but no projection, and a
+       * circle's second click is a radius rather than a place.
+       */
+      const draw = drawStateRef.current
+      if (draw.active && draw.method === 'map') {
+        /**
+         * Clicking the first corner closes the shape.
+         *
+         * The gesture every chart tool uses, and the discoverable one: the
+         * corner is a visible target and joining the ring back to where it
+         * started is what closing a boundary looks like. Double-click also
+         * finishes, for an operator who does not know that; the hint bar says
+         * both and carries a button for whoever wants neither.
+         */
+        if (draw.shape === 'polygon' && !draw.complete && draw.points.length >= 3) {
+          const onFirst = map
+            .queryRenderedFeatures(e.point, {
+              layers: map.getLayer('draw-vertex') ? ['draw-vertex'] : [],
+            })
+            .some((f) => f.properties?.n === 1)
+          if (onFirst) {
+            dispatch(completeShape())
+            return
+          }
+        }
+
+        const at: [number, number] = [e.lngLat.lng, e.lngLat.lat]
+        const centre = draw.shape === 'circle' ? draw.points[0] : undefined
+        dispatch(
+          addPoint({
+            at,
+            distanceM: centre
+              ? turfDistance(centre, at, { units: 'kilometers' }) * 1000
+              : undefined,
+          }),
+        )
+        return
+      }
+
       // While a spot is being dragged the map's clicks belong to it.
       if (spotStateRef.current.relocating) return
 
@@ -392,12 +459,51 @@ export default function MapView() {
     })
 
     map.on('mousemove', (e: MapMouseEvent) => {
+      /**
+       * While drawing, the cursor is the readout and the rubber band.
+       *
+       * Coarsened to five decimals before it is dispatched — about a metre.
+       * Raw `lngLat` changes on every pixel of movement, and each change is a
+       * store write that re-renders the map's whole data effect; rounding turns
+       * a stream of them into the handful that actually move the shape.
+       */
+      const draw = drawStateRef.current
+      if (draw.active && draw.method === 'map') {
+        const r = (n: number) => Math.round(n * 1e5) / 1e5
+        const next: [number, number] = [r(e.lngLat.lng), r(e.lngLat.lat)]
+        const last = draw.hover
+        // A finished shape has no rubber band to follow, so the cursor stops
+        // being state worth writing — but the readout still wants the position.
+        if (!last || last[0] !== next[0] || last[1] !== next[1]) dispatch(setHover(next))
+
+        // Over the first corner, the click closes the ring rather than adding
+        // to it — so the cursor says so before it is pressed.
+        const closable = draw.shape === 'polygon' && !draw.complete && draw.points.length >= 3
+        const onFirst =
+          closable &&
+          map
+            .queryRenderedFeatures(e.point, {
+              layers: map.getLayer('draw-vertex') ? ['draw-vertex'] : [],
+            })
+            .some((f) => f.properties?.n === 1)
+        map.getCanvas().style.cursor = onFirst ? 'pointer' : draw.complete ? '' : 'crosshair'
+        return
+      }
+
       const layers = [
         ...(map.getLayer('free-spot-fill') ? ['free-spot-fill'] : []),
         ...INTERACTIVE_LAYERS.filter((id) => map.getLayer(id)),
       ]
       const hits = layers.length ? map.queryRenderedFeatures(e.point, { layers }) : []
       map.getCanvas().style.cursor = hits.length ? 'pointer' : ''
+    })
+
+    /** Double-click finishes a polygon, and must not also zoom the chart. */
+    map.on('dblclick', (e: MapMouseEvent) => {
+      const draw = drawStateRef.current
+      if (!draw.active || draw.method !== 'map') return
+      e.preventDefault()
+      if (draw.shape === 'polygon') dispatch(completeShape())
     })
 
     return () => {
@@ -509,6 +615,11 @@ export default function MapView() {
       [SOURCE_IDS.freeSpots, playbackFleet ? null : freeSpots],
       [SOURCE_IDS.anchors, playbackFleet ? null : anchorMarks],
       [SOURCE_IDS.geofences, geofences],
+      // Only on the register's own screens. The incident geometry is a month of
+      // history and would sit over the live chart everywhere else, describing
+      // water that is no longer anybody's problem.
+      [SOURCE_IDS.incidents, onIncidents ? incidentGeo : null],
+      [SOURCE_IDS.draw, draftGeo],
       [SOURCE_IDS.labels, labelPoints],
       // Dropped against a replayed fleet — the drag is a fact about the live
       // snapshot, not about the recorded day.
@@ -534,6 +645,9 @@ export default function MapView() {
     playbackFleet,
     playbackHulls,
     dragOverlay,
+    incidentGeo,
+    onIncidents,
+    draftGeo,
   ])
 
   /**
@@ -970,6 +1084,9 @@ export default function MapView() {
       swing: vessels,
       freeSpots: null,
       geofences,
+      // Not clickable — see FeatureDetails. The register's own screens are
+      // where an incident is opened.
+      incidents: null,
       contours: null,
       soundings: null,
       graticule: null,

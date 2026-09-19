@@ -29,18 +29,13 @@ export default function MapFullscreen() {
     return () => window.removeEventListener('keydown', onKey)
   }, [on, dispatch])
 
-  /**
-   * Leaving the screen collapses it. The flag is app-wide, so a map left
-   * expanded would otherwise have the next screen's map open expanded too —
-   * or, on a screen with no map at all, strand the flag set with nothing
-   * drawing the control that clears it.
+  /*
+   * Leaving the screen collapses it — but that is `setTab`'s job, not this
+   * component's. Unmounting cannot tell "the operator left" from "the screen
+   * rearranged itself", and the register does rearrange itself the moment this
+   * button is pressed: the cleanup fired on the button that had just set the
+   * flag and cleared it again, so full screen never took.
    */
-  useEffect(
-    () => () => {
-      dispatch(setMapFullscreen(false))
-    },
-    [dispatch],
-  )
 
   return (
     <button

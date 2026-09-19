@@ -25,6 +25,7 @@ const initialState: LayersState = {
     swing: true,
     freeSpots: true,
     geofences: true,
+    incidents: true,
   },
   vessels3d: true,
   buildings3d: true,
